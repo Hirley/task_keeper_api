@@ -319,3 +319,188 @@ input:focus-visible {
   margin-top: 3rem;
   font-size: 0.9rem;
 }
+
+/* ---------- Painel inicial (dashboard) ---------- */
+
+.tk-dashboard-greeting {
+  color: var(--tk-teal);
+  font-weight: 600;
+}
+
+/* KPIs no topo do painel */
+
+.stat-tile {
+  background: #fff;
+  border-radius: var(--tk-radius);
+  box-shadow: var(--tk-shadow);
+  padding: 1.1rem 1.25rem;
+  height: 100%;
+  border-top: 3px solid var(--tk-teal);
+}
+
+.stat-tile-pendente { border-top-color: #e0a800; }
+.stat-tile-andamento { border-top-color: #1789a3; }
+.stat-tile-concluida { border-top-color: var(--tk-green); }
+
+.stat-tile .stat-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #667077;
+  font-weight: 600;
+}
+
+.stat-tile .stat-value {
+  font-family: "Kanit", sans-serif;
+  font-size: 2.1rem;
+  font-weight: 600;
+  color: var(--tk-text);
+  line-height: 1.2;
+  margin-top: 0.15rem;
+}
+
+.stat-tile .stat-sub {
+  font-size: 0.78rem;
+  color: #667077;
+  margin-top: 0.1rem;
+  min-height: 1.1em;
+}
+
+/* Badge de urgência de prazo — canal separado do badge de status
+   (tk-badge-status-*): esse mostra "está no prazo?", não "em que fase". */
+
+.badge-urg {
+  font-weight: 600;
+  font-size: 0.72rem;
+  padding: 0.3em 0.6em;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.badge-urg-critical { background: #fbe1de; color: #c0392b; }
+.badge-urg-warning { background: #fff0da; color: #b5750a; }
+
+/* Barra única empilhada — distribuição por status */
+
+.status-bar {
+  display: flex;
+  height: 22px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #eef1f0;
+}
+
+.status-bar-seg + .status-bar-seg { margin-left: 2px; }
+.status-bar-pendente { background: #e0a800; }
+.status-bar-andamento { background: #1789a3; }
+.status-bar-concluida { background: var(--tk-green); }
+
+.status-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  margin-top: 0.85rem;
+  font-size: 0.82rem;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 0.35rem;
+}
+
+.status-dot-pendente { background: #e0a800; }
+.status-dot-andamento { background: #1789a3; }
+.status-dot-concluida { background: var(--tk-green); }
+
+/* Prazos (atrasadas / vencem hoje / vencem em breve) */
+
+.prazo-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid #f1f3f2;
+}
+
+.prazo-row:last-child { border-bottom: none; }
+
+.prazo-count {
+  font-family: "Kanit", sans-serif;
+  font-weight: 600;
+  font-size: 1.3rem;
+}
+
+.prazo-count-critical { color: #c0392b; }
+.prazo-count-warning { color: #b5750a; }
+.prazo-count-neutral { color: var(--tk-teal); }
+
+/* Carga por responsável — barras horizontais, magnitude num só matiz */
+
+.load-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.load-row:last-child { margin-bottom: 0; }
+
+.load-name {
+  width: 40%;
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.load-track {
+  flex: 1;
+  background: #eef1f0;
+  border-radius: 999px;
+  height: 12px;
+}
+
+.load-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--tk-teal);
+}
+
+.load-count {
+  width: 26px;
+  text-align: right;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #667077;
+  flex-shrink: 0;
+}
+
+/* Atividade recente */
+
+.activity-item {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid #f4f6f5;
+}
+
+.activity-item:last-child { border-bottom: none; }
+
+.activity-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tk-teal);
+  margin-top: 0.4rem;
+  flex-shrink: 0;
+}
+
+.activity-time {
+  font-size: 0.76rem;
+  color: #667077;
+}

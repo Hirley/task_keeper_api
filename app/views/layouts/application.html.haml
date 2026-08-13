@@ -26,6 +26,8 @@
           #tkNavbar.collapse.navbar-collapse
             %ul.navbar-nav.me-auto
               %li.nav-item
+                = link_to "Início", root_path, class: "nav-link#{' active' if current_page?(root_path)}"
+              %li.nav-item
                 = link_to "Demandas", demandas_path, class: "nav-link#{' active' if current_page?(demandas_path)}"
               - if can? :manage, User
                 %li.nav-item
