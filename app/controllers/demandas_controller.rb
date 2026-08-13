@@ -6,7 +6,12 @@ class DemandasController < ApplicationController
   before_action :set_demanda, only: %i[edit update destroy]
 
   def index
-    @demandas = Demanda.accessible_by(current_ability).includes(:user).order(created_at: :desc)
+    scope = Demanda.accessible_by(current_ability).includes(:user).order(created_at: :desc)
+
+    @q = params[:q]
+    @status_filter = params[:status]
+    @demandas = paginate(filter_demandas(scope))
+    @title_suggestions = Demanda.distinct.order(:title).limit(50).pluck(:title)
   end
 
   def new
@@ -53,5 +58,20 @@ class DemandasController < ApplicationController
 
   def demanda_params
     params.require(:demanda).permit(:title, :description, :status)
+  end
+
+  # Filtro usado na busca da tela de listagem (campo com autocomplete por
+  # título + select de status). Ambos são opcionais.
+  def filter_demandas(scope)
+    if params[:q].present?
+      term = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q])}%"
+      scope = scope.where("demandas.title LIKE ?", term)
+    end
+
+    if params[:status].present? && Demanda.statuses.key?(params[:status])
+      scope = scope.where(status: params[:status])
+    end
+
+    scope
   end
 end

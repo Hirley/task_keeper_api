@@ -1,0 +1,22 @@
+- if pagination && pagination[:total_pages] > 1
+  %nav.mt-4{ "aria-label" => "Navegação de páginas" }
+    %ul.pagination.pagination-tk.justify-content-center.flex-wrap
+      %li.page-item{ class: ("disabled" if pagination[:current_page] <= 1) }
+        = link_to "‹ Anterior", url_for(request.query_parameters.merge("page" => pagination[:current_page] - 1)),
+          class: "page-link", "aria-label" => "Página anterior"
+
+      - pagination_window(pagination[:current_page], pagination[:total_pages]).each do |token|
+        - if token == :gap
+          %li.page-item.disabled
+            %span.page-link …
+        - else
+          %li.page-item{ class: ("active" if token == pagination[:current_page]) }
+            = link_to token, url_for(request.query_parameters.merge("page" => token)),
+              class: "page-link", "aria-label" => "Página #{token}"
+
+      %li.page-item{ class: ("disabled" if pagination[:current_page] >= pagination[:total_pages]) }
+        = link_to "Próxima ›", url_for(request.query_parameters.merge("page" => pagination[:current_page] + 1)),
+          class: "page-link", "aria-label" => "Próxima página"
+
+    %p.text-center.text-muted.small.mb-0
+      = "#{pagination[:total_count]} registro(s) — página #{pagination[:current_page]} de #{pagination[:total_pages]}"

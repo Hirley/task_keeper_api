@@ -47,6 +47,40 @@ RSpec.describe "Demandas (tela web)", type: :request do
       expect(response.body).to include("data-turbo-confirm")
       expect(response.body).to include("Tem certeza que deseja excluir esta demanda?")
     end
+
+    it "filtra por título via o formulário de busca" do
+      create(:demanda, title: "Revisar contrato", user: lider)
+      create(:demanda, title: "Organizar sala", user: lider)
+      sign_in lider
+
+      get "/demandas", params: { q: "contrato" }
+
+      expect(response.body).to include("Revisar contrato")
+      expect(response.body).not_to include("Organizar sala")
+    end
+
+    it "filtra por status" do
+      create(:demanda, title: "Demanda pendente", status: :pendente, user: lider)
+      create(:demanda, title: "Demanda concluída", status: :concluida, user: lider)
+      sign_in lider
+
+      get "/demandas", params: { status: "concluida" }
+
+      expect(response.body).to include("Demanda concluída")
+      expect(response.body).not_to include("Demanda pendente")
+    end
+
+    it "pagina os resultados quando há mais de 10 demandas" do
+      create_list(:demanda, 11, user: lider)
+      sign_in lider
+
+      get "/demandas"
+
+      expect(response.body).to include("Próxima")
+
+      get "/demandas", params: { page: 2 }
+      expect(response).to have_http_status(:ok)
+    end
   end
 
   describe "GET /demandas/new" do
