@@ -12,6 +12,10 @@
 .card.tk-card.mb-3
   .card-body
     = form_with url: demandas_path, method: :get, local: true, class: "row g-2 align-items-end" do |f|
+      - if params[:sort].present?
+        = f.hidden_field :sort, value: params[:sort]
+      - if params[:direction].present?
+        = f.hidden_field :direction, value: params[:direction]
       .col-md-6
         = f.label :q, "Buscar por título", class: "tk-filter-label form-label mb-1"
         = f.text_field :q, value: @q, list: "demanda-title-suggestions", autocomplete: "off",
@@ -31,10 +35,10 @@
   %table.table.table-hover.align-middle
     %thead
       %tr
-        %th Título
-        %th Status
-        %th Responsável
-        %th Criada em
+        %th= demanda_sort_header("title", "Título")
+        %th= demanda_sort_header("status", "Status")
+        %th= demanda_sort_header("responsavel", "Responsável")
+        %th= demanda_sort_header("created_at", "Criada em")
         - if can? :update, Demanda
           %th.text-end Ações
     %tbody

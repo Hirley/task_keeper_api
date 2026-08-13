@@ -77,7 +77,8 @@ Além da API, há uma tela em `/demandas` (menu "Demandas" no topo) para uso pel
 - apenas o líder vê a coluna **Ações**, com os botões **Editar** e **Excluir** em cada linha;
 - se um executor tentar acessar `/demandas/:id/edit` diretamente, é redirecionado com aviso de permissão negada;
 - o botão **Excluir** pede confirmação (`data-turbo-confirm`, via Turbo) antes de enviar o form de exclusão;
-- um formulário de busca (com autocomplete por título já cadastrado + filtro por status) e paginação (10 por página).
+- um formulário de busca (com autocomplete por título já cadastrado + filtro por status) e paginação (10 por página);
+- as colunas **Título**, **Status**, **Responsável** e **Criada em** são clicáveis e ordenam a listagem (clicar de novo inverte a direção); o filtro de busca preserva a ordenação escolhida.
 
 ## Tela web de Acessos
 
