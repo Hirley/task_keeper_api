@@ -4,6 +4,7 @@ RSpec.describe Ability, type: :model do
   subject(:ability) { described_class.new(user) }
 
   let(:demanda) { create(:demanda) }
+  let(:outro_usuario) { create(:user, :executor) }
 
   context "quando o usuário é executor" do
     let(:user) { create(:user, :executor) }
@@ -14,6 +15,7 @@ RSpec.describe Ability, type: :model do
     it { is_expected.not_to be_able_to(:destroy, demanda) }
     it { is_expected.not_to be_able_to(:manage, User) }
     it { is_expected.not_to be_able_to(:create, User) }
+    it { is_expected.not_to be_able_to(:destroy, outro_usuario) }
   end
 
   context "quando o usuário é líder" do
@@ -24,6 +26,7 @@ RSpec.describe Ability, type: :model do
     it { is_expected.to be_able_to(:update, demanda) }
     it { is_expected.to be_able_to(:destroy, demanda) }
     it { is_expected.to be_able_to(:manage, User) }
+    it { is_expected.to be_able_to(:destroy, outro_usuario) }
   end
 
   context "quando não há usuário autenticado" do

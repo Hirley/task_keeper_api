@@ -1,10 +1,11 @@
-# Tela de Acessos (web): apenas o líder pode cadastrar novos usuários e
-# alterar as permissões (papel líder/executor) de usuários já existentes.
-# Não há autocadastro — só o líder chega a esta tela (ver menu "Acessos"
-# em app/views/layouts/application.html.haml e app/models/ability.rb).
+# Tela de Acessos (web): apenas o líder pode cadastrar novos usuários,
+# alterar as permissões (papel líder/executor) e excluir usuários já
+# existentes. Não há autocadastro — só o líder chega a esta tela (ver
+# menu "Acessos" em app/views/layouts/application.html.haml e
+# app/models/ability.rb).
 class UsersController < ApplicationController
   before_action :authorize_manage_users!
-  before_action :set_user, only: %i[edit update]
+  before_action :set_user, only: %i[edit update destroy]
 
   def index
     @users = User.order(:name)
@@ -33,6 +34,19 @@ class UsersController < ApplicationController
     else
       render :edit, status: :unprocessable_entity
     end
+  end
+
+  def destroy
+    if @user == current_user
+      redirect_to users_path, alert: "Você não pode excluir o seu próprio usuário." and return
+    end
+
+    if @user.demandas.exists?
+      redirect_to users_path, alert: "Não é possível excluir #{@user.name}: existem demandas cadastradas por esse usuário." and return
+    end
+
+    @user.destroy
+    redirect_to users_path, notice: "Usuário excluído com sucesso."
   end
 
   private

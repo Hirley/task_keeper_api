@@ -4,12 +4,12 @@ Rails.application.routes.draw do
   namespace :api do
     namespace :v1 do
       resources :demandas
-      resources :users, only: %i[index show create]
+      resources :users, only: %i[index show create destroy]
     end
   end
 
   resources :demandas
-  resources :users, only: %i[index new create edit update]
+  resources :users, only: %i[index new create edit update destroy]
 
   root "demandas#index"
 end

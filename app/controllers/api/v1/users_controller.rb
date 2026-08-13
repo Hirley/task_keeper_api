@@ -1,8 +1,9 @@
 module Api
   module V1
-    # Apenas o líder pode listar/cadastrar usuários. Não há autocadastro.
+    # Apenas o líder pode listar/cadastrar/excluir usuários. Não há autocadastro.
     class UsersController < BaseController
       before_action :authorize_manage_users!
+      before_action :set_user, only: %i[show destroy]
 
       # GET /api/v1/users
       def index
@@ -12,7 +13,6 @@ module Api
 
       # GET /api/v1/users/:id
       def show
-        @user = User.find(params[:id])
         render json: @user, except: [:encrypted_password, :reset_password_token]
       end
 
@@ -27,10 +27,28 @@ module Api
         end
       end
 
+      # DELETE /api/v1/users/:id
+      def destroy
+        if @user == current_user
+          return render json: { error: "Você não pode excluir o seu próprio usuário." }, status: :unprocessable_entity
+        end
+
+        if @user.demandas.exists?
+          return render json: { error: "Não é possível excluir este usuário: existem demandas cadastradas por ele." }, status: :unprocessable_entity
+        end
+
+        @user.destroy
+        head :no_content
+      end
+
       private
 
       def authorize_manage_users!
         authorize! :manage, User
+      end
+
+      def set_user
+        @user = User.find(params[:id])
       end
 
       def user_params
