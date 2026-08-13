@@ -58,6 +58,14 @@ Usuários de exemplo criados pelo `db:seed`:
 | GET    | `/api/v1/users`          | apenas líder                 |
 | POST   | `/api/v1/users`          | apenas líder                 |
 
+## Tela web de demandas
+
+Além da API, há uma tela em `/demandas` (menu "Demandas" no topo) para uso pelos usuários autenticados:
+
+- ambos os papéis veem o botão **Nova demanda** e podem cadastrar;
+- apenas o líder vê a coluna **Ações**, com os botões **Editar** e **Excluir** em cada linha;
+- se um executor tentar acessar `/demandas/:id/edit` diretamente, é redirecionado com aviso de permissão negada.
+
 ## Nota sobre este scaffold
 
 Este projeto foi gerado por escrita direta de todos os arquivos (models, controllers, views, migrations e specs), e não via `rails new`/`bundle install`, porque o ambiente onde foi gerado não tem acesso ao rubygems.org nem ao Ruby 4.0.6. Ou seja, o código **não foi executado nem testado automaticamente** neste ambiente — rode `bundle install && bin/rails db:prepare && bundle exec rspec` localmente para validar antes de usar em produção.

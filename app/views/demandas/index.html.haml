@@ -1,4 +1,7 @@
-%h1 Demandas
+.d-flex.justify-content-between.align-items-center.mb-3
+  %h1 Demandas
+  - if can? :create, Demanda
+    = link_to "Nova demanda", new_demanda_path, class: "btn btn-primary"
 
 %p.text-muted
   - if current_user.lider?
@@ -13,6 +16,8 @@
       %th Status
       %th Responsável
       %th Criada em
+      - if can? :update, Demanda
+        %th.text-end Ações
   %tbody
     - @demandas.each do |demanda|
       %tr
@@ -20,9 +25,17 @@
         %td= demanda.status.humanize
         %td= demanda.user.name
         %td= demanda.created_at.strftime("%d/%m/%Y %H:%M")
+        - if can? :update, Demanda
+          %td.text-end
+            - if can? :update, demanda
+              .d-flex.gap-2.justify-content-end
+                = link_to "Editar", edit_demanda_path(demanda), class: "btn btn-sm btn-outline-secondary"
+                - if can? :destroy, demanda
+                  = button_to "Excluir", demanda_path(demanda), method: :delete,
+                    class: "btn btn-sm btn-outline-danger",
+                    form: { data: { turbo_confirm: "Tem certeza que deseja excluir esta demanda?" } }
 
-%p.mt-3
-  %small.text-muted
-    Criação, edição e exclusão de demandas são feitas via API (
-    %code /api/v1/demandas
-    ).
+  - if @demandas.empty?
+    %tbody
+      %tr
+        %td.text-muted{ colspan: can?(:update, Demanda) ? 5 : 4 } Nenhuma demanda cadastrada ainda.

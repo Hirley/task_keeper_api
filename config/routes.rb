@@ -8,7 +8,7 @@ Rails.application.routes.draw do
     end
   end
 
-  resources :demandas, only: %i[index]
+  resources :demandas
 
   root "demandas#index"
 end
