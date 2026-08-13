@@ -198,6 +198,27 @@ input:focus-visible {
   background-color: rgba(38, 167, 55, 0.06);
 }
 
+.tk-sort-link {
+  color: inherit;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+}
+
+.tk-sort-link:hover {
+  color: var(--tk-teal);
+  text-decoration: underline;
+}
+
+.tk-sort-link.tk-sort-active {
+  color: var(--tk-teal);
+}
+
+.tk-sort-icon {
+  font-size: 0.7em;
+}
+
 /* ---------- Badges de status/permissão ---------- */
 
 .badge {

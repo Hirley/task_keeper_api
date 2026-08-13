@@ -81,6 +81,67 @@ RSpec.describe "Demandas (tela web)", type: :request do
       get "/demandas", params: { page: 2 }
       expect(response).to have_http_status(:ok)
     end
+
+    it "ordena por título quando a coluna é clicada" do
+      create(:demanda, title: "Zebra", user: lider)
+      create(:demanda, title: "Abacaxi", user: lider)
+      sign_in lider
+
+      get "/demandas", params: { sort: "title", direction: "asc" }
+
+      expect(response.body.index("Abacaxi")).to be < response.body.index("Zebra")
+    end
+
+    it "inverte a direção da ordenação ao clicar novamente na mesma coluna" do
+      create(:demanda, title: "Zebra", user: lider)
+      create(:demanda, title: "Abacaxi", user: lider)
+      sign_in lider
+
+      get "/demandas", params: { sort: "title", direction: "desc" }
+
+      expect(response.body.index("Zebra")).to be < response.body.index("Abacaxi")
+    end
+
+    it "ordena por responsável" do
+      ana = create(:user, name: "Ana")
+      bruno = create(:user, name: "Bruno")
+      create(:demanda, title: "Demanda do Bruno", user: bruno)
+      create(:demanda, title: "Demanda da Ana", user: ana)
+      sign_in lider
+
+      get "/demandas", params: { sort: "responsavel", direction: "asc" }
+
+      expect(response.body.index("Demanda da Ana")).to be < response.body.index("Demanda do Bruno")
+    end
+
+    it "ordena por status" do
+      create(:demanda, title: "Demanda concluída", status: :concluida, user: lider)
+      create(:demanda, title: "Demanda pendente", status: :pendente, user: lider)
+      sign_in lider
+
+      get "/demandas", params: { sort: "status", direction: "asc" }
+
+      expect(response.body.index("Demanda pendente")).to be < response.body.index("Demanda concluída")
+    end
+
+    it "por padrão ordena por criada em, mais recente primeiro" do
+      antiga = create(:demanda, title: "Demanda antiga", user: lider, created_at: 2.days.ago)
+      recente = create(:demanda, title: "Demanda recente", user: lider, created_at: 1.hour.ago)
+      sign_in lider
+
+      get "/demandas"
+
+      expect(response.body.index("Demanda recente")).to be < response.body.index("Demanda antiga")
+    end
+
+    it "ignora um parâmetro de ordenação inválido/malicioso e não quebra a página" do
+      create(:demanda, user: lider)
+      sign_in lider
+
+      get "/demandas", params: { sort: "1; DROP TABLE demandas;--", direction: "asc" }
+
+      expect(response).to have_http_status(:ok)
+    end
   end
 
   describe "GET /demandas/new" do
