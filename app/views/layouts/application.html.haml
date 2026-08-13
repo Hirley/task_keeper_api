@@ -15,6 +15,9 @@
           %ul.navbar-nav.me-auto
             %li.nav-item
               = link_to "Demandas", demandas_path, class: "nav-link#{' active' if current_page?(demandas_path)}"
+            - if can? :manage, User
+              %li.nav-item
+                = link_to "Acessos", users_path, class: "nav-link#{' active' if current_page?(users_path)}"
           .d-flex.align-items-center
             %span.text-light.me-3
               = current_user.name

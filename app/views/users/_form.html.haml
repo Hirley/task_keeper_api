@@ -1,0 +1,34 @@
+= form_with model: user, local: true do |f|
+  - if user.errors.any?
+    .alert.alert-danger
+      %ul.mb-0
+        - user.errors.full_messages.each do |message|
+          %li= message
+
+  .mb-3
+    = f.label :name, "Nome", class: "form-label"
+    = f.text_field :name, class: "form-control", required: true
+
+  .mb-3
+    = f.label :email, "E-mail", class: "form-label"
+    = f.email_field :email, class: "form-control", required: true
+
+  - if user.new_record?
+    .mb-3
+      = f.label :password, "Senha", class: "form-label"
+      = f.password_field :password, class: "form-control", required: true, autocomplete: "new-password"
+
+    .mb-3
+      = f.label :password_confirmation, "Confirmação da senha", class: "form-label"
+      = f.password_field :password_confirmation, class: "form-control", required: true, autocomplete: "new-password"
+
+  .mb-3
+    = f.label :role, "Permissão", class: "form-label"
+    = f.select :role, User.roles.keys.map { |role| [role.humanize, role] }, {}, class: "form-select"
+    %div.form-text
+      Líder pode gerenciar demandas de qualquer usuário e cadastrar/alterar acessos.
+      Executor só cadastra e visualiza demandas.
+
+  .d-flex.gap-2
+    = f.submit(user.new_record? ? "Cadastrar" : "Salvar permissões", class: "btn btn-primary")
+    = link_to "Cancelar", users_path, class: "btn btn-outline-secondary"
