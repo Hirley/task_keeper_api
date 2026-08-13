@@ -15,6 +15,7 @@ API REST em Ruby on Rails para criar, organizar e acompanhar demandas diárias, 
 - Existem dois papéis de usuário: **líder** e **executor**.
 - Ambos os papéis podem cadastrar novas demandas.
 - Apenas o líder pode editar ou excluir uma demanda já existente.
+- O cadastro de demanda traz a data atual por padrão, mas permite escolher outra; após criada, só o líder pode alterar essa data.
 - Apenas o líder pode cadastrar, alterar a permissão (papel) e excluir usuários (não há autocadastro).
 - Um líder não pode excluir a própria conta, nem excluir um usuário que já tenha demandas cadastradas.
 
@@ -43,6 +44,8 @@ bin/rails db:prepare
 bin/rails db:seed   # cria um usuário líder e um executor de exemplo
 bin/rails server
 ```
+
+Se você já tinha o banco criado localmente (de antes do campo **Data** em demandas existir), rode `bin/rails db:migrate` para aplicar a nova migration.
 
 Rodar a suíte de testes:
 
@@ -78,7 +81,8 @@ Além da API, há uma tela em `/demandas` (menu "Demandas" no topo) para uso pel
 - se um executor tentar acessar `/demandas/:id/edit` diretamente, é redirecionado com aviso de permissão negada;
 - o botão **Excluir** pede confirmação (`data-turbo-confirm`, via Turbo) antes de enviar o form de exclusão;
 - um formulário de busca (com autocomplete por título já cadastrado + filtro por status) e paginação (10 por página);
-- as colunas **Título**, **Status**, **Responsável** e **Criada em** são clicáveis e ordenam a listagem (clicar de novo inverte a direção); o filtro de busca preserva a ordenação escolhida.
+- as colunas **Título**, **Data**, **Status**, **Responsável** e **Criada em** são clicáveis e ordenam a listagem (clicar de novo inverte a direção); o filtro de busca preserva a ordenação escolhida;
+- o cadastro tem um campo **Data**, preenchido por padrão com a data atual, mas que pode ser alterado para outra data no momento da criação; depois que a demanda já existe, só o líder pode alterar essa data (mesma regra de edição das demais informações da demanda).
 
 ## Tela web de Acessos
 

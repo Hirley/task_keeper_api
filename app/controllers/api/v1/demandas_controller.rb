@@ -55,7 +55,7 @@ module Api
       end
 
       def demanda_params
-        params.require(:demanda).permit(:title, :description, :status)
+        params.require(:demanda).permit(:title, :description, :status, :data)
       end
     end
   end
