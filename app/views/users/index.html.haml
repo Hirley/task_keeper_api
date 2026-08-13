@@ -21,7 +21,14 @@
           %span{ class: "badge #{user.lider? ? 'bg-primary' : 'bg-secondary'}" }
             = user.lider? ? "Líder" : "Executor"
         %td.text-end
-          = link_to "Editar permissões", edit_user_path(user), class: "btn btn-sm btn-outline-secondary"
+          .d-flex.gap-2.justify-content-end
+            = link_to "Editar permissões", edit_user_path(user), class: "btn btn-sm btn-outline-secondary"
+            - if user == current_user
+              %button.btn.btn-sm.btn-outline-danger{ disabled: true, title: "Você não pode excluir o seu próprio usuário" } Excluir
+            - else
+              = button_to "Excluir", user_path(user), method: :delete,
+                class: "btn btn-sm btn-outline-danger",
+                form: { data: { turbo_confirm: "Tem certeza que deseja excluir #{user.name}? Essa ação não pode ser desfeita." } }
 
   - if @users.empty?
     %tbody

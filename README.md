@@ -57,6 +57,7 @@ Usuários de exemplo criados pelo `db:seed`:
 | DELETE | `/api/v1/demandas/:id`   | apenas líder                 |
 | GET    | `/api/v1/users`          | apenas líder                 |
 | POST   | `/api/v1/users`          | apenas líder                 |
+| DELETE | `/api/v1/users/:id`      | apenas líder                 |
 
 ## Tela web de demandas
 
@@ -73,7 +74,8 @@ Há também uma tela em `/users` (menu "Acessos" no topo, visível apenas ao lí
 
 - apenas o líder vê o menu "Acessos" e consegue acessar `/users`; um executor que tentar acessar diretamente é redirecionado com aviso de permissão negada;
 - o cadastro de um novo usuário exige nome, e-mail, senha e a permissão (líder ou executor) — não há autocadastro;
-- a edição permite alterar nome, e-mail e a permissão de um usuário existente (a troca de senha continua pelo fluxo de "esqueci minha senha" do Devise).
+- a edição permite alterar nome, e-mail e a permissão de um usuário existente (a troca de senha continua pelo fluxo de "esqueci minha senha" do Devise);
+- o líder também pode **excluir** outros usuários (com confirmação via Turbo). Duas travas de segurança: o líder não pode excluir a própria conta, e não é possível excluir um usuário que já tenha demandas cadastradas (é preciso reatribuir ou excluir as demandas dele antes).
 
 ## Nota sobre validação
 
