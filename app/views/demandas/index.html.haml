@@ -1,0 +1,28 @@
+%h1 Demandas
+
+%p.text-muted
+  - if current_user.lider?
+    Como líder, você pode criar, editar e excluir qualquer demanda.
+  - else
+    Como executor, você pode criar demandas e visualizar todas, mas apenas o líder edita ou exclui.
+
+%table.table.table-striped
+  %thead
+    %tr
+      %th Título
+      %th Status
+      %th Responsável
+      %th Criada em
+  %tbody
+    - @demandas.each do |demanda|
+      %tr
+        %td= demanda.title
+        %td= demanda.status.humanize
+        %td= demanda.user.name
+        %td= demanda.created_at.strftime("%d/%m/%Y %H:%M")
+
+%p.mt-3
+  %small.text-muted
+    Criação, edição e exclusão de demandas são feitas via API (
+    %code /api/v1/demandas
+    ).
