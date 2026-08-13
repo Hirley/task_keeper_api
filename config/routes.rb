@@ -11,5 +11,7 @@ Rails.application.routes.draw do
   resources :demandas
   resources :users, only: %i[index new create edit update destroy]
 
+  get "acessibilidade", to: "pages#acessibilidade", as: :acessibilidade
+
   root "dashboard#index"
 end

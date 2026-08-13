@@ -116,6 +116,17 @@ As páginas de listagem (Demandas, Acessos) não repetem o nome da seção como 
 
 Os alertas (`flash`) são fecháveis, com um "×" no canto (`alert-dismissible` do Bootstrap), e também se fecham sozinhos depois de 40 segundos (`app/javascript/application.js`, ouvindo `turbo:load`) — o que vier primeiro, clique ou tempo.
 
+## Acessibilidade
+
+Uma barra fixa no topo de toda página (com ou sem login, incluindo a própria tela de login) oferece:
+
+- **Tamanho da fonte** (`A−` / `A+` / `↺A`): aumenta ou diminui o texto de toda a aplicação em passos de 10% (entre 80% e 150%), com um botão para voltar ao padrão. A escolha fica salva no navegador (`localStorage`) e vale para as próximas visitas;
+- **Alto contraste** (`◐`): alterna para um esquema de cores fundo preto / texto branco / destaque amarelo — a mesma convenção usada no modo de alto contraste nativo do Windows. A escolha também fica salva;
+- **Libras** (`♿`): o [VLibras](https://www.gov.br/governodigital/pt-br/vlibras), widget oficial do governo federal (o mesmo padrão usado em sites gov.br, incluindo o da CGE-CE que inspirou a identidade visual deste app) para tradução do conteúdo em Língua Brasileira de Sinais;
+- o mesmo botão `♿` leva também a `/acessibilidade`, uma página pública (não exige login) explicando cada um desses recursos.
+
+A implementação de fonte/contraste é só JS (`app/javascript/application.js`, objeto `window.TkAccessibility`) manipulando o `<html>` (que sobrevive à troca de `<body>` nas navegações via Turbo Drive) — por isso não tem cobertura em RSpec, na mesma linha do que já vale para outras interações só-JS do projeto; a rota `/acessibilidade` em si (pública, responde 200 com ou sem login) está coberta em `spec/requests/pages_spec.rb`. A barra de busca com microfone que aparece em referências de sites gov.br não foi incluída aqui por não ter um caso de uso claro nesta aplicação (o app já tem busca por título/nome nas telas de Demandas e Acessos).
+
 ## Mensagens em pt-BR
 
 O locale padrão da aplicação é `pt-BR` (ver `config/application.rb`), mas nem o Rails nem o Devise têm tradução embutida para esse locale — sem `config/locales/pt-BR.yml`, mensagens como a de "faça login para continuar" apareciam como `Translation missing`. Esse arquivo traduz as mensagens do Devise (login, logout, credenciais inválidas, recuperação de senha), as mensagens padrão de validação do Rails (`não pode ficar em branco`, `já está em uso` etc.), incluindo os nomes dos campos (`Título`, `E-mail`, `Permissão`...), e também `datetime.distance_in_words` (usado por `time_ago_in_words` em "Atividade recente" no painel inicial — sem essa tradução, o mesmo `Translation missing` apareceria ali).
