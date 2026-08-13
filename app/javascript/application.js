@@ -30,6 +30,20 @@ function scheduleAlertAutoDismiss() {
 // inteira, então um simples DOMContentLoaded não seria suficiente).
 document.addEventListener("turbo:load", scheduleAlertAutoDismiss)
 
+// Tooltips do Bootstrap (ex.: o ⓘ de ajuda do campo "Chat ID do Telegram"
+// em app/views/users/_form.html.haml) não se inicializam sozinhos — é
+// preciso instanciar cada um. getOrCreateInstance evita duplicar a
+// instância se essa função rodar mais de uma vez para o mesmo elemento.
+function initializeTooltips() {
+  if (typeof bootstrap === "undefined" || !bootstrap.Tooltip) return
+
+  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((element) => {
+    bootstrap.Tooltip.getOrCreateInstance(element)
+  })
+}
+
+document.addEventListener("turbo:load", initializeTooltips)
+
 // Barra de acessibilidade (ver app/views/layouts/application.html.haml):
 // tamanho de fonte e alto contraste. Os botões chamam window.TkAccessibility
 // diretamente via onclick — como o Turbo Drive substitui o <body> a cada

@@ -23,12 +23,13 @@
       = f.password_field :password_confirmation, class: "form-control", required: true, autocomplete: "new-password"
 
   .mb-3
-    = f.label :telegram_chat_id, "Chat ID do Telegram (opcional)", class: "form-label"
+    .d-flex.align-items-center.gap-1.mb-1
+      = f.label :telegram_chat_id, "Chat ID do Telegram (opcional)", class: "form-label mb-0"
+      - telegram_chat_id_help = "Pegar o Chat ID da sua própria conta (ID de Usuário):<br>• Abra o Telegram e pesquise pelo bot <strong>@WhatChatIDBot</strong> ou <strong>@ShowJsonBot</strong>.<br>• Inicie uma conversa com o bot e clique em Iniciar (/start).<br>• O bot responderá imediatamente mostrando o seu ID numérico."
+      %button.tk-info-icon{ type: "button", tabindex: "0", "data-bs-toggle" => "tooltip", "data-bs-html" => "true", "data-bs-placement" => "right", title: telegram_chat_id_help, "aria-label" => "Como pegar o Chat ID do Telegram" }
+        ⓘ
     = f.text_field :telegram_chat_id, class: "form-control", autocomplete: "off", inputmode: "numeric", placeholder: "Ex.: 123456789"
-    %div.form-text
-      Para receber lembretes de demandas atrasadas pelo Telegram. O próprio usuário descobre esse número conversando com o bot
-      %code @userinfobot
-      no Telegram.
+    %div.form-text Para receber lembretes de demandas atrasadas pelo Telegram (veja o ⓘ acima como descobrir o número).
 
   .mb-3
     = f.label :role, "Permissão", class: "form-label"
