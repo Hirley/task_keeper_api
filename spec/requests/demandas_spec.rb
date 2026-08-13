@@ -28,6 +28,25 @@ RSpec.describe "Demandas (tela web)", type: :request do
       expect(response.body).to include("Editar")
       expect(response.body).to include("Excluir")
     end
+
+    it "carrega o importmap com o Turbo para o alerta de confirmação funcionar" do
+      sign_in executor
+
+      get "/demandas"
+
+      expect(response.body).to include('type="importmap"')
+      expect(response.body).to include("@hotwired/turbo-rails")
+    end
+
+    it "pede confirmação antes de excluir" do
+      create(:demanda, user: executor)
+      sign_in lider
+
+      get "/demandas"
+
+      expect(response.body).to include("data-turbo-confirm")
+      expect(response.body).to include("Tem certeza que deseja excluir esta demanda?")
+    end
   end
 
   describe "GET /demandas/new" do

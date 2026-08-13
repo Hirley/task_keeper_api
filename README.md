@@ -64,7 +64,8 @@ Além da API, há uma tela em `/demandas` (menu "Demandas" no topo) para uso pel
 
 - ambos os papéis veem o botão **Nova demanda** e podem cadastrar;
 - apenas o líder vê a coluna **Ações**, com os botões **Editar** e **Excluir** em cada linha;
-- se um executor tentar acessar `/demandas/:id/edit` diretamente, é redirecionado com aviso de permissão negada.
+- se um executor tentar acessar `/demandas/:id/edit` diretamente, é redirecionado com aviso de permissão negada;
+- o botão **Excluir** pede confirmação (`data-turbo-confirm`, via Turbo) antes de enviar o form de exclusão.
 
 ## Nota sobre este scaffold
 
