@@ -11,6 +11,7 @@ class DemandasController < ApplicationController
   # SQL real (já qualificada, pois "responsavel" ordena pela tabela users).
   SORTABLE_COLUMNS = {
     "title" => "demandas.title",
+    "data" => "demandas.data",
     "status" => "demandas.status",
     "responsavel" => "users.name",
     "created_at" => "demandas.created_at"
@@ -74,7 +75,7 @@ class DemandasController < ApplicationController
   end
 
   def demanda_params
-    params.require(:demanda).permit(:title, :description, :status)
+    params.require(:demanda).permit(:title, :description, :status, :data)
   end
 
   # Filtro usado na busca da tela de listagem (campo com autocomplete por

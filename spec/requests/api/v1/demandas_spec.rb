@@ -36,6 +36,19 @@ RSpec.describe "Api::V1::Demandas", type: :request do
       }.to change(Demanda, :count).by(1)
       expect(response).to have_http_status(:created)
     end
+
+    it "usa a data de hoje por padrão quando nenhuma data é enviada" do
+      sign_in executor
+      post "/api/v1/demandas", params: { demanda: { title: "Nova demanda" } }
+      expect(Demanda.last.data).to eq(Date.current)
+    end
+
+    it "permite que um executor escolha outra data ao criar" do
+      outra_data = 5.days.from_now.to_date
+      sign_in executor
+      post "/api/v1/demandas", params: { demanda: { title: "Nova demanda", data: outra_data } }
+      expect(Demanda.last.data).to eq(outra_data)
+    end
   end
 
   describe "PATCH /api/v1/demandas/:id" do
@@ -53,6 +66,22 @@ RSpec.describe "Api::V1::Demandas", type: :request do
       patch "/api/v1/demandas/#{demanda.id}", params: { demanda: { title: "Alterada" } }
       expect(response).to have_http_status(:ok)
       expect(demanda.reload.title).to eq("Alterada")
+    end
+
+    it "bloqueia um executor tentando alterar a data com 403" do
+      outra_data = 10.days.from_now.to_date
+      sign_in executor
+      patch "/api/v1/demandas/#{demanda.id}", params: { demanda: { data: outra_data } }
+      expect(response).to have_http_status(:forbidden)
+      expect(demanda.reload.data).not_to eq(outra_data)
+    end
+
+    it "permite que um líder altere a data de uma demanda já cadastrada" do
+      outra_data = 10.days.from_now.to_date
+      sign_in lider
+      patch "/api/v1/demandas/#{demanda.id}", params: { demanda: { data: outra_data } }
+      expect(response).to have_http_status(:ok)
+      expect(demanda.reload.data).to eq(outra_data)
     end
   end
 

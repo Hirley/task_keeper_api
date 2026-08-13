@@ -36,6 +36,7 @@
     %thead
       %tr
         %th= demanda_sort_header("title", "Título")
+        %th= demanda_sort_header("data", "Data")
         %th= demanda_sort_header("status", "Status")
         %th= demanda_sort_header("responsavel", "Responsável")
         %th= demanda_sort_header("created_at", "Criada em")
@@ -45,6 +46,7 @@
       - @demandas.each do |demanda|
         %tr
           %td= demanda.title
+          %td= demanda.data.strftime("%d/%m/%Y")
           %td
             %span{ class: "badge tk-badge-status-#{demanda.status}" }= demanda.status.humanize
           %td= demanda.user.name
@@ -62,7 +64,7 @@
     - if @demandas.empty?
       %tbody
         %tr
-          %td.text-muted{ colspan: can?(:update, Demanda) ? 5 : 4 }
+          %td.text-muted{ colspan: can?(:update, Demanda) ? 6 : 5 }
             - if @q.present? || @status_filter.present?
               Nenhuma demanda encontrada com os filtros aplicados.
             - else

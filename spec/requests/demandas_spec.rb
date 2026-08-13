@@ -137,6 +137,17 @@ RSpec.describe "Demandas (tela web)", type: :request do
       expect(table.index("Demanda pendente")).to be < table.index("Demanda concluída")
     end
 
+    it "ordena por data" do
+      create(:demanda, title: "Demanda futura", data: 10.days.from_now.to_date, user: lider)
+      create(:demanda, title: "Demanda de hoje", data: Date.current, user: lider)
+      sign_in lider
+
+      get "/demandas", params: { sort: "data", direction: "asc" }
+
+      table = results_table(response)
+      expect(table.index("Demanda de hoje")).to be < table.index("Demanda futura")
+    end
+
     it "por padrão ordena por criada em, mais recente primeiro" do
       antiga = create(:demanda, title: "Demanda antiga", user: lider, created_at: 2.days.ago)
       recente = create(:demanda, title: "Demanda recente", user: lider, created_at: 1.hour.ago)
@@ -170,6 +181,13 @@ RSpec.describe "Demandas (tela web)", type: :request do
       get "/demandas/new"
       expect(response).to have_http_status(:ok)
     end
+
+    it "traz o campo de data preenchido com a data atual por padrão" do
+      sign_in executor
+      get "/demandas/new"
+
+      expect(response.body).to include(%(value="#{Date.current.iso8601}"))
+    end
   end
 
   describe "POST /demandas" do
@@ -187,6 +205,19 @@ RSpec.describe "Demandas (tela web)", type: :request do
         post "/demandas", params: { demanda: { title: "Nova demanda web" } }
       }.to change(Demanda, :count).by(1)
       expect(response).to redirect_to(demandas_path)
+    end
+
+    it "usa a data de hoje quando o campo de data não é alterado" do
+      sign_in executor
+      post "/demandas", params: { demanda: { title: "Nova demanda web" } }
+      expect(Demanda.last.data).to eq(Date.current)
+    end
+
+    it "permite que um executor selecione outra data ao cadastrar" do
+      outra_data = 7.days.from_now.to_date
+      sign_in executor
+      post "/demandas", params: { demanda: { title: "Nova demanda web", data: outra_data } }
+      expect(Demanda.last.data).to eq(outra_data)
     end
   end
 
@@ -221,6 +252,22 @@ RSpec.describe "Demandas (tela web)", type: :request do
       patch "/demandas/#{demanda.id}", params: { demanda: { title: "Alterada" } }
       expect(response).to redirect_to(demandas_path)
       expect(demanda.reload.title).to eq("Alterada")
+    end
+
+    it "impede que um executor altere a data de uma demanda já cadastrada" do
+      outra_data = 15.days.from_now.to_date
+      sign_in executor
+      patch "/demandas/#{demanda.id}", params: { demanda: { data: outra_data } }
+      expect(response).to redirect_to(root_path)
+      expect(demanda.reload.data).not_to eq(outra_data)
+    end
+
+    it "permite que um líder altere a data de uma demanda já cadastrada" do
+      outra_data = 15.days.from_now.to_date
+      sign_in lider
+      patch "/demandas/#{demanda.id}", params: { demanda: { data: outra_data } }
+      expect(response).to redirect_to(demandas_path)
+      expect(demanda.reload.data).to eq(outra_data)
     end
   end
 
