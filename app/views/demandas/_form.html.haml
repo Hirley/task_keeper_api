@@ -1,0 +1,22 @@
+= form_with model: demanda, local: true do |f|
+  - if demanda.errors.any?
+    .alert.alert-danger
+      %ul.mb-0
+        - demanda.errors.full_messages.each do |message|
+          %li= message
+
+  .mb-3
+    = f.label :title, "Título", class: "form-label"
+    = f.text_field :title, class: "form-control", required: true
+
+  .mb-3
+    = f.label :description, "Descrição", class: "form-label"
+    = f.text_area :description, class: "form-control", rows: 4
+
+  .mb-3
+    = f.label :status, "Status", class: "form-label"
+    = f.select :status, Demanda.statuses.keys.map { |status| [status.humanize, status] }, {}, class: "form-select"
+
+  .d-flex.gap-2
+    = f.submit "Salvar", class: "btn btn-primary"
+    = link_to "Cancelar", demandas_path, class: "btn btn-outline-secondary"

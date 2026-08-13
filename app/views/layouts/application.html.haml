@@ -12,6 +12,9 @@
       .container
         = link_to "Task Keeper API", root_path, class: "navbar-brand"
         - if user_signed_in?
+          %ul.navbar-nav.me-auto
+            %li.nav-item
+              = link_to "Demandas", demandas_path, class: "nav-link#{' active' if current_page?(demandas_path)}"
           .d-flex.align-items-center
             %span.text-light.me-3
               = current_user.name
