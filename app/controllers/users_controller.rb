@@ -8,7 +8,12 @@ class UsersController < ApplicationController
   before_action :set_user, only: %i[edit update destroy]
 
   def index
-    @users = User.order(:name)
+    scope = User.order(:name)
+
+    @q = params[:q]
+    @role_filter = params[:role]
+    @users = paginate(filter_users(scope))
+    @name_suggestions = User.order(:name).limit(50).pluck(:name)
   end
 
   def new
@@ -67,5 +72,20 @@ class UsersController < ApplicationController
   # do Devise cobre isso); apenas dados cadastrais e a permissão (papel).
   def permission_params
     params.require(:user).permit(:name, :email, :role)
+  end
+
+  # Filtro usado na busca da tela de Acessos (campo com autocomplete por
+  # nome/e-mail + select de permissão). Ambos são opcionais.
+  def filter_users(scope)
+    if params[:q].present?
+      term = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q])}%"
+      scope = scope.where("users.name LIKE ? OR users.email LIKE ?", term, term)
+    end
+
+    if params[:role].present? && User.roles.key?(params[:role])
+      scope = scope.where(role: params[:role])
+    end
+
+    scope
   end
 end

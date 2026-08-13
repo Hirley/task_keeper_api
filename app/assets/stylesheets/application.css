@@ -1,0 +1,300 @@
+/*
+ * Identidade visual inspirada no portal da Controladoria e Ouvidoria Geral
+ * do Estado do Ceará (https://www.ce.gov.br/cge/).
+ *
+ * Paleta e tipografia extraídas do site real (via inspeção de estilos
+ * computados): gradiente verde-petróleo -> verde institucional, fonte
+ * Kanit para títulos/UI e Open Sans para o corpo do texto.
+ */
+
+:root {
+  --tk-teal: #007f6d;
+  --tk-green-mid: #139352;
+  --tk-green: #26a737;
+  --tk-green-strong: #1b7727;
+  --tk-cyan: #5ac1d4;
+  --tk-gradient: linear-gradient(90deg, #007f6d 0%, #139352 74%, #26a737 100%);
+  --tk-gradient-soft: linear-gradient(90deg, #008774 0%, #40b14f 100%);
+  --tk-bg: #f7f9f8;
+  --tk-text: #212529;
+  --tk-radius: 0.75rem;
+  --tk-radius-sm: 0.5rem;
+  --tk-shadow: 0 2px 14px rgba(0, 40, 34, 0.08);
+}
+
+/* ---------- Tipografia ---------- */
+
+body {
+  background-color: var(--tk-bg);
+  color: var(--tk-text);
+  font-family: "Open Sans", "Segoe UI", Helvetica, Arial, sans-serif;
+  font-weight: 400;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.navbar-brand,
+.btn,
+label,
+.form-label,
+th {
+  font-family: "Kanit", "Open Sans", "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+h1 {
+  font-weight: 600;
+  color: var(--tk-teal);
+  letter-spacing: 0.01em;
+}
+
+/* ---------- Acessibilidade (foco visível, como no padrão gov.br) ---------- */
+
+a:focus-visible,
+button:focus-visible,
+.btn:focus-visible,
+.form-control:focus-visible,
+.form-select:focus-visible,
+input:focus-visible {
+  outline: 3px solid var(--tk-cyan);
+  outline-offset: 2px;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--tk-teal);
+  box-shadow: 0 0 0 0.2rem rgba(0, 127, 109, 0.18);
+}
+
+/* ---------- Navbar ---------- */
+
+.tk-navbar {
+  background: var(--tk-gradient);
+  box-shadow: var(--tk-shadow);
+  padding-top: 0.65rem;
+  padding-bottom: 0.65rem;
+}
+
+.tk-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 600;
+  font-size: 1.15rem;
+  color: #fff !important;
+}
+
+.tk-brand-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--tk-radius-sm);
+  background: rgba(255, 255, 255, 0.18);
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.03em;
+}
+
+.tk-navbar .nav-link {
+  color: rgba(255, 255, 255, 0.88);
+  font-weight: 500;
+  border-radius: var(--tk-radius-sm);
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+  transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out;
+}
+
+.tk-navbar .nav-link:hover,
+.tk-navbar .nav-link:focus-visible {
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.14);
+}
+
+.tk-navbar .nav-link.active {
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.22);
+  font-weight: 600;
+}
+
+.tk-user-chip {
+  font-size: 0.9rem;
+  background-color: rgba(255, 255, 255, 0.12);
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+}
+
+/* ---------- Botões ---------- */
+
+.btn {
+  border-radius: var(--tk-radius-sm);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.btn-tk-primary {
+  background: var(--tk-gradient-soft);
+  border: none;
+  color: #fff;
+}
+
+.btn-tk-primary:hover,
+.btn-tk-primary:focus {
+  filter: brightness(0.94);
+  color: #fff;
+}
+
+.btn-tk-outline {
+  background-color: #fff;
+  border: 2px solid var(--tk-teal);
+  color: var(--tk-teal);
+}
+
+.btn-tk-outline:hover,
+.btn-tk-outline:focus {
+  background-color: var(--tk-teal);
+  color: #fff;
+}
+
+/* ---------- Cards / superfícies ---------- */
+
+.tk-card {
+  background-color: #fff;
+  border: none;
+  border-radius: var(--tk-radius);
+  box-shadow: var(--tk-shadow);
+}
+
+.tk-card .card-body {
+  padding: 1.25rem;
+}
+
+/* ---------- Tabelas ---------- */
+
+.table-responsive.tk-card {
+  padding: 0;
+}
+
+.tk-card table {
+  margin-bottom: 0;
+}
+
+.tk-card thead th {
+  background-color: rgba(0, 127, 109, 0.08);
+  color: var(--tk-teal);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  border-bottom: 2px solid rgba(0, 127, 109, 0.18);
+  white-space: nowrap;
+}
+
+.tk-card tbody tr:hover {
+  background-color: rgba(38, 167, 55, 0.06);
+}
+
+/* ---------- Badges de status/permissão ---------- */
+
+.badge {
+  font-weight: 600;
+  font-size: 0.75rem;
+  padding: 0.4em 0.7em;
+  border-radius: 999px;
+}
+
+.tk-badge-status-pendente {
+  background-color: #fff3cd;
+  color: #7a5b00;
+}
+
+.tk-badge-status-em_andamento {
+  background-color: rgba(90, 193, 212, 0.22);
+  color: #0a5c6b;
+}
+
+.tk-badge-status-concluida {
+  background-color: rgba(38, 167, 55, 0.18);
+  color: #1b7727;
+}
+
+.tk-badge-lider {
+  background-color: rgba(0, 127, 109, 0.16);
+  color: var(--tk-teal);
+}
+
+.tk-badge-executor {
+  background-color: #e9ecef;
+  color: #495057;
+}
+
+/* ---------- Filtros / busca ---------- */
+
+.tk-filter-label {
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  color: #6c757d;
+}
+
+/* ---------- Paginação ---------- */
+
+.pagination-tk .page-link {
+  color: var(--tk-teal);
+  border-radius: var(--tk-radius-sm);
+  margin: 0 0.15rem;
+  border: 1px solid rgba(0, 127, 109, 0.18);
+}
+
+.pagination-tk .page-item.active .page-link {
+  background: var(--tk-gradient-soft);
+  border-color: transparent;
+  color: #fff;
+}
+
+.pagination-tk .page-item.disabled .page-link {
+  color: #adb5bd;
+  background-color: transparent;
+}
+
+/* ---------- Alertas ---------- */
+
+.tk-alert {
+  border: none;
+  border-radius: var(--tk-radius-sm);
+  box-shadow: var(--tk-shadow);
+}
+
+/* ---------- Login ---------- */
+
+.tk-login-card {
+  border: none;
+  border-radius: var(--tk-radius);
+  box-shadow: var(--tk-shadow);
+  overflow: hidden;
+}
+
+.tk-login-header {
+  background: var(--tk-gradient);
+  color: #fff;
+  padding: 1.75rem 1.5rem;
+}
+
+.tk-login-header h1 {
+  color: #fff;
+  margin-bottom: 0.15rem;
+}
+
+/* ---------- Footer ---------- */
+
+.tk-footer {
+  background-color: #0b3b32;
+  color: rgba(255, 255, 255, 0.85);
+  margin-top: 3rem;
+  font-size: 0.9rem;
+}

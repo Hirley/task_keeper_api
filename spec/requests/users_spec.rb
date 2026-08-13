@@ -29,6 +29,28 @@ RSpec.describe "Usuários (tela web de Acessos)", type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Acessos")
     end
+
+    it "filtra por nome/e-mail via o formulário de busca" do
+      create(:user, name: "Ana Souza", email: "ana@task-keeper.local")
+      create(:user, name: "Bruno Lima", email: "bruno@task-keeper.local")
+      sign_in lider
+
+      get "/users", params: { q: "Ana" }
+
+      expect(response.body).to include("Ana Souza")
+      expect(response.body).not_to include("Bruno Lima")
+    end
+
+    it "filtra por permissão" do
+      outra_lideranca = create(:user, :lider, name: "Outra Liderança")
+      outro_executor = create(:user, :executor, name: "Outro Executor")
+      sign_in lider
+
+      get "/users", params: { role: "lider" }
+
+      expect(response.body).to include("Outra Liderança")
+      expect(response.body).not_to include("Outro Executor")
+    end
   end
 
   describe "GET /users/new" do

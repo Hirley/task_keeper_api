@@ -1,23 +1,27 @@
-.row.justify-content-center
+.row.justify-content-center.mt-4
   .col-md-5
-    %h1.mb-4 Entrar
+    .card.tk-login-card
+      .tk-login-header
+        %h1 Entrar
+        %p.mb-0.opacity-75 Acesse o Task Keeper API
 
-    = form_for(resource, as: resource_name, url: session_path(resource_name)) do |f|
-      .mb-3
-        = f.label :email, class: "form-label"
-        = f.email_field :email, autofocus: true, autocomplete: "email", class: "form-control"
+      .card-body.p-4
+        = form_for(resource, as: resource_name, url: session_path(resource_name)) do |f|
+          .mb-3
+            = f.label :email, class: "form-label"
+            = f.email_field :email, autofocus: true, autocomplete: "email", class: "form-control"
 
-      .mb-3
-        = f.label :password, class: "form-label"
-        = f.password_field :password, autocomplete: "current-password", class: "form-control"
+          .mb-3
+            = f.label :password, class: "form-label"
+            = f.password_field :password, autocomplete: "current-password", class: "form-control"
 
-      - if devise_mapping.rememberable?
-        .form-check.mb-3
-          = f.check_box :remember_me, class: "form-check-input"
-          = f.label :remember_me, class: "form-check-label"
+          - if devise_mapping.rememberable?
+            .form-check.mb-3
+              = f.check_box :remember_me, class: "form-check-input"
+              = f.label :remember_me, class: "form-check-label"
 
-      .d-grid
-        = f.submit "Entrar", class: "btn btn-primary"
+          .d-grid
+            = f.submit "Entrar", class: "btn btn-tk-primary"
 
-    %p.text-muted.mt-3
-      Não há autocadastro. Solicite ao líder a criação da sua conta.
+        %p.text-muted.mt-3.mb-0
+          Não há autocadastro. Solicite ao líder a criação da sua conta.

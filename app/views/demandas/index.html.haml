@@ -1,7 +1,7 @@
 .d-flex.justify-content-between.align-items-center.mb-3
   %h1 Demandas
   - if can? :create, Demanda
-    = link_to "Nova demanda", new_demanda_path, class: "btn btn-primary"
+    = link_to "Nova demanda", new_demanda_path, class: "btn btn-tk-primary"
 
 %p.text-muted
   - if current_user.lider?
@@ -9,33 +9,59 @@
   - else
     Como executor, você pode criar demandas e visualizar todas, mas apenas o líder edita ou exclui.
 
-%table.table.table-striped
-  %thead
-    %tr
-      %th Título
-      %th Status
-      %th Responsável
-      %th Criada em
-      - if can? :update, Demanda
-        %th.text-end Ações
-  %tbody
-    - @demandas.each do |demanda|
-      %tr
-        %td= demanda.title
-        %td= demanda.status.humanize
-        %td= demanda.user.name
-        %td= demanda.created_at.strftime("%d/%m/%Y %H:%M")
-        - if can? :update, Demanda
-          %td.text-end
-            - if can? :update, demanda
-              .d-flex.gap-2.justify-content-end
-                = link_to "Editar", edit_demanda_path(demanda), class: "btn btn-sm btn-outline-secondary"
-                - if can? :destroy, demanda
-                  = button_to "Excluir", demanda_path(demanda), method: :delete,
-                    class: "btn btn-sm btn-outline-danger",
-                    form: { data: { turbo_confirm: "Tem certeza que deseja excluir esta demanda?" } }
+.card.tk-card.mb-3
+  .card-body
+    = form_with url: demandas_path, method: :get, local: true, class: "row g-2 align-items-end" do |f|
+      .col-md-6
+        = f.label :q, "Buscar por título", class: "tk-filter-label form-label mb-1"
+        = f.text_field :q, value: @q, list: "demanda-title-suggestions", autocomplete: "off",
+          class: "form-control", placeholder: "Digite o título da demanda…"
+        %datalist#demanda-title-suggestions
+          - @title_suggestions.each do |title|
+            %option{ value: title }
+      .col-md-3
+        = f.label :status, "Status", class: "tk-filter-label form-label mb-1"
+        = f.select :status, [["Todos", ""]] + Demanda.statuses.keys.map { |status| [status.humanize, status] },
+          { selected: @status_filter }, class: "form-select"
+      .col-md-3.d-flex.gap-2
+        = f.submit "Filtrar", class: "btn btn-tk-outline w-50"
+        = link_to "Limpar", demandas_path, class: "btn btn-outline-secondary w-50"
 
-  - if @demandas.empty?
-    %tbody
+.table-responsive.tk-card
+  %table.table.table-hover.align-middle
+    %thead
       %tr
-        %td.text-muted{ colspan: can?(:update, Demanda) ? 5 : 4 } Nenhuma demanda cadastrada ainda.
+        %th Título
+        %th Status
+        %th Responsável
+        %th Criada em
+        - if can? :update, Demanda
+          %th.text-end Ações
+    %tbody
+      - @demandas.each do |demanda|
+        %tr
+          %td= demanda.title
+          %td
+            %span{ class: "badge tk-badge-status-#{demanda.status}" }= demanda.status.humanize
+          %td= demanda.user.name
+          %td= demanda.created_at.strftime("%d/%m/%Y %H:%M")
+          - if can? :update, Demanda
+            %td.text-end
+              - if can? :update, demanda
+                .d-flex.gap-2.justify-content-end
+                  = link_to "Editar", edit_demanda_path(demanda), class: "btn btn-sm btn-outline-secondary"
+                  - if can? :destroy, demanda
+                    = button_to "Excluir", demanda_path(demanda), method: :delete,
+                      class: "btn btn-sm btn-outline-danger",
+                      form: { data: { turbo_confirm: "Tem certeza que deseja excluir esta demanda?" } }
+
+    - if @demandas.empty?
+      %tbody
+        %tr
+          %td.text-muted{ colspan: can?(:update, Demanda) ? 5 : 4 }
+            - if @q.present? || @status_filter.present?
+              Nenhuma demanda encontrada com os filtros aplicados.
+            - else
+              Nenhuma demanda cadastrada ainda.
+
+= render "shared/pagination", pagination: @pagination

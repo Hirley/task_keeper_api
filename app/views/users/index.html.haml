@@ -1,36 +1,61 @@
 .d-flex.justify-content-between.align-items-center.mb-3
   %h1 Acessos
-  = link_to "Novo usuário", new_user_path, class: "btn btn-primary"
+  = link_to "Novo usuário", new_user_path, class: "btn btn-tk-primary"
 
 %p.text-muted
   Apenas o líder cadastra novos usuários e altera permissões. Não há autocadastro.
 
-%table.table.table-striped
-  %thead
-    %tr
-      %th Nome
-      %th E-mail
-      %th Permissão
-      %th.text-end Ações
-  %tbody
-    - @users.each do |user|
-      %tr
-        %td= user.name
-        %td= user.email
-        %td
-          %span{ class: "badge #{user.lider? ? 'bg-primary' : 'bg-secondary'}" }
-            = user.lider? ? "Líder" : "Executor"
-        %td.text-end
-          .d-flex.gap-2.justify-content-end
-            = link_to "Editar permissões", edit_user_path(user), class: "btn btn-sm btn-outline-secondary"
-            - if user == current_user
-              %button.btn.btn-sm.btn-outline-danger{ disabled: true, title: "Você não pode excluir o seu próprio usuário" } Excluir
-            - else
-              = button_to "Excluir", user_path(user), method: :delete,
-                class: "btn btn-sm btn-outline-danger",
-                form: { data: { turbo_confirm: "Tem certeza que deseja excluir #{user.name}? Essa ação não pode ser desfeita." } }
+.card.tk-card.mb-3
+  .card-body
+    = form_with url: users_path, method: :get, local: true, class: "row g-2 align-items-end" do |f|
+      .col-md-6
+        = f.label :q, "Buscar por nome ou e-mail", class: "tk-filter-label form-label mb-1"
+        = f.text_field :q, value: @q, list: "user-name-suggestions", autocomplete: "off",
+          class: "form-control", placeholder: "Digite o nome ou e-mail…"
+        %datalist#user-name-suggestions
+          - @name_suggestions.each do |name|
+            %option{ value: name }
+      .col-md-3
+        = f.label :role, "Permissão", class: "tk-filter-label form-label mb-1"
+        = f.select :role, [["Todos", ""]] + User.roles.keys.map { |role| [role.humanize, role] },
+          { selected: @role_filter }, class: "form-select"
+      .col-md-3.d-flex.gap-2
+        = f.submit "Filtrar", class: "btn btn-tk-outline w-50"
+        = link_to "Limpar", users_path, class: "btn btn-outline-secondary w-50"
 
-  - if @users.empty?
-    %tbody
+.table-responsive.tk-card
+  %table.table.table-hover.align-middle
+    %thead
       %tr
-        %td.text-muted{ colspan: 4 } Nenhum usuário cadastrado ainda.
+        %th Nome
+        %th E-mail
+        %th Permissão
+        %th.text-end Ações
+    %tbody
+      - @users.each do |user|
+        %tr
+          %td= user.name
+          %td= user.email
+          %td
+            %span{ class: "badge #{user.lider? ? 'tk-badge-lider' : 'tk-badge-executor'}" }
+              = user.lider? ? "Líder" : "Executor"
+          %td.text-end
+            .d-flex.gap-2.justify-content-end
+              = link_to "Editar permissões", edit_user_path(user), class: "btn btn-sm btn-outline-secondary"
+              - if user == current_user
+                %button.btn.btn-sm.btn-outline-danger{ disabled: true, title: "Você não pode excluir o seu próprio usuário" } Excluir
+              - else
+                = button_to "Excluir", user_path(user), method: :delete,
+                  class: "btn btn-sm btn-outline-danger",
+                  form: { data: { turbo_confirm: "Tem certeza que deseja excluir #{user.name}? Essa ação não pode ser desfeita." } }
+
+    - if @users.empty?
+      %tbody
+        %tr
+          %td.text-muted{ colspan: 4 }
+            - if @q.present? || @role_filter.present?
+              Nenhum usuário encontrado com os filtros aplicados.
+            - else
+              Nenhum usuário cadastrado ainda.
+
+= render "shared/pagination", pagination: @pagination
