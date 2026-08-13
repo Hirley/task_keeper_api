@@ -10,9 +10,10 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_10_000002) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_13_000001) do
   create_table "demandas", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.date "data", default: -> { "CURRENT_DATE" }, null: false
     t.text "description"
     t.integer "status", default: 0, null: false
     t.string "title", null: false

@@ -4,6 +4,15 @@ RSpec.describe "Demandas (tela web)", type: :request do
   let(:lider) { create(:user, :lider) }
   let(:executor) { create(:user, :executor) }
 
+  # A tela de listagem tem um <datalist> de autocomplete com TODOS os
+  # títulos cadastrados (sem respeitar filtro/ordenação — é só uma
+  # sugestão de busca). Para não confundir esse datalist com os
+  # resultados exibidos na tabela, os testes de filtro/ordenação devem
+  # inspecionar apenas o HTML dentro do <tbody> da tabela de resultados.
+  def results_table(response)
+    response.body[/<tbody>.*?<\/tbody>/m]
+  end
+
   describe "GET /demandas" do
     it "mostra o botão de nova demanda mas esconde as ações de editar/excluir para o executor" do
       create(:demanda, user: lider)
@@ -74,8 +83,8 @@ RSpec.describe "Demandas (tela web)", type: :request do
 
       get "/demandas", params: { q: "contrato" }
 
-      expect(response.body).to include("Revisar contrato")
-      expect(response.body).not_to include("Organizar sala")
+      expect(results_table(response)).to include("Revisar contrato")
+      expect(results_table(response)).not_to include("Organizar sala")
     end
 
     it "filtra por status" do
@@ -85,8 +94,8 @@ RSpec.describe "Demandas (tela web)", type: :request do
 
       get "/demandas", params: { status: "concluida" }
 
-      expect(response.body).to include("Demanda concluída")
-      expect(response.body).not_to include("Demanda pendente")
+      expect(results_table(response)).to include("Demanda concluída")
+      expect(results_table(response)).not_to include("Demanda pendente")
     end
 
     it "pagina os resultados quando há mais de 10 demandas" do
@@ -108,7 +117,8 @@ RSpec.describe "Demandas (tela web)", type: :request do
 
       get "/demandas", params: { sort: "title", direction: "asc" }
 
-      expect(response.body.index("Abacaxi")).to be < response.body.index("Zebra")
+      table = results_table(response)
+      expect(table.index("Abacaxi")).to be < table.index("Zebra")
     end
 
     it "inverte a direção da ordenação ao clicar novamente na mesma coluna" do
@@ -118,7 +128,8 @@ RSpec.describe "Demandas (tela web)", type: :request do
 
       get "/demandas", params: { sort: "title", direction: "desc" }
 
-      expect(response.body.index("Zebra")).to be < response.body.index("Abacaxi")
+      table = results_table(response)
+      expect(table.index("Zebra")).to be < table.index("Abacaxi")
     end
 
     it "ordena por responsável" do
@@ -130,7 +141,8 @@ RSpec.describe "Demandas (tela web)", type: :request do
 
       get "/demandas", params: { sort: "responsavel", direction: "asc" }
 
-      expect(response.body.index("Demanda da Ana")).to be < response.body.index("Demanda do Bruno")
+      table = results_table(response)
+      expect(table.index("Demanda da Ana")).to be < table.index("Demanda do Bruno")
     end
 
     it "ordena por status" do
@@ -140,7 +152,19 @@ RSpec.describe "Demandas (tela web)", type: :request do
 
       get "/demandas", params: { sort: "status", direction: "asc" }
 
-      expect(response.body.index("Demanda pendente")).to be < response.body.index("Demanda concluída")
+      table = results_table(response)
+      expect(table.index("Demanda pendente")).to be < table.index("Demanda concluída")
+    end
+
+    it "ordena por data" do
+      create(:demanda, title: "Demanda futura", data: 10.days.from_now.to_date, user: lider)
+      create(:demanda, title: "Demanda de hoje", data: Date.current, user: lider)
+      sign_in lider
+
+      get "/demandas", params: { sort: "data", direction: "asc" }
+
+      table = results_table(response)
+      expect(table.index("Demanda de hoje")).to be < table.index("Demanda futura")
     end
 
     it "por padrão ordena por criada em, mais recente primeiro" do
@@ -150,7 +174,8 @@ RSpec.describe "Demandas (tela web)", type: :request do
 
       get "/demandas"
 
-      expect(response.body.index("Demanda recente")).to be < response.body.index("Demanda antiga")
+      table = results_table(response)
+      expect(table.index("Demanda recente")).to be < table.index("Demanda antiga")
     end
 
     it "ignora um parâmetro de ordenação inválido/malicioso e não quebra a página" do
@@ -175,6 +200,13 @@ RSpec.describe "Demandas (tela web)", type: :request do
       get "/demandas/new"
       expect(response).to have_http_status(:ok)
     end
+
+    it "traz o campo de data preenchido com a data atual por padrão" do
+      sign_in executor
+      get "/demandas/new"
+
+      expect(response.body).to include(%(value="#{Date.current.iso8601}"))
+    end
   end
 
   describe "POST /demandas" do
@@ -192,6 +224,19 @@ RSpec.describe "Demandas (tela web)", type: :request do
         post "/demandas", params: { demanda: { title: "Nova demanda web" } }
       }.to change(Demanda, :count).by(1)
       expect(response).to redirect_to(demandas_path)
+    end
+
+    it "usa a data de hoje quando o campo de data não é alterado" do
+      sign_in executor
+      post "/demandas", params: { demanda: { title: "Nova demanda web" } }
+      expect(Demanda.last.data).to eq(Date.current)
+    end
+
+    it "permite que um executor selecione outra data ao cadastrar" do
+      outra_data = 7.days.from_now.to_date
+      sign_in executor
+      post "/demandas", params: { demanda: { title: "Nova demanda web", data: outra_data } }
+      expect(Demanda.last.data).to eq(outra_data)
     end
   end
 
@@ -226,6 +271,22 @@ RSpec.describe "Demandas (tela web)", type: :request do
       patch "/demandas/#{demanda.id}", params: { demanda: { title: "Alterada" } }
       expect(response).to redirect_to(demandas_path)
       expect(demanda.reload.title).to eq("Alterada")
+    end
+
+    it "impede que um executor altere a data de uma demanda já cadastrada" do
+      outra_data = 15.days.from_now.to_date
+      sign_in executor
+      patch "/demandas/#{demanda.id}", params: { demanda: { data: outra_data } }
+      expect(response).to redirect_to(root_path)
+      expect(demanda.reload.data).not_to eq(outra_data)
+    end
+
+    it "permite que um líder altere a data de uma demanda já cadastrada" do
+      outra_data = 15.days.from_now.to_date
+      sign_in lider
+      patch "/demandas/#{demanda.id}", params: { demanda: { data: outra_data } }
+      expect(response).to redirect_to(demandas_path)
+      expect(demanda.reload.data).to eq(outra_data)
     end
   end
 
