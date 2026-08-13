@@ -1,0 +1,145 @@
+- content_for :page_title, "Início"
+%h1.visually-hidden Início
+
+.mb-4
+  %h2.h4.mb-1.tk-dashboard-greeting= "Olá, #{current_user.name}"
+  %p.text-muted.mb-0
+    - if current_user.lider?
+      Aqui está o panorama da equipe hoje, #{Date.current.strftime('%d/%m/%Y')}.
+    - else
+      Aqui está o que precisa da sua atenção hoje, #{Date.current.strftime('%d/%m/%Y')}.
+
+.row.g-3.mb-4
+  .col-6.col-lg-3
+    .stat-tile
+      .stat-label Total de demandas
+      .stat-value= @total
+      .stat-sub de toda a equipe
+  .col-6.col-lg-3
+    .stat-tile.stat-tile-pendente
+      .stat-label Pendentes
+      .stat-value= @status_counts["pendente"]
+      .stat-sub
+        - if @total.positive?
+          = "#{((@status_counts['pendente'].to_f / @total) * 100).round}% do total"
+  .col-6.col-lg-3
+    .stat-tile.stat-tile-andamento
+      .stat-label Em andamento
+      .stat-value= @status_counts["em_andamento"]
+      .stat-sub
+        - if @total.positive?
+          = "#{((@status_counts['em_andamento'].to_f / @total) * 100).round}% do total"
+  .col-6.col-lg-3
+    .stat-tile.stat-tile-concluida
+      .stat-label Concluídas
+      .stat-value= @status_counts["concluida"]
+      .stat-sub
+        - if @total.positive?
+          = "#{((@status_counts['concluida'].to_f / @total) * 100).round}% do total"
+
+.row.g-3
+  .col-lg-8
+    .card.tk-card.mb-3
+      .card-header.d-flex.align-items-center.justify-content-between
+        %span Minhas demandas
+        = link_to "Ver todas →", demandas_path, class: "small fw-semibold text-decoration-none", style: "color: var(--tk-teal);"
+      .card-body.pt-2
+        - if @minhas_demandas.any?
+          %table.table.tk-table.mb-0
+            %thead
+              %tr
+                %th Título
+                %th Data
+                %th Status
+                %th
+            %tbody
+              - @minhas_demandas.each do |demanda|
+                %tr{ class: ("text-muted" if demanda.concluida?) }
+                  %td= demanda.title
+                  %td= demanda.data.strftime("%d/%m")
+                  %td
+                    %span{ class: "badge tk-badge-status-#{demanda.status}" }= demanda.status.humanize
+                  %td= prazo_badge(demanda)
+        - else
+          %p.text-muted.mb-0
+            Você ainda não tem nenhuma demanda atribuída.
+            = link_to "Criar demanda", new_demanda_path, style: "color: var(--tk-teal);"
+
+    .card.tk-card
+      .card-header.d-flex.align-items-center.justify-content-between
+        %span Atividade recente
+        %small.text-muted últimas demandas criadas pela equipe
+      .card-body.pt-2
+        - if @atividade_recente.any?
+          - @atividade_recente.each do |demanda|
+            .activity-item
+              %span.activity-dot
+              %div
+                %div
+                  %strong= demanda.title
+                  = " — criada por #{demanda.user.name}"
+                  - if demanda.concluida?
+                    = ", concluída"
+                %div.activity-time= time_ago_in_words(demanda.created_at) + " atrás"
+        - else
+          %p.text-muted.mb-0 Nenhuma atividade ainda.
+
+  .col-lg-4
+    .card.tk-card.mb-3
+      .card-header Distribuição por status
+      .card-body.pt-2
+        - if @total.positive?
+          .status-bar{ role: "img", "aria-label" => "#{@status_counts['pendente']} pendentes, #{@status_counts['em_andamento']} em andamento, #{@status_counts['concluida']} concluídas, de um total de #{@total}" }
+            .status-bar-seg.status-bar-pendente{ style: "width: #{(@status_counts['pendente'].to_f / @total * 100).round(1)}%" }
+            .status-bar-seg.status-bar-andamento{ style: "width: #{(@status_counts['em_andamento'].to_f / @total * 100).round(1)}%" }
+            .status-bar-seg.status-bar-concluida{ style: "width: #{(@status_counts['concluida'].to_f / @total * 100).round(1)}%" }
+          .status-legend
+            %span
+              %span.status-dot.status-dot-pendente
+              = "Pendente — #{@status_counts['pendente']}"
+            %span
+              %span.status-dot.status-dot-andamento
+              = "Em andamento — #{@status_counts['em_andamento']}"
+            %span
+              %span.status-dot.status-dot-concluida
+              = "Concluída — #{@status_counts['concluida']}"
+        - else
+          %p.text-muted.mb-0 Nenhuma demanda cadastrada ainda.
+
+    .card.tk-card.mb-3
+      .card-header Prazos
+      .card-body.pt-2
+        .prazo-row
+          %span Atrasadas
+          %span.prazo-count.prazo-count-critical= @atrasadas
+        .prazo-row
+          %span Vencem hoje
+          %span.prazo-count.prazo-count-warning= @vencem_hoje
+        .prazo-row
+          %span= "Vencem em até #{DashboardController::PRAZO_PROXIMO_DIAS} dias"
+          %span.prazo-count.prazo-count-neutral= @vencem_em_breve
+
+    .card.tk-card.mb-3
+      .card-header
+        %span Carga por responsável
+        %small.text-muted demandas abertas
+      .card-body.pt-2
+        - if @carga_por_responsavel.any?
+          - max_carga = @carga_por_responsavel.map(&:last).max
+          - @carga_por_responsavel.each do |nome, quantidade|
+            .load-row
+              %span.load-name= nome
+              .load-track
+                .load-fill{ style: "width: #{(quantidade.to_f / max_carga * 100).round}%" }
+              %span.load-count= quantidade
+        - else
+          %p.text-muted.mb-0 Nenhuma demanda em aberto no momento.
+
+    - if current_user.lider?
+      .card.tk-card
+        .card-header Equipe
+        .card-body.pt-2.d-flex.justify-content-between.align-items-center
+          %div
+            .fw-semibold= "#{@total_lideres} líder(es) · #{@total_executores} executor(es)"
+            .text-muted.small= "#{@total_lideres + @total_executores} usuários com acesso"
+          = link_to "Gerenciar", users_path, class: "btn btn-sm btn-outline-secondary"

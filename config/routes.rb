@@ -11,5 +11,5 @@ Rails.application.routes.draw do
   resources :demandas
   resources :users, only: %i[index new create edit update destroy]
 
-  root "demandas#index"
+  root "dashboard#index"
 end

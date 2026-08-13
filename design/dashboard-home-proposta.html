@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-role="lider">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proposta — Dashboard da Home · Task Keeper API</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Open+Sans:wght@300;400;600&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<style>
+  :root {
+    --tk-teal: #007f6d;
+    --tk-green-mid: #139352;
+    --tk-green: #26a737;
+    --tk-green-strong: #1b7727;
+    --tk-cyan: #5ac1d4;
+    --tk-gradient: linear-gradient(90deg, #007f6d 0%, #139352 74%, #26a737 100%);
+    --tk-bg: #f7f9f8;
+    --tk-text: #212529;
+    --tk-muted: #667077;
+    --tk-radius: 0.75rem;
+    --tk-radius-sm: 0.5rem;
+    --tk-shadow: 0 2px 14px rgba(0, 40, 34, 0.08);
+
+    /* Cores de status — as MESMAS já usadas nos badges de app/assets/stylesheets/application.css.
+       Ajustadas aqui (mais saturadas) para funcionar também como preenchimento sólido de barra,
+       validadas com scripts/validate_palette.js do skill de dataviz (0 falhas). */
+    --status-pendente: #e0a800;
+    --status-pendente-bg: #fff3cd;
+    --status-pendente-text: #7a5b00;
+    --status-andamento: #1789a3;
+    --status-andamento-bg: rgba(90, 193, 212, 0.22);
+    --status-andamento-text: #0a5c6b;
+    --status-concluida: #26a737;
+    --status-concluida-bg: rgba(38, 167, 55, 0.18);
+    --status-concluida-text: #1b7727;
+
+    /* Urgência de prazo — canal DIFERENTE do status de fluxo acima (nunca reaproveita hue). */
+    --urg-critical: #c0392b;
+    --urg-critical-bg: #fbe1de;
+    --urg-warning: #b5750a;
+    --urg-warning-bg: #fff0da;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background-color: var(--tk-bg);
+    color: var(--tk-text);
+    font-family: "Open Sans", "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6, .navbar-brand, .btn, label { font-family: "Kanit", "Open Sans", sans-serif; }
+
+  /* ---------- Navbar (mimetiza o layout real do app) ---------- */
+  .tk-navbar { background: var(--tk-gradient); box-shadow: var(--tk-shadow); padding: 0.65rem 0; }
+  .tk-brand { display: inline-flex; align-items: center; gap: 0.6rem; font-weight: 600; font-size: 1.15rem; color: #fff !important; text-decoration: none; }
+  .tk-brand-badge { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: var(--tk-radius-sm); background: rgba(255,255,255,0.18); font-weight: 700; font-size: 0.85rem; }
+  .tk-navbar .nav-link { color: rgba(255,255,255,0.88); font-weight: 500; border-radius: var(--tk-radius-sm); padding: 0.4rem 0.75rem; }
+  .tk-navbar .nav-link.active { color: #fff; background-color: rgba(255,255,255,0.22); }
+  .tk-user-chip { font-size: 0.9rem; }
+
+  /* ---------- Alternador de papel (só existe neste protótipo) ---------- */
+  .proto-toggle { background: #fff8e1; border: 1px dashed #d8b45a; border-radius: var(--tk-radius-sm); padding: 0.6rem 1rem; font-size: 0.85rem; }
+  .role-switch button { border: 1px solid var(--tk-teal); background: #fff; color: var(--tk-teal); font-weight: 600; font-size: 0.82rem; padding: 0.3rem 0.85rem; }
+  .role-switch button.active { background: var(--tk-teal); color: #fff; }
+  .role-switch button:first-child { border-radius: 999px 0 0 999px; }
+  .role-switch button:last-child { border-radius: 0 999px 999px 0; border-left: none; }
+
+  h1.visually-hidden { position: absolute !important; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
+
+  /* ---------- Cards ---------- */
+  .tk-card { background: #fff; border: none; border-radius: var(--tk-radius); box-shadow: var(--tk-shadow); }
+  .tk-card .card-header { background: transparent; border-bottom: 1px solid #eef1f0; font-weight: 600; color: var(--tk-teal); font-family: "Kanit", sans-serif; padding: 1rem 1.25rem; display:flex; align-items:center; justify-content:space-between; }
+  .tk-card .card-header small { font-weight: 400; font-family: "Open Sans", sans-serif; color: var(--tk-muted); font-size: 0.78rem; }
+
+  /* ---------- Stat tiles (KPI row) ---------- */
+  .stat-tile { background: #fff; border-radius: var(--tk-radius); box-shadow: var(--tk-shadow); padding: 1.1rem 1.25rem; height: 100%; border-top: 3px solid var(--tk-teal); }
+  .stat-tile.pendente { border-top-color: var(--status-pendente); }
+  .stat-tile.andamento { border-top-color: var(--status-andamento); }
+  .stat-tile.concluida { border-top-color: var(--status-concluida); }
+  .stat-tile .stat-label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--tk-muted); font-weight: 600; }
+  .stat-tile .stat-value { font-family: "Kanit", sans-serif; font-size: 2.1rem; font-weight: 600; color: var(--tk-text); line-height: 1.2; margin-top: 0.15rem; }
+  .stat-tile .stat-sub { font-size: 0.78rem; color: var(--tk-muted); margin-top: 0.1rem; }
+
+  /* ---------- Badges de status (idênticos aos já existentes na listagem) ---------- */
+  .badge-status { font-weight: 600; font-size: 0.72rem; padding: 0.35em 0.65em; border-radius: 999px; }
+  .badge-status.pendente { background: var(--status-pendente-bg); color: var(--status-pendente-text); }
+  .badge-status.andamento { background: var(--status-andamento-bg); color: var(--status-andamento-text); }
+  .badge-status.concluida { background: var(--status-concluida-bg); color: var(--status-concluida-text); }
+
+  .badge-urg { font-weight: 600; font-size: 0.72rem; padding: 0.3em 0.6em; border-radius: 999px; display:inline-flex; align-items:center; gap:0.3em; }
+  .badge-urg.critical { background: var(--urg-critical-bg); color: var(--urg-critical); }
+  .badge-urg.warning { background: var(--urg-warning-bg); color: var(--urg-warning); }
+
+  /* ---------- Barra empilhada única (distribuição por status) ---------- */
+  .status-bar { display: flex; height: 22px; border-radius: 999px; overflow: hidden; background: #eef1f0; }
+  .status-bar .seg { height: 100%; }
+  .status-bar .seg + .seg { margin-left: 2px; }
+  .status-bar .seg.pendente { background: var(--status-pendente); }
+  .status-bar .seg.andamento { background: var(--status-andamento); }
+  .status-bar .seg.concluida { background: var(--status-concluida); }
+  .status-legend { display: flex; flex-wrap: wrap; gap: 0.9rem; margin-top: 0.85rem; font-size: 0.82rem; }
+  .status-legend .dot { width: 10px; height: 10px; border-radius: 50%; display:inline-block; margin-right: 0.35rem; }
+  .status-legend .dot.pendente { background: var(--status-pendente); }
+  .status-legend .dot.andamento { background: var(--status-andamento); }
+  .status-legend .dot.concluida { background: var(--status-concluida); }
+
+  /* ---------- Barras horizontais (carga por responsável) ---------- */
+  .load-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.85rem; }
+  .load-row:last-child { margin-bottom: 0; }
+  .load-name { width: 118px; flex-shrink: 0; font-size: 0.85rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .load-track { flex: 1; background: #eef1f0; border-radius: 999px; height: 12px; position: relative; }
+  .load-fill { height: 100%; border-radius: 999px; background: var(--tk-teal); }
+  .load-count { width: 26px; text-align: right; font-size: 0.85rem; font-weight: 600; color: var(--tk-muted); flex-shrink:0; }
+
+  /* ---------- Prazos ---------- */
+  .prazo-row { display:flex; align-items:center; justify-content:space-between; padding: 0.65rem 0; border-bottom: 1px solid #f1f3f2; }
+  .prazo-row:last-child { border-bottom: none; }
+  .prazo-count { font-family:"Kanit", sans-serif; font-weight:600; font-size:1.3rem; }
+  .prazo-count.critical { color: var(--urg-critical); }
+  .prazo-count.warning { color: var(--urg-warning); }
+  .prazo-count.neutral { color: var(--tk-teal); }
+
+  table.tk-table { font-size: 0.88rem; }
+  table.tk-table th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--tk-muted); font-weight: 600; border-bottom: 2px solid #eef1f0; }
+  table.tk-table td { vertical-align: middle; border-bottom: 1px solid #f4f6f5; }
+
+  .activity-item { display:flex; gap:0.75rem; padding: 0.6rem 0; border-bottom: 1px solid #f4f6f5; }
+  .activity-item:last-child { border-bottom: none; }
+  .activity-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--tk-teal); margin-top: 0.4rem; flex-shrink: 0; }
+  .activity-time { font-size: 0.76rem; color: var(--tk-muted); }
+
+  [data-role="executor"] .lider-only { display: none !important; }
+
+  .annot { background: #f0f7f5; border-left: 3px solid var(--tk-teal); padding: 0.6rem 0.9rem; font-size: 0.82rem; color: #35504a; border-radius: 0 0.4rem 0.4rem 0; }
+</style>
+</head>
+<body>
+
+  <nav class="navbar navbar-expand-lg navbar-dark tk-navbar">
+    <div class="container">
+      <a href="#" class="tk-brand">
+        <span class="tk-brand-badge">TK</span>
+        Task Keeper API
+      </a>
+      <div class="collapse navbar-collapse show">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item"><a class="nav-link active" href="#">Início</a></li>
+          <li class="nav-item"><a class="nav-link" href="#">Demandas</a></li>
+          <li class="nav-item lider-only"><a class="nav-link" href="#">Acessos</a></li>
+        </ul>
+        <div class="d-flex align-items-center gap-2">
+          <span class="text-light tk-user-chip" id="user-chip">Líder Exemplo (líder)</span>
+          <button class="btn btn-outline-light btn-sm" type="button">Sair</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container mt-3">
+    <div class="proto-toggle d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <span>🧪 <strong>Só neste protótipo:</strong> alterne para comparar o que o líder e o executor veem na mesma home.</span>
+      <div class="role-switch" role="group" aria-label="Alternar papel de visualização">
+        <button type="button" id="btn-lider" class="active" onclick="setRole('lider')">Ver como líder</button>
+        <button type="button" id="btn-executor" onclick="setRole('executor')">Ver como executor</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container mt-4 mb-5">
+
+    <h1 class="visually-hidden">Início</h1>
+
+    <div class="mb-4">
+      <h2 class="h4 mb-1" style="color:var(--tk-teal); font-weight:600;" id="greeting">Olá, Líder Exemplo</h2>
+      <p class="text-muted mb-0" id="greeting-sub">Aqui está o panorama da equipe hoje, 13 de agosto.</p>
+    </div>
+
+    <!-- KPI row -->
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-lg-3">
+        <div class="stat-tile">
+          <div class="stat-label">Total de demandas</div>
+          <div class="stat-value">14</div>
+          <div class="stat-sub">de toda a equipe</div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="stat-tile pendente">
+          <div class="stat-label">Pendentes</div>
+          <div class="stat-value">6</div>
+          <div class="stat-sub">43% do total</div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="stat-tile andamento">
+          <div class="stat-label">Em andamento</div>
+          <div class="stat-value">5</div>
+          <div class="stat-sub">36% do total</div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="stat-tile concluida">
+          <div class="stat-label">Concluídas</div>
+          <div class="stat-value">3</div>
+          <div class="stat-sub">21% do total</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3">
+      <!-- Coluna principal -->
+      <div class="col-lg-8">
+
+        <div class="card tk-card mb-3">
+          <div class="card-header">
+            <span id="minhas-title">Minhas demandas</span>
+            <small><a href="#" style="color:var(--tk-teal); text-decoration:none; font-weight:600;">Ver todas →</a></small>
+          </div>
+          <div class="card-body pt-2">
+            <table class="table tk-table mb-0" id="minhas-lider">
+              <thead><tr><th>Título</th><th>Data</th><th>Status</th><th></th></tr></thead>
+              <tbody>
+                <tr>
+                  <td>Conferir backup semanal</td>
+                  <td>07/08</td>
+                  <td><span class="badge-status pendente">Pendente</span></td>
+                  <td><span class="badge-urg critical">⚠ Atrasada há 6 dias</span></td>
+                </tr>
+                <tr>
+                  <td>Preparar pauta da reunião mensal</td>
+                  <td>14/08</td>
+                  <td><span class="badge-status andamento">Em andamento</span></td>
+                  <td><span class="badge-urg warning">Vence amanhã</span></td>
+                </tr>
+                <tr>
+                  <td>Revisar política de acesso remoto</td>
+                  <td>15/08</td>
+                  <td><span class="badge-status pendente">Pendente</span></td>
+                  <td><span class="badge-urg warning">Vence em 2 dias</span></td>
+                </tr>
+                <tr class="text-muted">
+                  <td>Revisar acessos de usuários</td>
+                  <td>11/08</td>
+                  <td><span class="badge-status concluida">Concluída</span></td>
+                  <td></td>
+                </tr>
+              </tbody>
+            </table>
+            <table class="table tk-table mb-0 d-none" id="minhas-executor">
+              <thead><tr><th>Título</th><th>Data</th><th>Status</th><th></th></tr></thead>
+              <tbody>
+                <tr>
+                  <td>Revisar contrato de fornecimento</td>
+                  <td>10/08</td>
+                  <td><span class="badge-status pendente">Pendente</span></td>
+                  <td><span class="badge-urg critical">⚠ Atrasada há 3 dias</span></td>
+                </tr>
+                <tr>
+                  <td>Levantar métricas de atendimento</td>
+                  <td>16/08</td>
+                  <td><span class="badge-status andamento">Em andamento</span></td>
+                  <td><span class="badge-urg warning">Vence em 3 dias</span></td>
+                </tr>
+                <tr>
+                  <td>Atualizar cadastro de fornecedores</td>
+                  <td>20/08</td>
+                  <td><span class="badge-status andamento">Em andamento</span></td>
+                  <td></td>
+                </tr>
+                <tr>
+                  <td>Planejar treinamento da equipe</td>
+                  <td>25/08</td>
+                  <td><span class="badge-status pendente">Pendente</span></td>
+                  <td></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card tk-card">
+          <div class="card-header">
+            Atividade recente
+            <small>últimas 5 demandas criadas pela equipe</small>
+          </div>
+          <div class="card-body pt-2">
+            <div class="activity-item">
+              <span class="activity-dot"></span>
+              <div>
+                <div><strong>Conferir backup semanal</strong> — criada por Ana Souza</div>
+                <div class="activity-time">há 2 horas</div>
+              </div>
+            </div>
+            <div class="activity-item">
+              <span class="activity-dot"></span>
+              <div>
+                <div><strong>Levantar métricas de atendimento</strong> — criada por Executor Exemplo</div>
+                <div class="activity-time">ontem</div>
+              </div>
+            </div>
+            <div class="activity-item">
+              <span class="activity-dot"></span>
+              <div>
+                <div><strong>Atualizar manual do usuário</strong> — criada por Bruno Lima, concluída</div>
+                <div class="activity-time">há 2 dias</div>
+              </div>
+            </div>
+            <div class="activity-item">
+              <span class="activity-dot"></span>
+              <div>
+                <div><strong>Preparar pauta da reunião mensal</strong> — criada por Líder Exemplo</div>
+                <div class="activity-time">há 2 dias</div>
+              </div>
+            </div>
+            <div class="activity-item">
+              <span class="activity-dot"></span>
+              <div>
+                <div><strong>Revisar política de acesso remoto</strong> — criada por Líder Exemplo</div>
+                <div class="activity-time">há 3 dias</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Coluna lateral -->
+      <div class="col-lg-4">
+
+        <div class="card tk-card mb-3">
+          <div class="card-header">Distribuição por status</div>
+          <div class="card-body pt-2">
+            <div class="status-bar" role="img" aria-label="6 pendentes, 5 em andamento, 3 concluídas, de um total de 14">
+              <div class="seg pendente" style="width: 42.8%"></div>
+              <div class="seg andamento" style="width: 35.7%"></div>
+              <div class="seg concluida" style="width: 21.5%"></div>
+            </div>
+            <div class="status-legend">
+              <span><span class="dot pendente"></span>Pendente — 6</span>
+              <span><span class="dot andamento"></span>Em andamento — 5</span>
+              <span><span class="dot concluida"></span>Concluída — 3</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card tk-card mb-3">
+          <div class="card-header">Prazos</div>
+          <div class="card-body pt-2">
+            <div class="prazo-row">
+              <span>Atrasadas</span>
+              <span class="prazo-count critical">3</span>
+            </div>
+            <div class="prazo-row">
+              <span>Vencem hoje</span>
+              <span class="prazo-count warning">2</span>
+            </div>
+            <div class="prazo-row">
+              <span>Vencem em até 3 dias</span>
+              <span class="prazo-count neutral">3</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card tk-card mb-3">
+          <div class="card-header">
+            Carga por responsável
+            <small>demandas abertas (não concluídas)</small>
+          </div>
+          <div class="card-body pt-2">
+            <div class="load-row">
+              <span class="load-name">Executor Exemplo</span>
+              <div class="load-track"><div class="load-fill" style="width: 100%; background: var(--tk-teal);"></div></div>
+              <span class="load-count">4</span>
+            </div>
+            <div class="load-row">
+              <span class="load-name">Ana Souza</span>
+              <div class="load-track"><div class="load-fill" style="width: 75%; background: #2fa18d;"></div></div>
+              <span class="load-count">3</span>
+            </div>
+            <div class="load-row">
+              <span class="load-name">Bruno Lima</span>
+              <div class="load-track"><div class="load-fill" style="width: 50%; background: #6cbdae;"></div></div>
+              <span class="load-count">2</span>
+            </div>
+            <div class="load-row">
+              <span class="load-name">Líder Exemplo</span>
+              <div class="load-track"><div class="load-fill" style="width: 50%; background: #6cbdae;"></div></div>
+              <span class="load-count">2</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card tk-card lider-only">
+          <div class="card-header">Equipe</div>
+          <div class="card-body pt-2 d-flex justify-content-between align-items-center">
+            <div>
+              <div class="fw-semibold" style="font-family:'Kanit',sans-serif;">1 líder · 3 executores</div>
+              <div class="text-muted small">4 usuários com acesso</div>
+            </div>
+            <a href="#" class="btn btn-sm btn-outline-secondary">Gerenciar</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <p class="text-muted small mt-4 mb-0">
+      Protótipo com dados de exemplo, para avaliação de layout — não está conectado à API real.
+    </p>
+  </div>
+
+  <script>
+    function setRole(role) {
+      document.documentElement.setAttribute('data-role', role);
+      document.getElementById('btn-lider').classList.toggle('active', role === 'lider');
+      document.getElementById('btn-executor').classList.toggle('active', role === 'executor');
+
+      const isLider = role === 'lider';
+      document.getElementById('user-chip').textContent = isLider ? 'Líder Exemplo (líder)' : 'Executor Exemplo (executor)';
+      document.getElementById('greeting').textContent = isLider ? 'Olá, Líder Exemplo' : 'Olá, Executor Exemplo';
+      document.getElementById('greeting-sub').textContent = isLider
+        ? 'Aqui está o panorama da equipe hoje, 13 de agosto.'
+        : 'Aqui está o que precisa da sua atenção hoje, 13 de agosto.';
+      document.getElementById('minhas-title').textContent = isLider ? 'Minhas demandas' : 'Minhas demandas';
+
+      document.getElementById('minhas-lider').classList.toggle('d-none', !isLider);
+      document.getElementById('minhas-executor').classList.toggle('d-none', isLider);
+    }
+  </script>
+</body>
+</html>

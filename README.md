@@ -26,7 +26,7 @@ A suíte RSpec cobre:
 - **Models**: `User` e `Demanda` (`spec/models`);
 - **Política de autorização**: `Ability` (`spec/models/ability_spec.rb`), validando cada combinação de papel × ação para `Demanda` e `User`;
 - **API** (`spec/requests/api/v1`): `demandas` e `users`;
-- **Telas web** (`spec/requests`): `demandas` (menu Demandas) e `users` (menu Acessos).
+- **Telas web** (`spec/requests`): `demandas` (menu Demandas), `users` (menu Acessos) e `dashboard` (painel inicial/Início).
 
 Cenários validados explicitamente:
 
@@ -72,6 +72,20 @@ Usuários de exemplo criados pelo `db:seed`:
 | POST   | `/api/v1/users`          | apenas líder                 |
 | DELETE | `/api/v1/users/:id`      | apenas líder                 |
 
+## Painel inicial (dashboard)
+
+A home (`/`, menu "Início") é um painel com uma visão geral das demandas, pensado para responder duas perguntas diferentes: "o que precisa da minha atenção agora?" e "como está a equipe?" — nessa ordem de prioridade:
+
+- KPIs no topo: total de demandas e quantas estão em cada status;
+- **Minhas demandas**: as demandas do próprio usuário logado, ordenadas por urgência (atrasada primeiro, depois o que vence antes); cada uma tem um badge de prazo (`Atrasada há N dias`, `Vence hoje`, `Vence amanhã`, `Vence em N dias`) — um canal separado do badge de status, porque "em que fase está" e "está no prazo?" são informações diferentes;
+- **Atividade recente**: últimas demandas criadas por toda a equipe;
+- **Distribuição por status**: uma única barra empilhada (não faz sentido um gráfico maior para 3 fatias) com a proporção pendente/em andamento/concluída;
+- **Prazos**: quantas demandas (de toda a equipe) estão atrasadas, vencem hoje, ou vencem nos próximos `DashboardController::PRAZO_PROXIMO_DIAS` dias (3 por padrão);
+- **Carga por responsável**: quantas demandas abertas (não concluídas) cada pessoa tem, da maior carga para a menor — visível para os dois papéis, já que qualquer usuário autenticado já enxerga todas as demandas na listagem;
+- **Equipe** (só para o líder): contagem de líderes/executores, com atalho para `/users`.
+
+Todos os dados vêm do banco (nada é fixo/mockado) e respeitam a mesma autorização já usada na listagem de demandas (`Demanda.accessible_by(current_ability)`).
+
 ## Tela web de demandas
 
 Além da API, há uma tela em `/demandas` (menu "Demandas" no topo) para uso pelos usuários autenticados:
@@ -104,7 +118,7 @@ Os alertas (`flash`) são fecháveis, com um "×" no canto (`alert-dismissible` 
 
 ## Mensagens em pt-BR
 
-O locale padrão da aplicação é `pt-BR` (ver `config/application.rb`), mas nem o Rails nem o Devise têm tradução embutida para esse locale — sem `config/locales/pt-BR.yml`, mensagens como a de "faça login para continuar" apareciam como `Translation missing`. Esse arquivo traduz as mensagens do Devise (login, logout, credenciais inválidas, recuperação de senha) e as mensagens padrão de validação do Rails (`não pode ficar em branco`, `já está em uso` etc.), incluindo os nomes dos campos (`Título`, `E-mail`, `Permissão`...).
+O locale padrão da aplicação é `pt-BR` (ver `config/application.rb`), mas nem o Rails nem o Devise têm tradução embutida para esse locale — sem `config/locales/pt-BR.yml`, mensagens como a de "faça login para continuar" apareciam como `Translation missing`. Esse arquivo traduz as mensagens do Devise (login, logout, credenciais inválidas, recuperação de senha), as mensagens padrão de validação do Rails (`não pode ficar em branco`, `já está em uso` etc.), incluindo os nomes dos campos (`Título`, `E-mail`, `Permissão`...), e também `datetime.distance_in_words` (usado por `time_ago_in_words` em "Atividade recente" no painel inicial — sem essa tradução, o mesmo `Translation missing` apareceria ali).
 
 ## Nota sobre validação
 
