@@ -9,6 +9,7 @@ Rails.application.routes.draw do
   end
 
   resources :demandas
+  resources :users, only: %i[index new create edit update]
 
   root "demandas#index"
 end

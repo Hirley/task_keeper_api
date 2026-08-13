@@ -67,6 +67,14 @@ Além da API, há uma tela em `/demandas` (menu "Demandas" no topo) para uso pel
 - se um executor tentar acessar `/demandas/:id/edit` diretamente, é redirecionado com aviso de permissão negada;
 - o botão **Excluir** pede confirmação (`data-turbo-confirm`, via Turbo) antes de enviar o form de exclusão.
 
-## Nota sobre este scaffold
+## Tela web de Acessos
 
-Este projeto foi gerado por escrita direta de todos os arquivos (models, controllers, views, migrations e specs), e não via `rails new`/`bundle install`, porque o ambiente onde foi gerado não tem acesso ao rubygems.org nem ao Ruby 4.0.6. Ou seja, o código **não foi executado nem testado automaticamente** neste ambiente — rode `bundle install && bin/rails db:prepare && bundle exec rspec` localmente para validar antes de usar em produção.
+Há também uma tela em `/users` (menu "Acessos" no topo, visível apenas ao líder) para o líder cadastrar novos usuários e alterar a permissão (papel líder/executor) de usuários já existentes:
+
+- apenas o líder vê o menu "Acessos" e consegue acessar `/users`; um executor que tentar acessar diretamente é redirecionado com aviso de permissão negada;
+- o cadastro de um novo usuário exige nome, e-mail, senha e a permissão (líder ou executor) — não há autocadastro;
+- a edição permite alterar nome, e-mail e a permissão de um usuário existente (a troca de senha continua pelo fluxo de "esqueci minha senha" do Devise).
+
+## Nota sobre validação
+
+O scaffold inicial (models, controllers, views, migrations e specs) foi escrito diretamente em um ambiente sem acesso ao rubygems.org/Ruby 4.0.6, então não pôde ser testado automaticamente ali — mas já foi validado localmente (`bundle install`, migrations e `bundle exec rspec`) e mesclado à `main`. PRs subsequentes devem seguir o mesmo processo: rodar `bundle install && bin/rails db:prepare && bundle exec rspec` localmente antes do merge.

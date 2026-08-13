@@ -1,0 +1,29 @@
+.d-flex.justify-content-between.align-items-center.mb-3
+  %h1 Acessos
+  = link_to "Novo usuário", new_user_path, class: "btn btn-primary"
+
+%p.text-muted
+  Apenas o líder cadastra novos usuários e altera permissões. Não há autocadastro.
+
+%table.table.table-striped
+  %thead
+    %tr
+      %th Nome
+      %th E-mail
+      %th Permissão
+      %th.text-end Ações
+  %tbody
+    - @users.each do |user|
+      %tr
+        %td= user.name
+        %td= user.email
+        %td
+          %span{ class: "badge #{user.lider? ? 'bg-primary' : 'bg-secondary'}" }
+            = user.lider? ? "Líder" : "Executor"
+        %td.text-end
+          = link_to "Editar permissões", edit_user_path(user), class: "btn btn-sm btn-outline-secondary"
+
+  - if @users.empty?
+    %tbody
+      %tr
+        %td.text-muted{ colspan: 4 } Nenhum usuário cadastrado ainda.
