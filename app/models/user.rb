@@ -11,6 +11,15 @@ class User < ApplicationRecord
   validates :name, presence: true
   validates :role, presence: true
 
+  # Usado por TelegramNotifier para avisar o usuário sobre demandas
+  # atrasadas (ver app/services/telegram_notifier.rb). É opcional — nem
+  # todo usuário precisa configurar. O líder cadastra/edita esse valor em
+  # /users; o próprio usuário descobre o chat_id conversando com um bot
+  # como @userinfobot no Telegram.
+  validates :telegram_chat_id,
+    format: { with: /\A-?\d+\z/, message: "deve conter só números (o chat_id do Telegram)" },
+    allow_blank: true
+
   def lider?
     role == "lider"
   end

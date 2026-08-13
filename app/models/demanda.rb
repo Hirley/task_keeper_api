@@ -16,4 +16,19 @@ class Demanda < ApplicationRecord
 
   validates :title, presence: true
   validates :data, presence: true
+
+  # Evita notificação duplicada: lib/tasks/telegram_notifications.rake só
+  # avisa o responsável quando atraso_notificado_em está vazio. Se a
+  # demanda deixar de estar atrasada (data adiada para hoje/futuro, ou
+  # marcada como concluída), zera essa marca — assim, se ela atrasar de
+  # novo no futuro, o responsável é avisado de novo.
+  before_save :zerar_notificacao_de_atraso_se_nao_esta_mais_atrasada, if: -> { data_changed? || status_changed? }
+
+  private
+
+  def zerar_notificacao_de_atraso_se_nao_esta_mais_atrasada
+    return if atraso_notificado_em.blank?
+
+    self.atraso_notificado_em = nil if data >= Date.current || concluida?
+  end
 end

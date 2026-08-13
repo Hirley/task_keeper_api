@@ -23,6 +23,14 @@
       = f.password_field :password_confirmation, class: "form-control", required: true, autocomplete: "new-password"
 
   .mb-3
+    = f.label :telegram_chat_id, "Chat ID do Telegram (opcional)", class: "form-label"
+    = f.text_field :telegram_chat_id, class: "form-control", autocomplete: "off", inputmode: "numeric", placeholder: "Ex.: 123456789"
+    %div.form-text
+      Para receber lembretes de demandas atrasadas pelo Telegram. O próprio usuário descobre esse número conversando com o bot
+      %code @userinfobot
+      no Telegram.
+
+  .mb-3
     = f.label :role, "Permissão", class: "form-label"
     = f.select :role, User.roles.keys.map { |role| [role.humanize, role] }, {}, class: "form-select"
     %div.form-text
