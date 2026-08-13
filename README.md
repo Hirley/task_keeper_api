@@ -93,6 +93,8 @@ Há também uma tela em `/users` (menu "Acessos" no topo, visível apenas ao lí
 
 O layout usa uma identidade visual própria (`app/assets/stylesheets/application.css`), com gradiente verde-petróleo, tipografia Kanit/Open Sans e componentes reutilizáveis (navbar, cards, badges, paginação). As telas de Demandas e Acessos ganharam um formulário de busca (com `<datalist>` de autocomplete) e paginação simples via `Paginatable` (`app/controllers/concerns/paginatable.rb`) — implementada só com Active Record (`limit`/`offset`), sem depender de gem externa como Kaminari.
 
+As páginas de listagem (Demandas, Acessos) não repetem o nome da seção como um heading gigante logo abaixo do menu — o item ativo na navbar já indica onde você está, e o título de cada página fica no `<title>` da aba do navegador (`content_for :page_title`); o `%h1` continua no HTML por acessibilidade, só que visualmente oculto (`visually-hidden`). Os alertas (`flash`) agora são fecháveis, com um "×" no canto (`alert-dismissible` do Bootstrap).
+
 ## Nota sobre validação
 
 O scaffold inicial (models, controllers, views, migrations e specs) foi escrito diretamente em um ambiente sem acesso ao rubygems.org/Ruby 4.0.6, então não pôde ser testado automaticamente ali — mas já foi validado localmente (`bundle install`, migrations e `bundle exec rspec`) e mesclado à `main`. PRs subsequentes devem seguir o mesmo processo: rodar `bundle install && bin/rails db:prepare && bundle exec rspec` localmente antes do merge.
