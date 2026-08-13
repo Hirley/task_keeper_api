@@ -40,7 +40,12 @@ RSpec.describe TelegramNotifier do
       expect(texto).to include("Ana Paula Souza")
       expect(texto).to include("Revisar contrato")
       expect(texto).to include("3 dias")
-      expect(texto).not_to match(/urgente|cobrança|inaceitável/i)
+      # "cobrança" fica de fora da lista de palavras proibidas de propósito:
+      # a própria mensagem usa "Sem cobrança" para tranquilizar o executor.
+      # O que não pode aparecer é tom de urgência/cobrança de fato (ex.:
+      # "urgente", "inaceitável", "cobrando").
+      expect(texto).not_to match(/urgente|inaceitável|cobrando/i)
+      expect(texto).to include("Sem cobrança")
     end
 
     it "retorna true quando o Telegram responde com sucesso" do
