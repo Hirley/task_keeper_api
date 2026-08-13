@@ -1,0 +1,89 @@
+# Traduções em pt-BR para as mensagens do Devise e do Rails (validações,
+# flashes de autenticação etc). Sem este arquivo, como o locale padrão da
+# aplicação é pt-BR (ver config/application.rb) e o Devise/Rails não têm
+# tradução embutida para pt-BR, as mensagens apareciam como
+# "Translation missing" — por exemplo ao tentar acessar uma tela protegida
+# sem estar logado.
+pt-BR:
+  errors:
+    format: "%{attribute} %{message}"
+    messages:
+      accepted: "deve ser aceito"
+      blank: "não pode ficar em branco"
+      confirmation: "não é igual a %{attribute}"
+      empty: "não pode ficar vazio"
+      equal_to: "deve ser igual a %{count}"
+      even: "deve ser par"
+      exclusion: "não está disponível"
+      greater_than: "deve ser maior que %{count}"
+      greater_than_or_equal_to: "deve ser maior ou igual a %{count}"
+      inclusion: "não está incluído na lista"
+      invalid: "não é válido"
+      less_than: "deve ser menor que %{count}"
+      less_than_or_equal_to: "deve ser menor ou igual a %{count}"
+      model_invalid: "Validação falhou: %{errors}"
+      not_a_number: "não é um número"
+      not_an_integer: "não é um número inteiro"
+      odd: "deve ser ímpar"
+      other_than: "deve ser diferente de %{count}"
+      present: "deve ficar em branco"
+      required: "deve existir"
+      taken: "já está em uso"
+      too_long:
+        one: "é muito longo (máximo 1 caractere)"
+        other: "é muito longo (máximo %{count} caracteres)"
+      too_short:
+        one: "é muito curto (mínimo 1 caractere)"
+        other: "é muito curto (mínimo %{count} caracteres)"
+      wrong_length:
+        one: "não possui o tamanho esperado (1 caractere)"
+        other: "não possui o tamanho esperado (%{count} caracteres)"
+      expired: "expirou, por favor solicite um novo"
+      not_found: "não encontrado(a)"
+      already_confirmed: "já foi confirmado(a), por favor tente fazer login"
+      not_locked: "não estava bloqueado(a)"
+      not_saved:
+        one: "1 erro impediu %{resource} de ser salvo(a):"
+        other: "%{count} erros impediram %{resource} de ser salvo(a):"
+
+  activerecord:
+    errors:
+      messages:
+        record_invalid: "Validação falhou: %{errors}"
+        restrict_dependent_destroy:
+          has_one: "Não é possível excluir o registro pois existe um(a) %{record} dependente"
+          has_many: "Não é possível excluir o registro pois existem %{record} dependentes"
+    attributes:
+      user:
+        name: "Nome"
+        email: "E-mail"
+        password: "Senha"
+        password_confirmation: "Confirmação da senha"
+        role: "Permissão"
+      demanda:
+        title: "Título"
+        description: "Descrição"
+        status: "Status"
+        user: "Responsável"
+
+  devise:
+    failure:
+      already_authenticated: "Você já está autenticado(a)."
+      inactive: "Sua conta ainda não foi ativada."
+      invalid: "E-mail ou senha inválidos."
+      locked: "Sua conta está bloqueada."
+      last_attempt: "Você tem mais uma tentativa antes de sua conta ser bloqueada."
+      not_found_in_database: "E-mail ou senha inválidos."
+      timeout: "Sua sessão expirou. Faça login novamente para continuar."
+      unauthenticated: "Você precisa fazer login ou ser cadastrado por um líder para continuar."
+      unconfirmed: "Você precisa confirmar seu e-mail antes de continuar."
+    sessions:
+      signed_in: "Login efetuado com sucesso."
+      signed_out: "Logout efetuado com sucesso."
+      already_signed_out: "Logout efetuado com sucesso."
+    passwords:
+      no_token: "Você não pode acessar esta página sem vir de um e-mail de redefinição de senha."
+      send_instructions: "Você receberá um e-mail com instruções sobre como redefinir sua senha em alguns minutos."
+      send_paranoid_instructions: "Se o seu e-mail existir em nossa base de dados, você receberá um link com instruções sobre como redefinir sua senha em alguns minutos."
+      updated: "Sua senha foi alterada com sucesso. Você está autenticado(a)."
+      updated_not_active: "Sua senha foi alterada com sucesso."
