@@ -5,12 +5,29 @@
 class DemandasController < ApplicationController
   before_action :set_demanda, only: %i[edit update destroy]
 
+  # Colunas que podem ser usadas para ordenar a listagem (whitelist —
+  # nunca interpolar params[:sort] direto numa query). A chave é o valor
+  # aceito em params[:sort]/usado nos links da view; o valor é a coluna
+  # SQL real (já qualificada, pois "responsavel" ordena pela tabela users).
+  SORTABLE_COLUMNS = {
+    "title" => "demandas.title",
+    "status" => "demandas.status",
+    "responsavel" => "users.name",
+    "created_at" => "demandas.created_at"
+  }.freeze
+
   def index
-    scope = Demanda.accessible_by(current_ability).includes(:user).order(created_at: :desc)
+    scope = Demanda.accessible_by(current_ability).includes(:user).references(:user)
 
     @q = params[:q]
     @status_filter = params[:status]
-    @demandas = paginate(filter_demandas(scope))
+    @sort = SORTABLE_COLUMNS.key?(params[:sort]) ? params[:sort] : "created_at"
+    @direction = params[:direction] == "asc" ? "asc" : "desc"
+
+    scope = filter_demandas(scope)
+      .order(Arel.sql("#{SORTABLE_COLUMNS.fetch(@sort)} #{@direction}, demandas.id #{@direction}"))
+
+    @demandas = paginate(scope)
     @title_suggestions = Demanda.distinct.order(:title).limit(50).pluck(:title)
   end
 

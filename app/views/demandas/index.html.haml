@@ -1,17 +1,22 @@
-.d-flex.justify-content-between.align-items-center.mb-3
-  %h1 Demandas
-  - if can? :create, Demanda
-    = link_to "Nova demanda", new_demanda_path, class: "btn btn-tk-primary"
+- content_for :page_title, "Demandas"
+%h1.visually-hidden Demandas
 
-%p.text-muted
-  - if current_user.lider?
-    Como líder, você pode criar, editar e excluir qualquer demanda.
-  - else
-    Como executor, você pode criar demandas e visualizar todas, mas apenas o líder edita ou exclui.
+.d-flex.justify-content-between.align-items-center.flex-wrap.gap-2.mb-3
+  %p.text-muted.mb-0
+    - if current_user.lider?
+      Como líder, você pode criar, editar e excluir qualquer demanda.
+    - else
+      Como executor, você pode criar demandas e visualizar todas, mas apenas o líder edita ou exclui.
+  - if can? :create, Demanda
+    = link_to "Nova demanda", new_demanda_path, class: "btn btn-tk-primary text-nowrap"
 
 .card.tk-card.mb-3
   .card-body
     = form_with url: demandas_path, method: :get, local: true, class: "row g-2 align-items-end" do |f|
+      - if params[:sort].present?
+        = f.hidden_field :sort, value: params[:sort]
+      - if params[:direction].present?
+        = f.hidden_field :direction, value: params[:direction]
       .col-md-6
         = f.label :q, "Buscar por título", class: "tk-filter-label form-label mb-1"
         = f.text_field :q, value: @q, list: "demanda-title-suggestions", autocomplete: "off",
@@ -31,10 +36,10 @@
   %table.table.table-hover.align-middle
     %thead
       %tr
-        %th Título
-        %th Status
-        %th Responsável
-        %th Criada em
+        %th= demanda_sort_header("title", "Título")
+        %th= demanda_sort_header("status", "Status")
+        %th= demanda_sort_header("responsavel", "Responsável")
+        %th= demanda_sort_header("created_at", "Criada em")
         - if can? :update, Demanda
           %th.text-end Ações
     %tbody
