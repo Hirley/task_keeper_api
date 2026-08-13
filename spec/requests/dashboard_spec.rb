@@ -108,12 +108,18 @@ RSpec.describe "Painel inicial (dashboard)", type: :request do
 
       get "/"
 
-      body = response.body
-      pos_a = body.index("Ana Carga")
-      pos_b = body.index("Bruno Carga")
+      # "Ana Carga"/"Bruno Carga" também podem aparecer em "Atividade
+      # recente" (que lista as demandas mais novas primeiro, então nem
+      # sempre na mesma ordem da carga por responsável) — como essa
+      # seção vem ANTES de "Carga por responsável" no HTML, basta
+      # restringir a checagem de ordem a partir do id da segunda seção
+      # em diante (nenhuma outra seção depois dela repete esses nomes).
+      carga_section = response.body[/id="carga-por-responsavel".*/m]
+      pos_a = carga_section.index("Ana Carga")
+      pos_b = carga_section.index("Bruno Carga")
       expect(pos_a).to be < pos_b
-      expect(body).to include('<span class="load-count">3</span>')
-      expect(body).to include('<span class="load-count">1</span>')
+      expect(carga_section).to include('<span class="load-count">3</span>')
+      expect(carga_section).to include('<span class="load-count">1</span>')
     end
 
     it "mostra o card Equipe para o líder" do
