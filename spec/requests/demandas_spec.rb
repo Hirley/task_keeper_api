@@ -38,6 +38,25 @@ RSpec.describe "Demandas (tela web)", type: :request do
       expect(response.body).to include("@hotwired/turbo-rails")
     end
 
+    it "não repete o título da página como um heading visível igual ao item do menu" do
+      sign_in executor
+
+      get "/demandas"
+
+      expect(response.body).to include("<title>Demandas · Task Keeper API</title>")
+      expect(response.body).to include("visually-hidden")
+    end
+
+    it "os alertas de flash podem ser fechados (têm botão de fechar)" do
+      sign_in executor
+      post "/demandas", params: { demanda: { title: "Nova demanda web" } }
+
+      follow_redirect!
+
+      expect(response.body).to include("alert-dismissible")
+      expect(response.body).to include("btn-close")
+    end
+
     it "pede confirmação antes de excluir" do
       create(:demanda, user: executor)
       sign_in lider

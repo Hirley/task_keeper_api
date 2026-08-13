@@ -1,9 +1,9 @@
-.d-flex.justify-content-between.align-items-center.mb-3
-  %h1 Acessos
-  = link_to "Novo usuário", new_user_path, class: "btn btn-tk-primary"
+- content_for :page_title, "Acessos"
+%h1.visually-hidden Acessos
 
-%p.text-muted
-  Apenas o líder cadastra novos usuários e altera permissões. Não há autocadastro.
+.d-flex.justify-content-between.align-items-center.flex-wrap.gap-2.mb-3
+  %p.text-muted.mb-0 Apenas o líder cadastra novos usuários e altera permissões. Não há autocadastro.
+  = link_to "Novo usuário", new_user_path, class: "btn btn-tk-primary text-nowrap"
 
 .card.tk-card.mb-3
   .card-body

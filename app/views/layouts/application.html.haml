@@ -3,7 +3,7 @@
   %head
     %meta{ charset: "utf-8" }
     %meta{ name: "viewport", content: "width=device-width, initial-scale=1" }
-    %title Task Keeper API
+    %title= content_for?(:page_title) ? "#{yield(:page_title)} · Task Keeper API" : "Task Keeper API"
     %link{ rel: "preconnect", href: "https://fonts.googleapis.com" }
     %link{ rel: "preconnect", href: "https://fonts.gstatic.com", crossorigin: "anonymous" }
     %link{ rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Open+Sans:wght@300;400;600&display=swap" }
@@ -38,7 +38,9 @@
 
     .container.mt-4.mb-5
       - flash.each do |type, message|
-        .alert.tk-alert{ class: "alert-#{type == 'alert' ? 'danger' : 'success'}" }= message
+        .alert.tk-alert.alert-dismissible.fade.show{ class: "alert-#{type == 'alert' ? 'danger' : 'success'}", role: "alert" }
+          = message
+          %button.btn-close{ type: "button", data: { bs_dismiss: "alert" }, "aria-label" => "Fechar" }
 
       = yield
 

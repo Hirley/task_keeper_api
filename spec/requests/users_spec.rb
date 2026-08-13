@@ -30,6 +30,14 @@ RSpec.describe "Usuários (tela web de Acessos)", type: :request do
       expect(response.body).to include("Acessos")
     end
 
+    it "não repete o título da página como um heading visível igual ao item do menu" do
+      sign_in lider
+      get "/users"
+
+      expect(response.body).to include("<title>Acessos · Task Keeper API</title>")
+      expect(response.body).to include("visually-hidden")
+    end
+
     it "filtra por nome/e-mail via o formulário de busca" do
       create(:user, name: "Ana Souza", email: "ana@task-keeper.local")
       create(:user, name: "Bruno Lima", email: "bruno@task-keeper.local")
@@ -82,6 +90,10 @@ RSpec.describe "Usuários (tela web de Acessos)", type: :request do
         post "/users", params: novo_usuario_params
       }.to change(User, :count).by(1)
       expect(response).to redirect_to(users_path)
+
+      follow_redirect!
+      expect(response.body).to include("alert-dismissible")
+      expect(response.body).to include("btn-close")
       expect(User.last.executor?).to be true
     end
   end
