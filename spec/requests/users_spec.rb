@@ -106,6 +106,15 @@ RSpec.describe "Usuários (tela web de Acessos)", type: :request do
       expect(response.body).to include("btn-close")
       expect(User.last.executor?).to be true
     end
+
+    it "salva o telegram_chat_id quando informado" do
+      sign_in lider
+      params = novo_usuario_params.deep_merge(user: { telegram_chat_id: "999888777" })
+
+      post "/users", params: params
+
+      expect(User.last.telegram_chat_id).to eq("999888777")
+    end
   end
 
   describe "GET /users/:id/edit" do
@@ -146,6 +155,19 @@ RSpec.describe "Usuários (tela web de Acessos)", type: :request do
       sign_in lider
       patch "/users/#{outro_lider.id}", params: { user: { role: "executor" } }
       expect(outro_lider.reload.executor?).to be true
+    end
+
+    it "permite que um líder cadastre o telegram_chat_id de outro usuário" do
+      sign_in lider
+      patch "/users/#{outro_usuario.id}", params: { user: { telegram_chat_id: "111222333" } }
+      expect(outro_usuario.reload.telegram_chat_id).to eq("111222333")
+    end
+
+    it "rejeita um telegram_chat_id não numérico e não altera o usuário" do
+      sign_in lider
+      patch "/users/#{outro_usuario.id}", params: { user: { telegram_chat_id: "não-é-um-numero" } }
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(outro_usuario.reload.telegram_chat_id).to be_nil
     end
   end
 

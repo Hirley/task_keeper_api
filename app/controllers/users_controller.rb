@@ -65,13 +65,14 @@ class UsersController < ApplicationController
   end
 
   def user_params
-    params.require(:user).permit(:name, :email, :password, :password_confirmation, :role)
+    params.require(:user).permit(:name, :email, :password, :password_confirmation, :role, :telegram_chat_id)
   end
 
   # Na edição não alteramos a senha por aqui (fluxo de "esqueci minha senha"
-  # do Devise cobre isso); apenas dados cadastrais e a permissão (papel).
+  # do Devise cobre isso); apenas dados cadastrais, a permissão (papel) e o
+  # chat_id do Telegram usado para lembretes de atraso.
   def permission_params
-    params.require(:user).permit(:name, :email, :role)
+    params.require(:user).permit(:name, :email, :role, :telegram_chat_id)
   end
 
   # Filtro usado na busca da tela de Acessos (campo com autocomplete por

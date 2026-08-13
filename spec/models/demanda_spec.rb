@@ -30,4 +30,31 @@ RSpec.describe Demanda, type: :model do
     expect(lider_demanda).to be_valid
     expect(executor_demanda).to be_valid
   end
+
+  describe "#atraso_notificado_em" do
+    it "é zerado quando a data é adiada para hoje ou o futuro" do
+      demanda = create(:demanda, data: 3.days.ago.to_date, atraso_notificado_em: 1.hour.ago)
+
+      demanda.update!(data: Date.current)
+
+      expect(demanda.atraso_notificado_em).to be_nil
+    end
+
+    it "é zerado quando a demanda é marcada como concluída" do
+      demanda = create(:demanda, data: 3.days.ago.to_date, atraso_notificado_em: 1.hour.ago)
+
+      demanda.update!(status: :concluida)
+
+      expect(demanda.atraso_notificado_em).to be_nil
+    end
+
+    it "não é alterado quando outros campos mudam e ela continua atrasada e não concluída" do
+      marcado_em = 1.hour.ago
+      demanda = create(:demanda, data: 3.days.ago.to_date, atraso_notificado_em: marcado_em)
+
+      demanda.update!(description: "Nova descrição")
+
+      expect(demanda.reload.atraso_notificado_em).to be_within(1.second).of(marcado_em)
+    end
+  end
 end

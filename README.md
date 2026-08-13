@@ -45,7 +45,7 @@ bin/rails db:seed   # cria um usuário líder e um executor de exemplo
 bin/rails server
 ```
 
-Se você já tinha o banco criado localmente (de antes do campo **Data** em demandas existir), rode `bin/rails db:migrate` para aplicar a nova migration.
+Se você já tinha o banco criado localmente (de antes do campo **Data** em demandas, ou do campo **Chat ID do Telegram** existirem), rode `bin/rails db:migrate` para aplicar as migrations novas.
 
 Rodar a suíte de testes:
 
@@ -85,6 +85,25 @@ A home (`/`, menu "Início") é um painel com uma visão geral das demandas, pen
 - **Equipe** (só para o líder): contagem de líderes/executores, com atalho para `/users`.
 
 Todos os dados vêm do banco (nada é fixo/mockado) e respeitam a mesma autorização já usada na listagem de demandas (`Demanda.accessible_by(current_ability)`).
+
+## Notificação de atraso via Telegram
+
+Quando uma demanda de um executor fica atrasada (data no passado e ainda não concluída — o mesmo critério já usado no badge "Atrasada há N dias" do painel inicial), o app pode avisar o responsável por mensagem no Telegram. É opt-in por usuário e não depende de nenhum serviço externo pago.
+
+**Configuração:**
+
+1. Crie um bot conversando com o [@BotFather](https://t.me/BotFather) no Telegram (`/newbot`) e copie o token gerado.
+2. Configure a variável de ambiente `TELEGRAM_BOT_TOKEN` com esse token (no Railway: aba **Variables** do serviço).
+3. Cada usuário que quiser receber avisos descobre o próprio `chat_id` conversando com o [@userinfobot](https://t.me/userinfobot) no Telegram.
+4. O líder cadastra esse `chat_id` no campo **Chat ID do Telegram** ao criar ou editar o usuário em `/users`.
+
+**Como funciona:**
+
+- `TelegramNotifier` (`app/services/telegram_notifier.rb`) monta a mensagem e chama a API do Telegram (`sendMessage`) via `Net::HTTP` puro — sem gem nova, para não depender de `bundle install`/rede externa neste ambiente de desenvolvimento.
+- A mensagem é empática e objetiva: cita o título da demanda e há quantos dias está atrasada, sem tom de cobrança, e diz o que fazer a seguir (atualizar o status, ou avisar o líder se precisar de mais tempo/ajuda).
+- Como "ficar atrasada" é um estado que muda com o tempo (não com uma ação do usuário), o envio não acontece automaticamente na aplicação — é a tarefa `bin/rails demandas:notificar_atrasos` (`lib/tasks/telegram_notifications.rake`) que precisa rodar periodicamente (ex.: 1x ao dia). No Railway, isso é feito criando um segundo serviço do tipo **Cron Job** no mesmo projeto, rodando esse comando.
+- Cada atraso é notificado **uma única vez** (campo `Demanda#atraso_notificado_em`) — se a demanda deixar de estar atrasada (data adiada ou marcada como concluída) e depois atrasar de novo, um novo aviso é enviado.
+- Sem `TELEGRAM_BOT_TOKEN` configurado, ou sem `telegram_chat_id` no usuário, a notificação é simplesmente pulada (não é um erro).
 
 ## Tela web de demandas
 
