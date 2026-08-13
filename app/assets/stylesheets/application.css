@@ -504,3 +504,139 @@ input:focus-visible {
   font-size: 0.76rem;
   color: #667077;
 }
+
+/* ---------- Barra de acessibilidade ---------- */
+/* Mesmo padrão dos portais gov.br (inclusive o da CGE-CE que inspirou a
+   identidade visual): uma faixa fina acima do cabeçalho, disponível em
+   toda tela — com ou sem login, já que alguém pode precisar desses
+   controles justamente para conseguir usar a tela de login. */
+
+.tk-a11y-bar {
+  background: var(--tk-gradient);
+  padding: 0.3rem 0;
+}
+
+.tk-a11y-btn {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--tk-radius-sm);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tk-a11y-btn:hover,
+.tk-a11y-btn:focus-visible {
+  background-color: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.tk-a11y-btn[aria-pressed="true"] {
+  background-color: rgba(255, 255, 255, 0.28);
+}
+
+/* ---------- Modo de alto contraste ---------- */
+/* Acionado pelo botão ◐ da barra de acessibilidade (ver
+   app/javascript/application.js). Fundo preto, texto branco, amarelo
+   como cor de destaque (o par preto/amarelo é o esquema de alto
+   contraste mais usado — inclusive pelo "Alto Contraste" nativo do
+   Windows) — trocado só via as custom properties (--tk-teal,
+   --tk-gradient...) sempre que possível, para não precisar sobrescrever
+   cada componente individualmente. As cores de status (pendente/andamento/
+   concluída) NÃO mudam aqui: já são suficientemente saturadas e formam um
+   conjunto categórico distinguível por si só (validado com o script de
+   paleta do skill de dataviz) — trocar uma delas por amarelo colidiria
+   com "pendente", que já é amarelo/âmbar. */
+
+html.tk-high-contrast {
+  --tk-bg: #000;
+  --tk-text: #fff;
+  --tk-teal: #ffd400;
+  --tk-gradient: #000;
+  --tk-gradient-soft: #000;
+  --tk-shadow: none;
+}
+
+.tk-high-contrast .tk-navbar,
+.tk-high-contrast .tk-a11y-bar,
+.tk-high-contrast .tk-login-header {
+  border-bottom: 2px solid #ffd400;
+}
+
+.tk-high-contrast .tk-footer {
+  background-color: #000;
+  color: #fff;
+  border-top: 2px solid #ffd400;
+}
+
+.tk-high-contrast .tk-card,
+.tk-high-contrast .stat-tile,
+.tk-high-contrast .tk-login-card {
+  background-color: #111 !important;
+  border: 1px solid #ffd400;
+  color: #fff;
+}
+
+.tk-high-contrast .tk-card thead th {
+  background-color: #000;
+  border-bottom-color: #ffd400;
+}
+
+.tk-high-contrast .tk-card tbody tr:hover {
+  background-color: #1a1a1a;
+}
+
+.tk-high-contrast .tk-card td,
+.tk-high-contrast .tk-card th,
+.tk-high-contrast table.tk-table td,
+.tk-high-contrast table.tk-table th {
+  /* O Bootstrap pinta cada célula com "background-color:
+     var(--bs-table-bg)" (que resolve para branco), em vez de deixar a
+     célula transparente e herdar o fundo escuro do .tk-card — por isso
+     é preciso sobrescrever o fundo aqui também, não só a cor do texto,
+     senão o texto branco fica invisível sobre a célula branca. */
+  background-color: #111;
+  color: #fff;
+  border-color: #333;
+}
+
+.tk-high-contrast .stat-label,
+.tk-high-contrast .stat-sub,
+.tk-high-contrast .activity-time,
+.tk-high-contrast .load-count,
+.tk-high-contrast .tk-filter-label,
+.tk-high-contrast .text-muted {
+  color: #d0d0d0 !important;
+}
+
+.tk-high-contrast .btn-tk-primary {
+  background: #ffd400;
+  border: 2px solid #ffd400;
+  color: #000;
+}
+
+.tk-high-contrast .btn-tk-outline {
+  background-color: #111;
+  border-color: #ffd400;
+  color: #ffd400;
+}
+
+.tk-high-contrast .btn-tk-outline:hover,
+.tk-high-contrast .btn-tk-outline:focus {
+  background-color: #ffd400;
+  color: #000;
+}
+
+.tk-high-contrast .badge {
+  border: 1px solid #000;
+}
+
+.tk-high-contrast a {
+  text-decoration: underline;
+}

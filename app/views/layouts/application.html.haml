@@ -13,6 +13,19 @@
     = csp_meta_tag
     = javascript_importmap_tags
   %body
+    .tk-a11y-bar
+      .container.d-flex.align-items-center.justify-content-end.gap-1
+        %button.tk-a11y-btn{ type: "button", "aria-label" => "Diminuir tamanho da fonte", onclick: "TkAccessibility.decreaseFont()" }
+          A−
+        %button.tk-a11y-btn{ type: "button", "aria-label" => "Aumentar tamanho da fonte", onclick: "TkAccessibility.increaseFont()" }
+          A+
+        %button.tk-a11y-btn{ type: "button", "aria-label" => "Restaurar tamanho de fonte padrão", onclick: "TkAccessibility.resetFont()" }
+          ↺A
+        %button.tk-a11y-btn#tk-contrast-toggle{ type: "button", "aria-label" => "Ativar alto contraste", "aria-pressed" => "false", onclick: "TkAccessibility.toggleContrast()" }
+          ◐
+        = link_to acessibilidade_path, class: "tk-a11y-btn", "aria-label" => "Acessibilidade — recursos e atalhos" do
+          ♿
+
     %nav.navbar.navbar-expand-lg.navbar-dark.tk-navbar
       .container
         = link_to root_path, class: "navbar-brand tk-brand" do
@@ -52,3 +65,14 @@
         %span.text-white-50.small= "© #{Time.current.year}"
 
     %script{ src: "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" }
+
+    / Widget oficial do governo federal para tradução em Libras (Língua
+    / Brasileira de Sinais) — mesmo padrão usado em sites gov.br, incluindo
+    / o da CGE-CE que inspirou a identidade visual deste app.
+    .enabled{ vw: true }
+      .active{ "vw-access-button" => true }
+      %div{ "vw-plugin-wrapper" => true }
+        .vw-plugin-top-wrapper
+    %script{ src: "https://vlibras.gov.br/app/vlibras-plugin.js" }
+    :javascript
+      new window.VLibras.Widget('https://vlibras.gov.br/app');

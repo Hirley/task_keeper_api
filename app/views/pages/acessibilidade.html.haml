@@ -1,0 +1,41 @@
+- content_for :page_title, "Acessibilidade"
+%h1.visually-hidden Acessibilidade
+
+.card.tk-card.mb-3
+  .card-body
+    %h2.h5.mb-3 Recursos de acessibilidade
+
+    %p
+      Esses recursos ficam disponíveis na barra no topo de qualquer tela, com ou sem login.
+
+    %ul
+      %li
+        %strong Tamanho da fonte:
+        os botões
+        %kbd A−
+        e
+        %kbd A+
+        diminuem e aumentam o texto em passos de 10%; o botão
+        %kbd ↺A
+        volta ao tamanho padrão. A preferência é lembrada nas próximas visitas.
+      %li
+        %strong Alto contraste:
+        o botão
+        %kbd ◐
+        alterna para um esquema de cores com contraste reforçado (fundo escuro, texto claro). A preferência também é lembrada.
+      %li
+        %strong Tradução em Libras:
+        o botão
+        %kbd ♿
+        no canto da tela abre o VLibras, o widget oficial do governo federal que traduz o conteúdo para Língua Brasileira de Sinais.
+      %li
+        %strong Navegação por teclado:
+        todos os links, botões e campos são alcançáveis via
+        %kbd Tab
+        , com um contorno visível ao receber foco.
+      %li
+        %strong Leitores de tela:
+        botões que usam apenas ícones (fechar alerta, ordenar coluna, ações da barra de acessibilidade) têm um rótulo descritivo no atributo aria-label, mesmo quando o texto visível é só um símbolo.
+
+    %p.text-muted.small.mb-0
+      Encontrou algo que não está acessível para você? Avise o líder da sua equipe.
