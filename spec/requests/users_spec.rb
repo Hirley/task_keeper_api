@@ -4,6 +4,16 @@ RSpec.describe "Usuários (tela web de Acessos)", type: :request do
   let(:lider) { create(:user, :lider) }
   let(:executor) { create(:user, :executor) }
 
+  # A tela de listagem tem um <datalist> de autocomplete com TODOS os
+  # nomes/e-mails cadastrados (sem respeitar filtro — é só sugestão de
+  # busca). Para não confundir esse datalist com os resultados exibidos
+  # na tabela, os testes de filtro devem inspecionar apenas o HTML
+  # dentro do <tbody> da tabela de resultados (mesmo padrão usado em
+  # spec/requests/demandas_spec.rb).
+  def results_table(response)
+    response.body[/<tbody>.*?<\/tbody>/m]
+  end
+
   let(:novo_usuario_params) do
     {
       user: {
@@ -45,8 +55,8 @@ RSpec.describe "Usuários (tela web de Acessos)", type: :request do
 
       get "/users", params: { q: "Ana" }
 
-      expect(response.body).to include("Ana Souza")
-      expect(response.body).not_to include("Bruno Lima")
+      expect(results_table(response)).to include("Ana Souza")
+      expect(results_table(response)).not_to include("Bruno Lima")
     end
 
     it "filtra por permissão" do
@@ -56,8 +66,8 @@ RSpec.describe "Usuários (tela web de Acessos)", type: :request do
 
       get "/users", params: { role: "lider" }
 
-      expect(response.body).to include("Outra Liderança")
-      expect(response.body).not_to include("Outro Executor")
+      expect(results_table(response)).to include("Outra Liderança")
+      expect(results_table(response)).not_to include("Outro Executor")
     end
   end
 
