@@ -15,15 +15,25 @@ API REST em Ruby on Rails para criar, organizar e acompanhar demandas diárias, 
 - Existem dois papéis de usuário: **líder** e **executor**.
 - Ambos os papéis podem cadastrar novas demandas.
 - Apenas o líder pode editar ou excluir uma demanda já existente.
-- Apenas o líder pode cadastrar novos usuários (não há autocadastro).
+- Apenas o líder pode cadastrar, alterar a permissão (papel) e excluir usuários (não há autocadastro).
+- Um líder não pode excluir a própria conta, nem excluir um usuário que já tenha demandas cadastradas.
 
 ## Cobertura de testes
 
-A suíte RSpec cobre models (`User`, `Demanda`), a política de autorização (`Ability`) e os endpoints da API (`spec/requests/api/v1`), validando explicitamente que:
+A suíte RSpec cobre:
 
-- um `executor` consegue criar uma demanda mas recebe `403` ao tentar atualizar ou excluir;
+- **Models**: `User` e `Demanda` (`spec/models`);
+- **Política de autorização**: `Ability` (`spec/models/ability_spec.rb`), validando cada combinação de papel × ação para `Demanda` e `User`;
+- **API** (`spec/requests/api/v1`): `demandas` e `users`;
+- **Telas web** (`spec/requests`): `demandas` (menu Demandas) e `users` (menu Acessos).
+
+Cenários validados explicitamente:
+
+- um `executor` consegue criar uma demanda (via tela ou API), mas recebe `403`/é redirecionado ao tentar atualizar ou excluir;
 - um `líder` consegue criar, atualizar e excluir demandas;
-- apenas um `líder` consegue listar/criar usuários via `/api/v1/users`.
+- apenas um `líder` consegue listar/criar/excluir usuários, tanto pela tela `/users` quanto por `/api/v1/users`;
+- um `líder` não consegue excluir a própria conta, nem um usuário com demandas vinculadas;
+- o botão "Excluir" (demandas e usuários) carrega o Turbo e mostra o alerta de confirmação antes de enviar o form.
 
 ## Setup local
 
