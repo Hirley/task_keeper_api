@@ -31,9 +31,10 @@ class User < ApplicationRecord
   # Whitelist exigida pelo Ransack (usado em UsersController#index e, via
   # associação "user", em DemandasController#index para ordenar por
   # responsável). Sem isso o Ransack recusa buscar/ordenar por qualquer
-  # atributo, por segurança.
+  # atributo, por segurança. "id" está aqui só para o desempate estável na
+  # ordenação da tela de Acessos (ver UsersController::SORTABLE_COLUMNS).
   def self.ransackable_attributes(_auth_object = nil)
-    %w[name email role]
+    %w[name email role id]
   end
 
   def self.ransackable_associations(_auth_object = nil)

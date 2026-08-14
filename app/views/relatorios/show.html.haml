@@ -1,0 +1,94 @@
+- content_for :page_title, "Relatório semanal"
+%h1.visually-hidden Relatório semanal
+
+.d-flex.justify-content-between.align-items-center.flex-wrap.gap-2.mb-3
+  %p.text-muted.mb-0
+    = "Período: #{@relatorio.periodo_inicio.strftime('%d/%m/%Y')} a #{@relatorio.periodo_fim.strftime('%d/%m/%Y')} (últimos 7 dias)"
+  .d-flex.gap-2
+    = link_to "Baixar PDF", relatorio_semanal_pdf_path, class: "btn btn-tk-outline", target: "_blank", rel: "noopener"
+    = button_to "Enviar por Telegram", relatorio_enviar_telegram_path, method: :post, class: "btn btn-tk-primary"
+
+.row.g-3.mb-4
+  .col-6.col-lg-3
+    .stat-tile
+      .stat-label Criadas na semana
+      .stat-value= @relatorio.criadas.size
+  .col-6.col-lg-3
+    .stat-tile.stat-tile-concluida
+      .stat-label Concluídas na semana
+      .stat-value= @relatorio.concluidas.size
+  .col-6.col-lg-3
+    .stat-tile.stat-tile-pendente
+      .stat-label Atrasadas (hoje)
+      .stat-value= @relatorio.atrasadas
+  .col-6.col-lg-3
+    .stat-tile
+      .stat-label Total em aberto
+      .stat-value= @relatorio.status_counts["pendente"] + @relatorio.status_counts["em_andamento"]
+
+.row.g-3
+  .col-lg-6
+    .card.tk-card.mb-3
+      .card-header Demandas criadas na semana
+      .card-body.pt-2
+        - if @relatorio.criadas.any?
+          %table.table.tk-table.mb-0
+            %thead
+              %tr
+                %th Título
+                %th Responsável
+                %th Status
+            %tbody
+              - @relatorio.criadas.each do |demanda|
+                %tr
+                  %td= demanda.title
+                  %td= demanda.user&.name
+                  %td
+                    %span{ class: "badge tk-badge-status-#{demanda.status}" }= demanda.status.humanize
+        - else
+          %p.text-muted.mb-0 Nenhuma demanda criada nos últimos 7 dias.
+
+    .card.tk-card
+      .card-header Demandas concluídas na semana
+      .card-body.pt-2
+        - if @relatorio.concluidas.any?
+          %table.table.tk-table.mb-0
+            %thead
+              %tr
+                %th Título
+                %th Responsável
+            %tbody
+              - @relatorio.concluidas.each do |demanda|
+                %tr
+                  %td= demanda.title
+                  %td= demanda.user&.name
+        - else
+          %p.text-muted.mb-0 Nenhuma demanda concluída nos últimos 7 dias.
+        %p.text-muted.small.mt-2.mb-0
+          Aproximação: como não há um campo dedicado de "concluída em", isso lista demandas
+          já concluídas cujo último registro de atualização caiu nesta janela.
+
+  .col-lg-6
+    .card.tk-card.mb-3
+      .card-header Situação atual (todos os status)
+      .card-body.pt-2
+        - Demanda.statuses.keys.each do |status|
+          .prazo-row
+            %span= status.humanize
+            %span.prazo-count.prazo-count-neutral= @relatorio.status_counts[status]
+
+    .card.tk-card
+      .card-header
+        %span Carga atual por responsável
+        %small.text-muted demandas abertas
+      .card-body.pt-2
+        - if @relatorio.carga_por_responsavel.any?
+          - max_carga = @relatorio.carga_por_responsavel.map(&:last).max
+          - @relatorio.carga_por_responsavel.each do |nome, quantidade|
+            .load-row
+              %span.load-name= nome
+              .load-track
+                .load-fill{ style: "width: #{(quantidade.to_f / max_carga * 100).round}%" }
+              %span.load-count= quantidade
+        - else
+          %p.text-muted.mb-0 Nenhuma demanda em aberto no momento.

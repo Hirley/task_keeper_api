@@ -23,7 +23,7 @@ class DemandasController < ApplicationController
     scope = Demanda.accessible_by(current_ability).includes(:user)
 
     @q = params[:q]
-    @status_filter = params[:status]
+    @status_filter = normalized_status_filter
     @sort = SORTABLE_COLUMNS.key?(params[:sort]) ? params[:sort] : "created_at"
     @direction = params[:direction] == "asc" ? "asc" : "desc"
 
@@ -31,7 +31,14 @@ class DemandasController < ApplicationController
     # externo continua sendo os mesmos params simples de sempre (q, status,
     # sort, direction), não a sintaxe nativa do Ransack. "id" no fim mantém
     # o desempate estável que já existia antes.
-    ransack_query = scope.ransack(title_cont: @q.presence, status_eq: normalized_status_filter)
+    #
+    # "status" aceita um ou mais valores (status=x ou status[]=x&status[]=y
+    # — ver normalized_status_filter) — usa "_in" em vez de "_eq". "q"
+    # aceita um ou mais termos separados por vírgula (ex.: "contrato,
+    # sala") — usa "_cont_any" em vez de "_cont", pra continuar sendo
+    # busca por substring (não por título exato), só que agora permitindo
+    # combinar vários termos com OR.
+    ransack_query = scope.ransack(title_cont_any: title_terms.presence, status_in: @status_filter.presence)
     ransack_query.sorts = ["#{SORTABLE_COLUMNS.fetch(@sort)} #{@direction}", "id #{@direction}"]
 
     @demandas = paginate(ransack_query.result)
@@ -84,12 +91,20 @@ class DemandasController < ApplicationController
     params.require(:demanda).permit(:title, :description, :status, :data)
   end
 
-  # Mesma validação de antes: só aplica o filtro de status se for uma chave
-  # válida do enum, para não deixar o Ransack tentar comparar com um valor
-  # arbitrário vindo da URL.
+  # Mesma validação de antes: só deixa passar chaves válidas do enum, pra
+  # não deixar o Ransack tentar comparar com um valor arbitrário vindo da
+  # URL. Aceita um valor único (status=x, formato antigo, ainda usado por
+  # quem já tinha um link/favorito salvo) ou vários (status[]=x&status[]=y,
+  # do <select multiple> da tela) — Array() normaliza os dois formatos.
   def normalized_status_filter
-    return nil unless params[:status].present? && Demanda.statuses.key?(params[:status])
+    Array(params[:status]).select { |status| Demanda.statuses.key?(status) }
+  end
 
-    params[:status]
+  # Divide o campo de busca por título em vários termos (separados por
+  # vírgula) — cada um vira uma condição "contém" combinada com OR (ver
+  # title_cont_any em #index). Um único termo sem vírgula (o caso mais
+  # comum) se comporta exatamente como antes.
+  def title_terms
+    @q.to_s.split(",").map(&:strip).reject(&:blank?)
   end
 end

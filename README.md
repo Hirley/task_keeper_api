@@ -8,6 +8,7 @@ API REST em Ruby on Rails para criar, organizar e acompanhar demandas diárias, 
 - Devise (autenticação) + CanCanCan (autorização)
 - HAML + Bootstrap (interface web mínima)
 - Ransack (mecanismo interno de filtro/ordenação — ver "Identidade visual e busca/paginação")
+- Prawn + prawn-table (PDF do relatório semanal — ver "Relatório semanal")
 - RSpec + FactoryBot + Shoulda Matchers (testes)
 - PostgreSQL
 - Docker (opcional — ver seção "Docker")
@@ -114,10 +115,10 @@ A suíte RSpec cobre:
 
 - **Models**: `User` e `Demanda` (`spec/models`), incluindo a validação do `telegram_chat_id` e o reset de `atraso_notificado_em`;
 - **Política de autorização**: `Ability` (`spec/models/ability_spec.rb`), validando cada combinação de papel × ação para `Demanda` e `User`;
-- **Serviços** (`spec/services`): `TelegramNotifier` — mensagem, envio e os casos de "não enviar" (sem token, sem chat_id, erro de rede), usando um dublê de transporte HTTP injetado no serviço (sem depender de gem de mock de rede); `Users::Destroy` — a regra de exclusão de usuário (exclusão da própria conta/demandas vinculadas), testada uma única vez e reaproveitada pela tela web e pela API;
+- **Serviços** (`spec/services`): `TelegramNotifier` — mensagem, envio (incluindo `#enviar_documento`, usado pelo relatório semanal) e os casos de "não enviar" (sem token, sem chat_id, erro de rede), usando um dublê de transporte HTTP injetado no serviço (sem depender de gem de mock de rede); `Users::Destroy` — a regra de exclusão de usuário (exclusão da própria conta/demandas vinculadas), testada uma única vez e reaproveitada pela tela web e pela API; `Relatorios::Semanal` — período considerado, filtro por período/status das demandas criadas/concluídas, contagens e carga por responsável;
 - **Tarefa agendada**: a rake task `demandas:notificar_atrasos` (`spec/tasks`) — idempotência, filtro por status/data/chat_id cadastrado;
 - **API** (`spec/requests/api/v1`): `demandas` e `users`;
-- **Telas web** (`spec/requests`): `demandas` (menu Demandas), `users` (menu Acessos), `dashboard` (painel inicial/Início) e a página pública `/acessibilidade`;
+- **Telas web** (`spec/requests`): `demandas` (menu Demandas, incluindo filtro por múltiplos status/termos), `users` (menu Acessos, incluindo filtro múltiplo e ordenação por todas as colunas), `dashboard` (painel inicial/Início), `relatorios` (menu Relatórios — acesso restrito ao líder, download do PDF, envio por Telegram) e a página pública `/acessibilidade`;
 - **Traduções pt-BR** (`spec/requests/devise_i18n_spec.rb`): regressão para a mensagem `Translation missing` do Devise (ver seção "Mensagens em pt-BR").
 - **Compatibilidade do Devise com Turbo Drive** (`spec/requests/devise_turbo_spec.rb`): regressão para um login inválido responder `200` em vez de `422` (ver "Devise + Turbo Drive" abaixo).
 
@@ -183,6 +184,17 @@ Quando uma demanda de um executor fica atrasada (data no passado e ainda não co
 - Cada atraso é notificado **uma única vez** (campo `Demanda#atraso_notificado_em`) — se a demanda deixar de estar atrasada (data adiada ou marcada como concluída) e depois atrasar de novo, um novo aviso é enviado.
 - Sem `TELEGRAM_BOT_TOKEN` configurado, ou sem `telegram_chat_id` no usuário, a notificação é simplesmente pulada (não é um erro).
 
+## Relatório semanal
+
+Tela em `/relatorios` (menu **Relatórios**), visível só pro líder (`can? :read, :relatorio` — ver `app/models/ability.rb`), com um resumo dos últimos 7 dias corridos (hoje e os 6 dias anteriores, não a semana de calendário): demandas criadas na semana, demandas concluídas na semana, situação atual por status, atrasadas, e carga atual por responsável. Os dados são montados por `Relatorios::Semanal` (`app/services/relatorios/semanal.rb`) e reutilizados tanto pela tela de pré-visualização quanto pelo PDF.
+
+**Geração é sob demanda** — o líder decide quando gerar, não há envio automático agendado (diferente do lembrete de atraso, que roda periodicamente por natureza). Duas formas de obter o relatório, ambas na mesma tela:
+
+- **Baixar PDF** (`GET /relatorios/semanal.pdf`): gerado com [Prawn](https://github.com/prawnpdf/prawn) + `prawn-table` (`Relatorios::SemanalPdf`, em `app/services/relatorios/semanal_pdf.rb`) — puro Ruby, sem depender de um binário externo tipo wkhtmltopdf ou Chrome headless (mesma filosofia de manter dependências leves já usada no restante do projeto).
+- **Enviar por Telegram** (`POST /relatorios/enviar_telegram`): envia o mesmo PDF como documento (`sendDocument` da API do Telegram) pro Chat ID do **próprio líder que pediu** — não pra outros usuários, mesmo que também tenham Chat ID cadastrado. Reaproveita a mesma configuração (`TELEGRAM_BOT_TOKEN`) e o mesmo padrão de "sem token/chat_id configurado não é erro, só não envia" já usado pelo lembrete de atraso; ver `TelegramNotifier#enviar_documento`.
+
+⚠️ Como o model `Demanda` não tem um campo dedicado de "concluída em", "demandas concluídas na semana" é uma aproximação baseada em `updated_at` das demandas já concluídas — pode incluir uma demanda que só teve outro campo editado depois de já estar concluída, não necessariamente a que virou concluída nesta semana exata. Documentado também no comentário de `Relatorios::Semanal#concluidas_no_periodo`.
+
 ## Tela web de demandas
 
 Além da API, há uma tela em `/demandas` (menu "Demandas" no topo) para uso pelos usuários autenticados:
@@ -209,7 +221,9 @@ Há também uma tela em `/users` (menu "Acessos" no topo, visível apenas ao lí
 
 O layout usa uma identidade visual própria (`app/assets/stylesheets/application.css`), com gradiente verde-petróleo, tipografia Kanit/Open Sans e componentes reutilizáveis (navbar, cards, badges, paginação). As telas de Demandas e Acessos ganharam um formulário de busca (com `<datalist>` de autocomplete) e paginação simples via `Paginatable` (`app/controllers/concerns/paginatable.rb`) — implementada só com Active Record (`limit`/`offset`), sem depender de gem externa como Kaminari.
 
-O filtro e a ordenação de `DemandasController#index` e `UsersController#index` são construídos internamente com [Ransack](https://github.com/activerecord-hackery/ransack), mas **a URL continua com o mesmo contrato simples de sempre** (`q`, `status`/`role`, `sort`, `direction`) — não expomos a sintaxe nativa do Ransack (`params[:q][:attr_predicate]`) para fora. `SORTABLE_COLUMNS`, em `DemandasController`, continua sendo a whitelist de colunas ordenáveis (traduzindo cada uma para o nome de atributo esperado pelo Ransack, ex.: `"responsavel" => "user_name"`, a convenção do Ransack para "atributo `name` da associação `user`"), e `status`/`role` continuam validados contra o enum antes de chegar ao Ransack. Por segurança, o Ransack exige que cada model libere explicitamente o que pode ser buscado/ordenado — ver `ransackable_attributes`/`ransackable_associations` em `Demanda` e `User`.
+O filtro e a ordenação de `DemandasController#index` e `UsersController#index` são construídos internamente com [Ransack](https://github.com/activerecord-hackery/ransack), mas **a URL continua com o mesmo contrato simples de sempre** (`q`, `status`/`role`, `sort`, `direction`) — não expomos a sintaxe nativa do Ransack (`params[:q][:attr_predicate]`) para fora. `SORTABLE_COLUMNS`, em `DemandasController`/`UsersController`, continua sendo a whitelist de colunas ordenáveis (traduzindo cada uma para o nome de atributo esperado pelo Ransack, ex.: `"responsavel" => "user_name"`, a convenção do Ransack para "atributo `name` da associação `user`"), e `status`/`role` continuam validados contra o enum antes de chegar ao Ransack. Por segurança, o Ransack exige que cada model libere explicitamente o que pode ser buscado/ordenado — ver `ransackable_attributes`/`ransackable_associations` em `Demanda` e `User`.
+
+**Seleção múltipla e ordenação em todas as colunas**: `status` (Demandas) e `role`/permissão (Acessos) agora aceitam mais de um valor ao mesmo tempo, via um `<select multiple>` — internamente vira `status_in`/`role_in` do Ransack (em vez de `status_eq`/`role_eq`). Nenhum valor selecionado equivale a "todos", igual antes. O campo de texto (`q`, título em Demandas / nome-ou-e-mail em Acessos) aceita mais de um termo separado por vírgula, combinados com OR via `_cont_any` — um único termo sem vírgula se comporta exatamente como antes (retrocompatível: os parâmetros antigos `status=x`/`role=x`, valor único, continuam funcionando — `Array()` normaliza os dois formatos). A tela de Acessos ganhou ordenação clicável em todas as colunas (Nome, E-mail, Permissão), igual já existia em Demandas — a lógica do cabeçalho clicável foi extraída pra `ApplicationHelper#sort_header`, reaproveitada pelas duas telas (`demanda_sort_header`/`user_sort_header`).
 
 As páginas de listagem (Demandas, Acessos) não repetem o nome da seção como um heading gigante logo abaixo do menu — o item ativo na navbar já indica onde você está, e o título de cada página fica no `<title>` da aba do navegador (`content_for :page_title`); o `%h1` continua no HTML por acessibilidade, só que visualmente oculto (`visually-hidden`).
 

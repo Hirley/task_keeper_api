@@ -69,6 +69,86 @@ RSpec.describe "Usuários (tela web de Acessos)", type: :request do
       expect(results_table(response)).to include("Outra Liderança")
       expect(results_table(response)).not_to include("Outro Executor")
     end
+
+    it "filtra por mais de uma permissão ao mesmo tempo (select multiple)" do
+      um_lider = create(:user, :lider, name: "Fulano Líder")
+      um_executor = create(:user, :executor, name: "Fulano Executor")
+      create(:user, :executor, name: "Nunca aparece", email: "nao-e-fulano@task-keeper.local")
+      sign_in lider
+
+      get "/users", params: { role: %w[lider executor], q: "Fulano" }
+
+      expect(results_table(response)).to include("Fulano Líder")
+      expect(results_table(response)).to include("Fulano Executor")
+      expect(results_table(response)).not_to include("Nunca aparece")
+    end
+
+    it "filtra por mais de um termo de busca, separados por vírgula" do
+      create(:user, name: "Ana Souza", email: "ana@task-keeper.local")
+      create(:user, name: "Bruno Lima", email: "bruno@task-keeper.local")
+      create(:user, name: "Carlos Dias", email: "carlos@task-keeper.local")
+      sign_in lider
+
+      get "/users", params: { q: "Ana, Bruno" }
+
+      table = results_table(response)
+      expect(table).to include("Ana Souza")
+      expect(table).to include("Bruno Lima")
+      expect(table).not_to include("Carlos Dias")
+    end
+
+    it "por padrão ordena por nome, A-Z" do
+      create(:user, name: "Zebra")
+      create(:user, name: "Abacaxi")
+      sign_in lider
+
+      get "/users"
+
+      table = results_table(response)
+      expect(table.index("Abacaxi")).to be < table.index("Zebra")
+    end
+
+    it "ordena por nome, Z-A, quando a coluna é clicada de novo" do
+      create(:user, name: "Zebra")
+      create(:user, name: "Abacaxi")
+      sign_in lider
+
+      get "/users", params: { sort: "name", direction: "desc" }
+
+      table = results_table(response)
+      expect(table.index("Zebra")).to be < table.index("Abacaxi")
+    end
+
+    it "ordena por e-mail" do
+      create(:user, name: "Usuário 1", email: "zzz@task-keeper.local")
+      create(:user, name: "Usuário 2", email: "aaa@task-keeper.local")
+      sign_in lider
+
+      get "/users", params: { sort: "email", direction: "asc" }
+
+      table = results_table(response)
+      expect(table.index("Usuário 2")).to be < table.index("Usuário 1")
+    end
+
+    it "ordena por permissão" do
+      create(:user, :lider, name: "Um Líder")
+      create(:user, :executor, name: "Um Executor")
+      sign_in lider
+
+      get "/users", params: { sort: "role", direction: "asc" }
+
+      table = results_table(response)
+      expect(table.index("Um Executor")).to be < table.index("Um Líder")
+    end
+
+    it "ignora um parâmetro de ordenação inválido/malicioso e não quebra a página" do
+      create(:user, name: "Usuário qualquer")
+      sign_in lider
+
+      get "/users", params: { sort: "1; DROP TABLE users;--", direction: "asc" }
+
+      expect(response).to have_http_status(:ok)
+    end
   end
 
   describe "GET /users/new" do

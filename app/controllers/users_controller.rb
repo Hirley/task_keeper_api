@@ -7,11 +7,25 @@ class UsersController < ApplicationController
   before_action :authorize_manage_users!
   before_action :set_user, only: %i[edit update destroy]
 
+  # Colunas que podem ser usadas para ordenar a listagem (whitelist — nunca
+  # interpolar params[:sort] direto numa query). Mesma convenção usada em
+  # DemandasController::SORTABLE_COLUMNS.
+  SORTABLE_COLUMNS = {
+    "name" => "name",
+    "email" => "email",
+    "role" => "role"
+  }.freeze
+
   def index
-    scope = User.order(:name)
+    scope = User.all
 
     @q = params[:q]
-    @role_filter = params[:role]
+    @role_filter = normalized_role_filter
+    @sort = SORTABLE_COLUMNS.key?(params[:sort]) ? params[:sort] : "name"
+    # Default "asc" (não "desc" como em Demandas) pra preservar o
+    # comportamento antigo, que era sempre `.order(:name)` ascendente.
+    @direction = params[:direction] == "desc" ? "desc" : "asc"
+
     @users = paginate(filter_users(scope))
     @name_suggestions = User.order(:name).limit(50).pluck(:name)
   end
@@ -75,22 +89,30 @@ class UsersController < ApplicationController
   # Filtro usado na busca da tela de Acessos (campo com autocomplete por
   # nome/e-mail + select de permissão). Ambos são opcionais. Ransack é usado
   # só como mecanismo interno de query — o contrato externo continua sendo
-  # os mesmos params simples de sempre (q, role), não a sintaxe nativa do
-  # Ransack. "name_or_email_cont" é a convenção do Ransack para combinar
-  # duas condições com OR a partir de um único termo de busca (equivalente
-  # ao antigo "users.name LIKE ? OR users.email LIKE ?"). A ordenação por
-  # nome continua fixa (.order(:name) em #index), não é ajustável por quem
-  # acessa a tela, então não passamos "sorts" para o Ransack aqui.
+  # os mesmos params simples de sempre (q, role, sort, direction), não a
+  # sintaxe nativa do Ransack. "name_or_email_cont_any" combina duas coisas:
+  # "name_or_email" (convenção do Ransack pra combinar duas condições com
+  # OR, equivalente a "users.name LIKE ? OR users.email LIKE ?") e
+  # "_cont_any" (aceita vários termos, um por linha do array, também
+  # combinados com OR — ver #title_terms em DemandasController pro mesmo
+  # padrão). "id" no fim mantém o desempate estável.
   def filter_users(scope)
-    scope.ransack(name_or_email_cont: params[:q].presence, role_eq: normalized_role_filter).result
+    ransack_query = scope.ransack(name_or_email_cont_any: q_terms.presence, role_in: @role_filter.presence)
+    ransack_query.sorts = ["#{SORTABLE_COLUMNS.fetch(@sort)} #{@direction}", "id #{@direction}"]
+    ransack_query.result
   end
 
-  # Mesma validação de antes: só aplica o filtro de permissão se for uma
-  # chave válida do enum, para não deixar o Ransack tentar comparar com um
-  # valor arbitrário vindo da URL.
+  # Mesma validação de antes: só deixa passar chaves válidas do enum.
+  # Aceita um valor único (role=x, formato antigo) ou vários
+  # (role[]=x&role[]=y, do <select multiple> da tela) — ver
+  # DemandasController#normalized_status_filter pro mesmo padrão.
   def normalized_role_filter
-    return nil unless params[:role].present? && User.roles.key?(params[:role])
+    Array(params[:role]).select { |role| User.roles.key?(role) }
+  end
 
-    params[:role]
+  # Mesma ideia de DemandasController#title_terms: divide a busca por
+  # nome/e-mail em vários termos separados por vírgula.
+  def q_terms
+    @q.to_s.split(",").map(&:strip).reject(&:blank?)
   end
 end
