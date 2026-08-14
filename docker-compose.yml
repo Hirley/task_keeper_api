@@ -1,0 +1,31 @@
+# Sobe a imagem de produção (mesmo Dockerfile do deploy) localmente, pra
+# testar o container antes de publicar em algum lugar — não é um ambiente
+# de desenvolvimento com hot-reload (pra isso, continue usando
+# `bundle install && bin/rails server`, como descrito no README).
+#
+# Uso:
+#   cp .env.example .env   # e ajuste SECRET_KEY_BASE (ver README)
+#   docker compose up --build
+#
+# O banco SQLite fica num volume nomeado (tk_storage), então os dados
+# sobrevivem a `docker compose down` (mas não a `docker compose down -v`).
+services:
+  web:
+    build:
+      context: .
+      args:
+        RUBY_VERSION: ${RUBY_VERSION:-4.0.6}
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:?defina SECRET_KEY_BASE no .env — veja .env.example}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      RAILS_MAX_THREADS: ${RAILS_MAX_THREADS:-5}
+      APP_HOST: ${APP_HOST:-}
+    volumes:
+      - tk_storage:/rails/storage
+      - tk_log:/rails/log
+
+volumes:
+  tk_storage:
+  tk_log:

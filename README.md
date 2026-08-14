@@ -10,6 +10,7 @@ API REST em Ruby on Rails para criar, organizar e acompanhar demandas diárias, 
 - Ransack (mecanismo interno de filtro/ordenação — ver "Identidade visual e busca/paginação")
 - RSpec + FactoryBot + Shoulda Matchers (testes)
 - SQLite
+- Docker (opcional — ver seção "Docker")
 
 ## Regras de negócio
 
@@ -49,6 +50,30 @@ Usuários de exemplo criados pelo `db:seed`:
 |----------|--------------------------------|--------------|
 | líder    | lider@task-keeper.local        | senha123456  |
 | executor | executor@task-keeper.local     | senha123456  |
+
+## Docker
+
+O `Dockerfile` builda uma imagem de produção em 2 etapas (build → final): a etapa final não carrega compilador nem código-fonte de gems, só o necessário para rodar a aplicação — Puma servindo direto (sem Thruster/Kamal, que não fazem parte do Gemfile deste projeto).
+
+```bash
+cp .env.example .env   # preencha SECRET_KEY_BASE (obrigatória — ver .env.example)
+docker compose up --build
+```
+
+Isso sobe a mesma imagem de produção localmente, na porta `3000`, com o banco SQLite persistido num volume nomeado (sobrevive a `docker compose down`, mas não a `docker compose down -v`). Não é um ambiente de desenvolvimento com hot-reload — para isso, continue usando `bundle install && bin/rails server`, como na seção anterior.
+
+Sem `docker compose`, buildar e rodar manualmente:
+
+```bash
+docker build -t task_keeper_api .
+docker run -p 3000:3000 -e SECRET_KEY_BASE=$(bin/rails secret) -v tk_storage:/rails/storage task_keeper_api
+```
+
+`bin/docker-entrypoint` roda `bin/rails db:prepare` (idempotente) toda vez que o container sobe, antes de iniciar o Puma — então o banco é criado/migrado automaticamente, sem passo manual.
+
+Este projeto não tem `config/master.key`/`config/credentials.yml.enc`, então `SECRET_KEY_BASE` (variável de ambiente) é obrigatória em produção — sem ela, o container não sobe. As demais variáveis (`TELEGRAM_BOT_TOKEN`, `APP_HOST`, `RAILS_MAX_THREADS`) são opcionais; ver `.env.example` para a lista completa e o que cada uma faz.
+
+⚠️ **Não verificado**: este ambiente não tem acesso ao registro do Docker Hub, então não foi possível rodar `docker build`/`docker compose up` de verdade aqui — só a validação estática que deu para fazer (sintaxe do `docker-compose.yml`, `docker compose config`, `bash -n` no entrypoint). Rode localmente assim que puder e cole aqui qualquer erro para eu corrigir. O ponto de maior risco: o `Gemfile` fixa `ruby "4.0.6"` (ver "Stack"), uma versão à frente do Ruby real disponível publicamente no momento em que isto foi escrito — se o `FROM ruby:4.0.6-slim` do `Dockerfile` falhar com "pull access denied"/"manifest unknown", builde apontando pra sua versão real, ex. `docker build --build-arg RUBY_VERSION=3.3.5 .` (ou `RUBY_VERSION=3.3.5` no `.env` ao usar o `docker compose`).
 
 ## Integração contínua
 

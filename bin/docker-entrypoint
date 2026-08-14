@@ -1,0 +1,10 @@
+#!/bin/bash -e
+
+# Prepara o banco (cria se não existir, aplica migrations pendentes) toda
+# vez que o servidor sobe — bin/rails db:prepare é idempotente, então é
+# seguro rodar isso a cada restart do container.
+if [ "${1}" == "./bin/rails" ] && [ "${2}" == "server" ]; then
+  ./bin/rails db:prepare
+fi
+
+exec "${@}"

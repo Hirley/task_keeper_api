@@ -1,0 +1,34 @@
+# Ver https://docs.docker.com/engine/reference/builder/#dockerignore-file
+
+# Git
+/.git/
+/.gitignore
+
+# Config do bundler / chaves locais
+/.bundle
+/config/master.key
+/.env*
+!/.env.example
+
+# Logs e arquivos temporários (mantém os .keep, pra manter os diretórios)
+/log/*
+/tmp/*
+!/log/.keep
+!/tmp/.keep
+/tmp/pids/*
+!/tmp/pids/.keep
+
+# Banco SQLite e outros dados locais (mantém o .keep)
+/storage/*
+!/storage/.keep
+
+# Assets já compilados localmente (a imagem gera os dela na etapa de build)
+/public/assets
+
+# Coisas que não fazem parte da aplicação em si
+/design
+/spec
+/.github
+/.dockerignore
+/Dockerfile*
+/docker-compose*.yml
