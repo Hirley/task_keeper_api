@@ -4,11 +4,10 @@
 # Imagem de produção, em 2 etapas (build → final) — a etapa final não
 # carrega compilador nem código-fonte de gems, só o necessário pra rodar.
 #
-# ⚠️ O Gemfile deste projeto fixa `ruby "4.0.6"` (ver README, seção
-# "Stack" — é a versão-alvo definida para o projeto). Se a tag
-# `ruby:4.0.6-slim` ainda não existir no Docker Hub no momento em que você
-# for buildar ("pull access denied"/"manifest unknown" neste FROM), builde
-# apontando pra sua versão real disponível, ex.:
+# ruby:4.0.6-slim existe de verdade (confirmado: Gemfile.lock deste
+# projeto tem "RUBY VERSION ruby 4.0.6" e "BUNDLED WITH 4.0.18", gerados
+# por um `bundle install` real). Ainda assim, se sua versão de Ruby local
+# for outra, dá pra apontar pra ela via --build-arg:
 #   docker build --build-arg RUBY_VERSION=3.3.5 .
 ARG RUBY_VERSION=4.0.6
 FROM docker.io/library/ruby:$RUBY_VERSION-slim AS base
@@ -23,7 +22,6 @@ RUN apt-get update -qq && \
     && rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
 ENV RAILS_ENV="production" \
-    BUNDLE_DEPLOYMENT="1" \
     BUNDLE_PATH="/usr/local/bundle" \
     BUNDLE_WITHOUT="development:test"
 
@@ -31,6 +29,13 @@ ENV RAILS_ENV="production" \
 # Só existe pra compilar as gems e precompilar assets; é descartada no
 # final, então o compilador/headers não vão pra imagem que roda em produção.
 FROM base AS build
+
+# Versão do Bundler usada para gerar o Gemfile.lock deste projeto (ver
+# "BUNDLED WITH" no próprio arquivo) — fixar isso evita que a versão do
+# Bundler pré-instalada na imagem base (que pode ser outra) tente
+# re-resolver ou reclamar do lockfile. Se o Gemfile.lock for regenerado
+# com outra versão do Bundler, ajuste aqui também.
+ARG BUNDLER_VERSION=4.0.18
 
 RUN apt-get update -qq && \
     apt-get install --no-install-recommends -y \
@@ -41,7 +46,16 @@ RUN apt-get update -qq && \
     && rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
 COPY Gemfile Gemfile.lock ./
-RUN bundle install && \
+
+# O Gemfile.lock deste projeto foi gerado originalmente numa máquina
+# Windows — a seção PLATFORMS só tinha "x64-mingw-ucrt", sem a
+# plataforma Linux. Sem isso, `bundle install` falha dentro do container
+# ao tentar resolver as gems com extensão nativa (pg, nokogiri) pra
+# Linux. `bundle lock --add-platform` corrige isso no lockfile da própria
+# imagem (build reproduzível, sem precisar confiar em cache de rede).
+RUN gem install bundler --version "${BUNDLER_VERSION}" --no-document && \
+    bundle "_${BUNDLER_VERSION}_" lock --add-platform x86_64-linux && \
+    BUNDLE_DEPLOYMENT=1 bundle "_${BUNDLER_VERSION}_" install && \
     rm -rf ~/.bundle "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git && \
     bundle exec bootsnap precompile --gemfile
 

@@ -1,5 +1,10 @@
 #!/bin/bash -e
 
+# Remove um pidfile de uma execução anterior do servidor, caso tenha
+# sobrado (ex.: container reiniciado sem um shutdown limpo) — sem isso o
+# Puma recusa subir achando que já existe uma instância rodando.
+rm -f /rails/tmp/pids/server.pid
+
 # Prepara o banco (cria se não existir, aplica migrations pendentes) toda
 # vez que o servidor sobe — bin/rails db:prepare é idempotente, então é
 # seguro rodar isso a cada restart do container.
