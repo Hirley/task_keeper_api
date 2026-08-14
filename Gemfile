@@ -24,6 +24,12 @@ group :development, :test do
   gem "rspec-rails"
   gem "factory_bot_rails"
   gem "shoulda-matchers"
+
+  # Style guide automatizado (ver .rubocop.yml). require: false porque só
+  # é usado via linha de comando/CI, não precisa ser carregado pela app.
+  gem "rubocop", require: false
+  gem "rubocop-rails", require: false
+  gem "rubocop-rspec", require: false
 end
 
 group :development do
