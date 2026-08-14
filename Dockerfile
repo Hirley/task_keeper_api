@@ -45,23 +45,34 @@ RUN apt-get update -qq && \
       pkg-config \
     && rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
-COPY Gemfile Gemfile.lock ./
+# Copia o projeto inteiro ANTES do bundle install (em vez do padrão
+# "COPY Gemfile* primeiro, pra cachear a camada do bundle install
+# separado do código"): como o passo abaixo precisa MODIFICAR o
+# Gemfile.lock (adicionar a plataforma Linux — ver comentário logo
+# abaixo), copiar o resto do código DEPOIS sobrescreveria esse
+# Gemfile.lock corrigido com a versão original (sem a plataforma) que
+# veio do host, fazendo a correção "sumir" silenciosamente e só quebrar
+# num passo posterior (foi exatamente isso que aconteceu numa versão
+# anterior deste Dockerfile — ver histórico do PR #26). Copiando tudo de
+# uma vez só, isso não acontece — o custo é que qualquer mudança no
+# código também invalida o cache do bundle install, não só mudanças no
+# Gemfile/Gemfile.lock.
+COPY . .
 
 # O Gemfile.lock deste projeto foi gerado originalmente numa máquina
 # Windows — a seção PLATFORMS só tinha "x64-mingw-ucrt", sem a
-# plataforma Linux. Sem isso, `bundle install` falha dentro do container
-# ao tentar resolver as gems com extensão nativa (pg, nokogiri) pra
-# Linux. `bundle lock --add-platform` corrige isso no lockfile da própria
-# imagem (build reproduzível, sem precisar confiar em cache de rede).
+# plataforma Linux. Sem isso, `bundle install` (e qualquer `bundle exec`
+# depois, já que o Bundler valida a plataforma atual contra o lockfile
+# toda vez) falha dentro do container ao tentar resolver as gems com
+# extensão nativa (pg, nokogiri) pra Linux. `bundle lock --add-platform`
+# corrige isso no lockfile da própria imagem (build reproduzível, sem
+# depender de o Gemfile.lock commitado já ter sido corrigido).
 RUN gem install bundler --version "${BUNDLER_VERSION}" --no-document && \
     bundle "_${BUNDLER_VERSION}_" lock --add-platform x86_64-linux && \
     BUNDLE_DEPLOYMENT=1 bundle "_${BUNDLER_VERSION}_" install && \
     rm -rf ~/.bundle "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git && \
-    bundle exec bootsnap precompile --gemfile
-
-COPY . .
-
-RUN bundle exec bootsnap precompile app/ lib/
+    bundle exec bootsnap precompile --gemfile && \
+    bundle exec bootsnap precompile app/ lib/
 
 # SECRET_KEY_BASE_DUMMY faz o Rails usar uma chave descartável só pra
 # conseguir carregar o ambiente de produção e rodar o precompile — não é a
