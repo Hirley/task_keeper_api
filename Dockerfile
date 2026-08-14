@@ -59,6 +59,20 @@ RUN apt-get update -qq && \
 # Gemfile/Gemfile.lock.
 COPY . .
 
+# Normaliza terminadores de linha dos scripts em bin/ para LF. Os blobs
+# no repositório já estão em LF (ver .gitattributes), mas quem
+# desenvolve no Windows costuma ter `core.autocrlf=true` no Git (é o
+# padrão sugerido pelo próprio Git nesse SO), que converte esses
+# arquivos para CRLF no checkout local — e o `docker build` copia o
+# contexto direto do disco (não do objeto Git), então a versão CRLF vai
+# pro container. O shebang `#!/usr/bin/env ruby` então é interpretado
+# como `ruby\r`, que não existe, e a execução falha com "No such file
+# or directory". `.gitattributes` evita isso em checkouts novos, mas
+# não corrige um checkout já existente sem um passo manual do usuário
+# (`git add --renormalize .` ou re-clonar) — este `sed` cobre esse caso
+# sem depender disso.
+RUN sed -i 's/\r$//' bin/*
+
 # O Gemfile.lock deste projeto foi gerado originalmente numa máquina
 # Windows — a seção PLATFORMS só tinha "x64-mingw-ucrt", sem a
 # plataforma Linux. Sem isso, `bundle install` (e qualquer `bundle exec`
