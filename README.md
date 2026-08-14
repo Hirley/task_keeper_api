@@ -119,6 +119,7 @@ A suíte RSpec cobre:
 - **API** (`spec/requests/api/v1`): `demandas` e `users`;
 - **Telas web** (`spec/requests`): `demandas` (menu Demandas), `users` (menu Acessos), `dashboard` (painel inicial/Início) e a página pública `/acessibilidade`;
 - **Traduções pt-BR** (`spec/requests/devise_i18n_spec.rb`): regressão para a mensagem `Translation missing` do Devise (ver seção "Mensagens em pt-BR").
+- **Compatibilidade do Devise com Turbo Drive** (`spec/requests/devise_turbo_spec.rb`): regressão para um login inválido responder `200` em vez de `422` (ver "Devise + Turbo Drive" abaixo).
 
 Cenários validados explicitamente:
 
@@ -228,3 +229,16 @@ A implementação de fonte/contraste é só JS (`app/javascript/application.js`,
 ## Mensagens em pt-BR
 
 O locale padrão da aplicação é `pt-BR` (ver `config/application.rb`), mas nem o Rails nem o Devise têm tradução embutida para esse locale — sem `config/locales/pt-BR.yml`, mensagens como a de "faça login para continuar" apareciam como `Translation missing`. Esse arquivo traduz as mensagens do Devise (login, logout, credenciais inválidas, recuperação de senha), as mensagens padrão de validação do Rails (`não pode ficar em branco`, `já está em uso` etc.), incluindo os nomes dos campos (`Título`, `E-mail`, `Permissão`...), e também `datetime.distance_in_words` (usado por `time_ago_in_words` em "Atividade recente" no painel inicial — sem essa tradução, o mesmo `Translation missing` apareceria ali). A regressão (mensagem sem login e credenciais inválidas) tem teste dedicado em `spec/requests/devise_i18n_spec.rb`.
+
+## Devise + Turbo Drive
+
+A tela de login usa Turbo Drive (gem `turbo-rails`), que exige que toda resposta **2xx** a um `POST` de formulário seja um redirect — senão lança `Error: Form responses must redirect to another location` no console do navegador e não faz nada (a tela trava sem nenhum feedback pro usuário, nem a mensagem de erro aparece).
+
+Por padrão, o responder do Devise devolve `200 OK` quando um login falha (ele re-renderiza a tela de login com o erro, mas sem redirecionar) — o que é exatamente o caso que quebra o Turbo Drive. Desde a v5, o próprio Devise recomenda (no template do seu gerador) configurar:
+
+```ruby
+config.responder.error_status = :unprocessable_entity   # 422 em vez de 200
+config.responder.redirect_status = :see_other            # 303 em vez de 302
+```
+
+com `422` o Turbo Drive passa a tratar a resposta como "renderizar no lugar" (igual já faz para erros de validação em formulários comuns), em vez de reclamar. Isso já está configurado em `config/initializers/devise.rb`; a regressão tem teste dedicado em `spec/requests/devise_turbo_spec.rb`.
