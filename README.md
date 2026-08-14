@@ -23,10 +23,12 @@ API REST em Ruby on Rails para criar, organizar e acompanhar demandas diárias, 
 
 A suíte RSpec cobre:
 
-- **Models**: `User` e `Demanda` (`spec/models`);
+- **Models**: `User` e `Demanda` (`spec/models`), incluindo a validação do `telegram_chat_id` e o reset de `atraso_notificado_em`;
 - **Política de autorização**: `Ability` (`spec/models/ability_spec.rb`), validando cada combinação de papel × ação para `Demanda` e `User`;
+- **Serviço**: `TelegramNotifier` (`spec/services`) — mensagem, envio e os casos de "não enviar" (sem token, sem chat_id, erro de rede), usando um dublê de transporte HTTP injetado no serviço (sem depender de gem de mock de rede);
+- **Tarefa agendada**: a rake task `demandas:notificar_atrasos` (`spec/tasks`) — idempotência, filtro por status/data/chat_id cadastrado;
 - **API** (`spec/requests/api/v1`): `demandas` e `users`;
-- **Telas web** (`spec/requests`): `demandas` (menu Demandas), `users` (menu Acessos) e `dashboard` (painel inicial/Início).
+- **Telas web** (`spec/requests`): `demandas` (menu Demandas), `users` (menu Acessos), `dashboard` (painel inicial/Início) e a página pública `/acessibilidade`.
 
 Cenários validados explicitamente:
 
@@ -34,7 +36,10 @@ Cenários validados explicitamente:
 - um `líder` consegue criar, atualizar e excluir demandas;
 - apenas um `líder` consegue listar/criar/excluir usuários, tanto pela tela `/users` quanto por `/api/v1/users`;
 - um `líder` não consegue excluir a própria conta, nem um usuário com demandas vinculadas;
-- o botão "Excluir" (demandas e usuários) carrega o Turbo e mostra o alerta de confirmação antes de enviar o form.
+- o botão "Excluir" (demandas e usuários) carrega o Turbo e mostra o alerta de confirmação antes de enviar o form;
+- uma demanda atrasada é notificada uma única vez no Telegram, e um novo aviso só é enviado se ela atrasar de novo depois de deixar de estar atrasada.
+
+O que **não** tem cobertura automatizada, e por quê: interações que são só JavaScript/CSS (tamanho de fonte, alto contraste, o tooltip de ajuda do Chat ID) não têm teste, porque o `Gemfile` não inclui um driver Capybara/JS — foram verificadas manualmente (incluindo screenshots) antes de cada merge.
 
 ## Setup local
 
@@ -94,8 +99,8 @@ Quando uma demanda de um executor fica atrasada (data no passado e ainda não co
 
 1. Crie um bot conversando com o [@BotFather](https://t.me/BotFather) no Telegram (`/newbot`) e copie o token gerado.
 2. Configure a variável de ambiente `TELEGRAM_BOT_TOKEN` com esse token (no Railway: aba **Variables** do serviço).
-3. Cada usuário que quiser receber avisos descobre o próprio `chat_id` conversando com o [@userinfobot](https://t.me/userinfobot) no Telegram.
-4. O líder cadastra esse `chat_id` no campo **Chat ID do Telegram** ao criar ou editar o usuário em `/users`.
+3. Cada usuário que quiser receber avisos descobre o próprio `chat_id` conversando com o bot [@WhatChatIDBot](https://t.me/WhatChatIDBot) ou [@ShowJsonBot](https://t.me/ShowJsonBot) no Telegram (`/start` e o bot já responde com o ID numérico).
+4. O líder cadastra esse `chat_id` no campo **Chat ID do Telegram** ao criar ou editar o usuário em `/users` — o próprio formulário tem um ícone ⓘ ao lado do campo com esse mesmo passo a passo, em forma de tooltip.
 
 **Como funciona:**
 
