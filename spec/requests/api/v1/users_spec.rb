@@ -73,6 +73,7 @@ RSpec.describe "Api::V1::Users", type: :request do
         delete "/api/v1/users/#{lider.id}"
       }.not_to change(User, :count)
       expect(response).to have_http_status(:unprocessable_entity)
+      expect(JSON.parse(response.body)["error"]).to match(/não pode excluir o seu próprio usuário/i)
     end
 
     it "impede excluir um usuário que já tem demandas cadastradas" do
@@ -83,6 +84,7 @@ RSpec.describe "Api::V1::Users", type: :request do
         delete "/api/v1/users/#{outro_usuario.id}"
       }.not_to change(User, :count)
       expect(response).to have_http_status(:unprocessable_entity)
+      expect(JSON.parse(response.body)["error"]).to match(/demandas cadastradas/i)
     end
   end
 end
