@@ -34,7 +34,7 @@ RSpec.describe "Api::V1::Users", type: :request do
     it "bloqueia um executor com 403 e não cria o usuário" do
       sign_in executor
       expect {
-        post "/api/v1/users", params: novo_usuario_params
+        post "/api/v1/users", params: novo_usuario_params, as: :json
       }.not_to change(User, :count)
       expect(response).to have_http_status(:forbidden)
     end
@@ -42,7 +42,7 @@ RSpec.describe "Api::V1::Users", type: :request do
     it "permite que um líder cadastre um novo usuário" do
       sign_in lider
       expect {
-        post "/api/v1/users", params: novo_usuario_params
+        post "/api/v1/users", params: novo_usuario_params, as: :json
       }.to change(User, :count).by(1)
       expect(response).to have_http_status(:created)
     end
@@ -54,7 +54,7 @@ RSpec.describe "Api::V1::Users", type: :request do
     it "bloqueia um executor com 403 e não exclui o usuário" do
       sign_in executor
       expect {
-        delete "/api/v1/users/#{outro_usuario.id}"
+        delete "/api/v1/users/#{outro_usuario.id}", as: :json
       }.not_to change(User, :count)
       expect(response).to have_http_status(:forbidden)
     end
@@ -62,7 +62,7 @@ RSpec.describe "Api::V1::Users", type: :request do
     it "permite que um líder exclua outro usuário" do
       sign_in lider
       expect {
-        delete "/api/v1/users/#{outro_usuario.id}"
+        delete "/api/v1/users/#{outro_usuario.id}", as: :json
       }.to change(User, :count).by(-1)
       expect(response).to have_http_status(:no_content)
     end
@@ -70,7 +70,7 @@ RSpec.describe "Api::V1::Users", type: :request do
     it "impede que o líder exclua o próprio usuário" do
       sign_in lider
       expect {
-        delete "/api/v1/users/#{lider.id}"
+        delete "/api/v1/users/#{lider.id}", as: :json
       }.not_to change(User, :count)
       expect(response).to have_http_status(:unprocessable_entity)
       expect(JSON.parse(response.body)["error"]).to match(/não pode excluir o seu próprio usuário/i)
@@ -81,7 +81,7 @@ RSpec.describe "Api::V1::Users", type: :request do
       sign_in lider
 
       expect {
-        delete "/api/v1/users/#{outro_usuario.id}"
+        delete "/api/v1/users/#{outro_usuario.id}", as: :json
       }.not_to change(User, :count)
       expect(response).to have_http_status(:unprocessable_entity)
       expect(JSON.parse(response.body)["error"]).to match(/demandas cadastradas/i)
