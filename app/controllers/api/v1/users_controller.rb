@@ -29,16 +29,13 @@ module Api
 
       # DELETE /api/v1/users/:id
       def destroy
-        if @user == current_user
-          return render json: { error: "Você não pode excluir o seu próprio usuário." }, status: :unprocessable_entity
-        end
+        result = Users::Destroy.call(user: @user, actor: current_user)
 
-        if @user.demandas.exists?
-          return render json: { error: "Não é possível excluir este usuário: existem demandas cadastradas por ele." }, status: :unprocessable_entity
+        if result.success?
+          head :no_content
+        else
+          render json: { error: result.error_message }, status: :unprocessable_entity
         end
-
-        @user.destroy
-        head :no_content
       end
 
       private

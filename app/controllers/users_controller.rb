@@ -42,16 +42,13 @@ class UsersController < ApplicationController
   end
 
   def destroy
-    if @user == current_user
-      redirect_to users_path, alert: "Você não pode excluir o seu próprio usuário." and return
-    end
+    result = Users::Destroy.call(user: @user, actor: current_user)
 
-    if @user.demandas.exists?
-      redirect_to users_path, alert: "Não é possível excluir #{@user.name}: existem demandas cadastradas por esse usuário." and return
+    if result.success?
+      redirect_to users_path, notice: "Usuário excluído com sucesso."
+    else
+      redirect_to users_path, alert: result.error_message
     end
-
-    @user.destroy
-    redirect_to users_path, notice: "Usuário excluído com sucesso."
   end
 
   private
