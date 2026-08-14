@@ -23,15 +23,40 @@ class TelegramNotifier
     Net::HTTP.post(uri, body, "Content-Type" => "application/json")
   end
 
+  # Transporte pro envio de documentos (sendDocument é multipart/form-data
+  # — upload de arquivo —, não JSON como sendMessage, por isso é um
+  # transporte separado do DEFAULT_TRANSPORT). Usado pelo relatório
+  # semanal em PDF (ver #enviar_documento e RelatoriosController).
+  DEFAULT_DOCUMENT_TRANSPORT = lambda do |uri, chat_id, filename, arquivo, legenda|
+    Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
+      request = Net::HTTP::Post.new(uri)
+      request.set_form(
+        [
+          ["chat_id", chat_id],
+          ["caption", legenda],
+          ["document", arquivo, { filename: filename, content_type: "application/pdf" }]
+        ],
+        "multipart/form-data"
+      )
+      http.request(request)
+    end
+  end
+
   def self.notify_atraso(demanda)
     new.notify_atraso(demanda)
   end
 
-  # +transport+ existe para permitir injetar um dublê nos testes (evita
-  # depender de uma gem de mock de HTTP e evita chamadas de rede reais).
-  def initialize(bot_token: ENV["TELEGRAM_BOT_TOKEN"], transport: DEFAULT_TRANSPORT)
+  # +transport+/+document_transport+ existem para permitir injetar dublês
+  # nos testes (evita depender de uma gem de mock de HTTP e evita
+  # chamadas de rede reais).
+  def initialize(
+    bot_token: ENV["TELEGRAM_BOT_TOKEN"],
+    transport: DEFAULT_TRANSPORT,
+    document_transport: DEFAULT_DOCUMENT_TRANSPORT
+  )
     @bot_token = bot_token
     @transport = transport
+    @document_transport = document_transport
   end
 
   def notify_atraso(demanda)
@@ -41,6 +66,22 @@ class TelegramNotifier
     enviar(responsavel.telegram_chat_id, mensagem_atraso(demanda))
   rescue StandardError => e
     Rails.logger.error("[TelegramNotifier] falha ao notificar a demanda ##{demanda.id}: #{e.message}")
+    false
+  end
+
+  # Envia um arquivo (ex.: o PDF do relatório semanal — ver
+  # Relatorios::SemanalPdf) como documento pro chat_id de +usuario+. Mesma
+  # filosofia de #notify_atraso: sem token configurado, ou sem chat_id
+  # cadastrado, não é erro — só não envia (retorna false), quem chama
+  # decide como avisar quem pediu o envio (ver RelatoriosController).
+  def enviar_documento(usuario, filename:, conteudo:, legenda: nil)
+    return false if @bot_token.blank? || usuario&.telegram_chat_id.blank?
+
+    uri = URI("#{API_BASE}/bot#{@bot_token}/sendDocument")
+    response = @document_transport.call(uri, usuario.telegram_chat_id, filename, conteudo, legenda.to_s)
+    response.is_a?(Net::HTTPSuccess)
+  rescue StandardError => e
+    Rails.logger.error("[TelegramNotifier] falha ao enviar documento pro usuário ##{usuario&.id}: #{e.message}")
     false
   end
 

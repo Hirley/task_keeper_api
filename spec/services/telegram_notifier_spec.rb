@@ -91,4 +91,58 @@ RSpec.describe TelegramNotifier do
       ENV["TELEGRAM_BOT_TOKEN"] = original_token
     end
   end
+
+  describe "#enviar_documento" do
+    let(:documento_chamadas) { [] }
+    let(:document_transport) do
+      lambda do |uri, chat_id, filename, conteudo, legenda|
+        documento_chamadas << { uri: uri, chat_id: chat_id, filename: filename, conteudo: conteudo, legenda: legenda }
+        resposta_sucesso
+      end
+    end
+    let(:notifier_com_documento) do
+      described_class.new(bot_token: "token-de-teste", transport: transport, document_transport: document_transport)
+    end
+
+    it "envia o arquivo pro chat_id do usuário, via sendDocument" do
+      notifier_com_documento.enviar_documento(lider, filename: "relatorio.pdf", conteudo: "%PDF-conteudo-fake", legenda: "Relatório semanal")
+
+      expect(documento_chamadas.size).to eq(1)
+      chamada = documento_chamadas.first
+      expect(chamada[:uri].to_s).to eq("https://api.telegram.org/bottoken-de-teste/sendDocument")
+      expect(chamada[:chat_id]).to eq("555111222")
+      expect(chamada[:filename]).to eq("relatorio.pdf")
+      expect(chamada[:conteudo]).to eq("%PDF-conteudo-fake")
+      expect(chamada[:legenda]).to eq("Relatório semanal")
+    end
+
+    it "retorna true quando o Telegram responde com sucesso" do
+      resultado = notifier_com_documento.enviar_documento(lider, filename: "relatorio.pdf", conteudo: "x")
+
+      expect(resultado).to be true
+    end
+
+    it "não envia nada e retorna false sem TELEGRAM_BOT_TOKEN configurado" do
+      notifier = described_class.new(bot_token: nil, document_transport: document_transport)
+
+      expect(notifier.enviar_documento(lider, filename: "relatorio.pdf", conteudo: "x")).to be false
+      expect(documento_chamadas).to be_empty
+    end
+
+    it "não envia nada e retorna false quando o usuário não tem telegram_chat_id" do
+      usuario_sem_chat_id = build_stubbed(:user, telegram_chat_id: nil)
+
+      resultado = notifier_com_documento.enviar_documento(usuario_sem_chat_id, filename: "relatorio.pdf", conteudo: "x")
+
+      expect(resultado).to be false
+      expect(documento_chamadas).to be_empty
+    end
+
+    it "não propaga exceção se o transporte falhar e retorna false" do
+      transport_com_erro = ->(uri, chat_id, filename, conteudo, legenda) { raise SocketError, "falha de rede" }
+      notifier = described_class.new(bot_token: "token-de-teste", document_transport: transport_com_erro)
+
+      expect(notifier.enviar_documento(lider, filename: "relatorio.pdf", conteudo: "x")).to be false
+    end
+  end
 end

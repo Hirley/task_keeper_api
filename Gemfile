@@ -27,6 +27,15 @@ gem "cancancan"
 # Demanda e User.
 gem "ransack"
 
+# Geração do PDF do relatório semanal (ver RelatoriosController). Prawn é
+# puro Ruby (sem binário externo tipo wkhtmltopdf/Chrome headless, ao
+# contrário de wicked_pdf/grover) — mais simples de instalar e de rodar
+# em produção/Docker, e consistente com o resto do projeto (que evita
+# dependências pesadas — ver, por ex., a ausência de um driver
+# Capybara/JS no Gemfile).
+gem "prawn"
+gem "prawn-table"
+
 group :development, :test do
   gem "debug", platforms: %i[mri windows], require: "debug/prelude"
   gem "rspec-rails"

@@ -20,14 +20,16 @@
       .col-md-6
         = f.label :q, "Buscar por título", class: "tk-filter-label form-label mb-1"
         = f.text_field :q, value: @q, list: "demanda-title-suggestions", autocomplete: "off",
-          class: "form-control", placeholder: "Digite o título da demanda…"
+          class: "form-control", placeholder: "Digite um ou mais títulos, separados por vírgula…"
         %datalist#demanda-title-suggestions
           - @title_suggestions.each do |title|
             %option{ value: title }
+        %div.form-text Separe vários termos com vírgula pra buscar qualquer um deles (ex.: "contrato, sala").
       .col-md-3
         = f.label :status, "Status", class: "tk-filter-label form-label mb-1"
-        = f.select :status, [["Todos", ""]] + Demanda.statuses.keys.map { |status| [status.humanize, status] },
-          { selected: @status_filter }, class: "form-select"
+        = f.select :status, Demanda.statuses.keys.map { |status| [status.humanize, status] },
+          { selected: @status_filter }, class: "form-select", multiple: true, size: 3
+        %div.form-text Nenhum selecionado = todos. Segure Ctrl/Cmd para selecionar mais de um.
       .col-md-3.d-flex.gap-2
         = f.submit "Filtrar", class: "btn btn-tk-outline w-50"
         = link_to "Limpar", demandas_path, class: "btn btn-outline-secondary w-50"

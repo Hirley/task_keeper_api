@@ -45,6 +45,9 @@
               - if can? :manage, User
                 %li.nav-item
                   = link_to "Acessos", users_path, class: "nav-link#{' active' if current_page?(users_path)}"
+              - if can? :read, :relatorio
+                %li.nav-item
+                  = link_to "Relatórios", relatorios_path, class: "nav-link#{' active' if current_page?(relatorios_path)}"
             .d-flex.align-items-center.gap-2.mt-3.mt-lg-0
               %span.text-light.tk-user-chip
                 = current_user.name

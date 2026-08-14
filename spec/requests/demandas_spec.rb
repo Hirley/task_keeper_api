@@ -98,6 +98,34 @@ RSpec.describe "Demandas (tela web)", type: :request do
       expect(results_table(response)).not_to include("Demanda pendente")
     end
 
+    it "filtra por mais de um status ao mesmo tempo (select multiple)" do
+      create(:demanda, title: "Demanda pendente", status: :pendente, user: lider)
+      create(:demanda, title: "Demanda em andamento", status: :em_andamento, user: lider)
+      create(:demanda, title: "Demanda concluída", status: :concluida, user: lider)
+      sign_in lider
+
+      get "/demandas", params: { status: %w[pendente concluida] }
+
+      table = results_table(response)
+      expect(table).to include("Demanda pendente")
+      expect(table).to include("Demanda concluída")
+      expect(table).not_to include("Demanda em andamento")
+    end
+
+    it "filtra por mais de um termo de título, separados por vírgula" do
+      create(:demanda, title: "Revisar contrato", user: lider)
+      create(:demanda, title: "Organizar sala", user: lider)
+      create(:demanda, title: "Comprar material", user: lider)
+      sign_in lider
+
+      get "/demandas", params: { q: "contrato, sala" }
+
+      table = results_table(response)
+      expect(table).to include("Revisar contrato")
+      expect(table).to include("Organizar sala")
+      expect(table).not_to include("Comprar material")
+    end
+
     it "pagina os resultados quando há mais de 10 demandas" do
       create_list(:demanda, 11, user: lider)
       sign_in lider
