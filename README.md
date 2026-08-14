@@ -9,7 +9,8 @@ API REST em Ruby on Rails para criar, organizar e acompanhar demandas diárias, 
 - HAML + Bootstrap (interface web mínima)
 - Ransack (mecanismo interno de filtro/ordenação — ver "Identidade visual e busca/paginação")
 - RSpec + FactoryBot + Shoulda Matchers (testes)
-- SQLite
+- PostgreSQL
+- Docker (opcional — ver seção "Docker")
 
 ## Regras de negócio
 
@@ -22,7 +23,10 @@ API REST em Ruby on Rails para criar, organizar e acompanhar demandas diárias, 
 
 ## Setup local
 
+Requer um PostgreSQL rodando (localmente instalado, ou via `docker compose up db` — ver seção "Docker"). Por padrão a aplicação espera `localhost:5432`, usuário/senha `postgres`/`postgres` (ver `config/database.yml` e `.env.example`); ajuste `DB_HOST`/`DB_USERNAME`/`DB_PASSWORD`/`DB_NAME` (ou `DATABASE_URL`) se o seu Postgres local usa outras credenciais.
+
 ```bash
+cp .env.example .env   # ajuste as credenciais do Postgres se precisar
 bundle install
 bin/rails db:prepare
 bin/rails db:seed   # cria um usuário líder e um executor de exemplo
@@ -49,6 +53,51 @@ Usuários de exemplo criados pelo `db:seed`:
 |----------|--------------------------------|--------------|
 | líder    | lider@task-keeper.local        | senha123456  |
 | executor | executor@task-keeper.local     | senha123456  |
+
+## Migração de SQLite para PostgreSQL
+
+O projeto usava SQLite (arquivo local em `storage/*.sqlite3`) e passou a usar PostgreSQL — `config/database.yml` agora lê a conexão de variáveis de ambiente (ver `.env.example`) em vez de apontar pra um arquivo.
+
+O que foi conferido de fato (este ambiente tem um PostgreSQL local disponível, então deu pra validar sem depender só de leitura de código):
+
+- o DDL equivalente ao `db/schema.rb` (tipos de coluna, índices, a foreign key de `demandas.user_id`) foi criado manualmente num Postgres real sem erro;
+- a migration `AddDataToDemandas` usa `DATE('now')` num `UPDATE` — sintaxe que também funciona no PostgreSQL (não é exclusiva do SQLite, então essa migration não precisou mudar);
+- a consulta com SQL cru do painel inicial (`ORDER BY (status = 2) ASC, data ASC`, em `DashboardController#index`) também funciona no PostgreSQL;
+- o predicado `_cont` do Ransack (busca por título/nome/e-mail) usa o método `matches` do Arel, não `LIKE` cru — no PostgreSQL isso vira `ILIKE` automaticamente (case-insensitive, igual já era no SQLite); não deveria haver regressão de comportamento na busca.
+- `config/database.yml` foi renderizado (ERB) com Ruby puro em 3 cenários (sem `DATABASE_URL`, com `DATABASE_URL` simulando Railway, e com as variáveis do `docker-compose.yml`) para confirmar que a URL de conexão monta certo em cada caso.
+
+O que **não** pôde ser verificado: rodar a aplicação Rails de verdade contra esse Postgres (sem acesso ao rubygems.org/à versão de Ruby do projeto neste ambiente — mesma limitação já documentada nas seções de CI e Docker) e `bundle exec rspec` na íntegra.
+
+⚠️ **Bloqueio conhecido**: `pg` foi adicionado ao `Gemfile` no lugar de `sqlite3`, mas o `Gemfile.lock` **ainda não foi regenerado** — ele continua resolvendo `sqlite3`, não `pg`. Isso não é só "menos ideal": com o lockfile hoje, `bundle install` recusa rodar (Gemfile e Gemfile.lock desalinhados), inclusive dentro do Docker (ver seção "Docker"). É necessário rodar `bundle install` localmente pelo menos uma vez (em qualquer SO) e commitar o `Gemfile.lock` atualizado antes que Postgres funcione de fato, via Docker ou não.
+
+## Docker
+
+O `Dockerfile` builda uma imagem de produção em 2 etapas (build → final): a etapa final não carrega compilador nem código-fonte de gems, só o necessário para rodar a aplicação — Puma servindo direto (sem Thruster/Kamal, que não fazem parte do Gemfile deste projeto).
+
+```bash
+cp .env.example .env   # preencha SECRET_KEY_BASE (obrigatória — ver .env.example)
+docker compose up --build
+```
+
+Isso sobe a imagem de produção **e** um serviço `db` (PostgreSQL) localmente, na porta `3000`, com os dados do banco persistidos num volume nomeado (sobrevivem a `docker compose down`, mas não a `docker compose down -v`). Não é um ambiente de desenvolvimento com hot-reload — para isso, continue usando `bundle install && bin/rails server` (apontando pro serviço `db` ou pra um Postgres local), como na seção anterior.
+
+Sem `docker compose` (conectando a um PostgreSQL já existente em outro lugar):
+
+```bash
+docker build -t task_keeper_api .
+docker run -p 3000:3000 \
+  -e SECRET_KEY_BASE=$(bin/rails secret) \
+  -e DATABASE_URL=postgresql://usuario:senha@host:5432/nome_do_banco \
+  task_keeper_api
+```
+
+`bin/docker-entrypoint` roda `bin/rails db:prepare` (idempotente) toda vez que o container sobe, antes de iniciar o Puma — então o banco é criado/migrado automaticamente, sem passo manual (mas o PostgreSQL em si precisa já estar de pé e acessível; o Dockerfile não sobe um banco dentro do próprio container da aplicação).
+
+Este projeto não tem `config/master.key`/`config/credentials.yml.enc`, então `SECRET_KEY_BASE` (variável de ambiente) é obrigatória em produção — sem ela, o container não sobe. As variáveis de conexão com o banco (`DATABASE_URL` ou `DB_HOST`/`DB_PORT`/`DB_USERNAME`/`DB_PASSWORD`/`DB_NAME`) e as demais (`TELEGRAM_BOT_TOKEN`, `APP_HOST`, `RAILS_MAX_THREADS`) são opcionais/têm default; ver `.env.example` para a lista completa e o que cada uma faz.
+
+**Sobre a plataforma do `Gemfile.lock`**: o lockfile deste projeto foi gerado originalmente numa máquina Windows — a seção `PLATFORMS` só tem `x64-mingw-ucrt`, sem a plataforma Linux. Sem isso, `bundle install` falha dentro de um container Linux ao tentar resolver as gems com extensão nativa (`pg`, `nokogiri`). O `Dockerfile` já corrige isso sozinho (roda `bundle lock --add-platform x86_64-linux` antes do `bundle install`, dentro da própria imagem), então não é preciso fazer nada manualmente por causa disso — mas é bom saber que esse ajuste existe, caso apareça algum erro de plataforma ao rodar `bundle install` fora do Docker também (nesse caso, `bundle lock --add-platform x86_64-linux` resolve, e o mesmo vale se você desenvolver num Mac Apple Silicon: `bundle lock --add-platform arm64-darwin`).
+
+⚠️ **Não totalmente verificado**: este ambiente não tem acesso ao registro do Docker Hub, então não foi possível rodar `docker build`/`docker compose up` de verdade aqui — só validação estática (sintaxe do `docker-compose.yml`, `docker compose config`, `bash -n` no entrypoint). Dito isso, a versão `ruby:4.0.6-slim` da imagem-base e a necessidade do ajuste de plataforma acima **foram confirmadas com um `bundle install` real** (fora deste ambiente) — não é mais uma suposição. O bloqueio que falta pra este Dockerfile buildar com sucesso hoje é só o do `Gemfile.lock` desatualizado (ver "Migração de SQLite para PostgreSQL" acima) — corrija esse e o build deve seguir sem mais surpresas de plataforma/versão de Ruby.
 
 ## Integração contínua
 

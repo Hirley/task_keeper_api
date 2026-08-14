@@ -1,0 +1,53 @@
+# Sobe a imagem de produção (mesmo Dockerfile do deploy) + um banco
+# PostgreSQL local, pra testar o container antes de publicar em algum
+# lugar — não é um ambiente de desenvolvimento com hot-reload (pra isso,
+# continue usando `bundle install && bin/rails server`, como descrito no
+# README, apontando pra um Postgres local ou pro serviço "db" abaixo).
+#
+# Uso:
+#   cp .env.example .env   # e ajuste SECRET_KEY_BASE (ver README)
+#   docker compose up --build
+#
+# Os dados do Postgres ficam num volume nomeado (tk_pgdata), então
+# sobrevivem a `docker compose down` (mas não a `docker compose down -v`).
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-task_keeper_api_production}
+    volumes:
+      - tk_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      args:
+        RUBY_VERSION: ${RUBY_VERSION:-4.0.6}
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:?defina SECRET_KEY_BASE no .env — veja .env.example}
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: ${DB_NAME:-task_keeper_api_production}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      RAILS_MAX_THREADS: ${RAILS_MAX_THREADS:-5}
+      APP_HOST: ${APP_HOST:-}
+    volumes:
+      - tk_log:/rails/log
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  tk_pgdata:
+  tk_log:
