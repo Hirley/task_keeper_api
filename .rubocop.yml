@@ -1,0 +1,35 @@
+require:
+  - rubocop-rails
+  - rubocop-rspec
+
+AllCops:
+  NewCops: enable
+  TargetRubyVersion: 4.0
+  Exclude:
+    - "db/schema.rb"
+    - "bin/**/*"
+    - "vendor/**/*"
+
+# O projeto documenta decisões em comentários contextuais (o "porquê" de
+# cada escolha), não em RDoc por classe — exigir um comentário fixo de
+# classe não agregaria valor real aqui, só ruído para satisfazer a cop.
+Style/Documentation:
+  Enabled: false
+
+# Alguns nomes de método/variável em português (ex.:
+# zerar_notificacao_de_atraso_se_nao_esta_mais_atrasada) ficam mais longos
+# que o padrão de 120 colunas; 130 dá folga sem abrir mão do limite.
+Layout/LineLength:
+  Max: 130
+
+# A suíte tem vários "it" que verificam mais de um aspecto relacionado da
+# mesma resposta (ex.: status da resposta + efeito no banco) — é um
+# estilo válido para request specs deste projeto, não teste mal desenhado.
+RSpec/MultipleExpectations:
+  Enabled: false
+
+RSpec/ExampleLength:
+  Max: 15
+
+RSpec/NestedGroups:
+  Max: 4

@@ -58,6 +58,18 @@ Rodar a suíte de testes:
 bundle exec rspec
 ```
 
+Rodar o RuboCop (estilo de código — ver `.rubocop.yml`):
+
+```bash
+bundle exec rubocop
+```
+
+Se você já tinha o `bundle install` rodado antes deste PR, rode de novo para instalar `rubocop`/`rubocop-rails`/`rubocop-rspec` e atualizar o `Gemfile.lock`.
+
+## Integração contínua
+
+Um workflow do GitHub Actions (`.github/workflows/ci.yml`) roda `bundle exec rubocop` e `bundle exec rspec` a cada push/PR para `main`. Ele foi escrito mas **não pôde ser validado rodando de verdade** neste ambiente (que não tem acesso a rubygems.org nem a versão de Ruby do Gemfile) — confira a primeira execução no GitHub após o merge. Se a etapa "Set up Ruby" falhar, é provável que o build do Ruby 4.0.6 ainda não esteja disponível na action `ruby/setup-ruby` (mesma ressalva sobre a versão de Ruby já documentada neste README); ajuste `ruby-version` no workflow e em `.ruby-version` para a versão real em uso.
+
 Usuários de exemplo criados pelo `db:seed`:
 
 | Papel    | E-mail                        | Senha        |
