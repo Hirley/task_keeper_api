@@ -36,6 +36,15 @@ gem "ransack"
 gem "prawn"
 gem "prawn-table"
 
+# Prawn usa a lib "matrix" internamente (prawn/transformation_stack.rb).
+# "matrix" saiu do conjunto de gems padrão do Ruby (deixou de vir
+# embutida) a partir do Ruby 3.4 — sem declará-la aqui, `bundle exec` (ou
+# `bin/rails` chamando Bundler.require) quebra com
+# `LoadError: cannot load such file -- matrix` assim que o Prawn tenta
+# carregar. Erro real, reproduzido rodando `rails db:migrate` no Ruby
+# 4.0.6 do projeto.
+gem "matrix"
+
 group :development, :test do
   gem "debug", platforms: %i[mri windows], require: "debug/prelude"
   gem "rspec-rails"
