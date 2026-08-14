@@ -1,0 +1,23 @@
+# Normaliza terminadores de linha no repositório e no checkout para LF,
+# independente do sistema operacional de quem clona. Sem isso, quem
+# desenvolve no Windows (Git com core.autocrlf=true, comum/sugerido
+# nesse SO) acaba com CRLF em arquivos de texto no checkout local —
+# isso já quebrou o build Docker (ver Dockerfile): `docker build` copia
+# o contexto direto do disco, então o CRLF ia parar dentro da imagem, e
+# o shebang `#!/usr/bin/env ruby` de bin/rails virava `ruby\r`
+# ("No such file or directory").
+#
+# Isso corrige checkouts *novos* (clone, ou `git add --renormalize .`
+# num checkout existente); o Dockerfile também normaliza bin/* em
+# tempo de build como uma segunda camada de proteção, já que nem todo
+# mundo vai re-normalizar o checkout local manualmente.
+* text=auto eol=lf
+
+# Binários que não devem passar por nenhuma conversão de linha.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
