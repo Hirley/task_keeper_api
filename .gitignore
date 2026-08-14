@@ -14,6 +14,12 @@
 /public/assets
 .byebug_history
 
+# Gerado a cada `bundle exec rspec` (ver
+# config.example_status_persistence_file_path em spec/spec_helper.rb,
+# usado pelo `--only-failures`/`--next-failure` do RSpec) — não é algo
+# pra versionar.
+/spec/examples.txt
+
 /config/master.key
 
 /.bundle
