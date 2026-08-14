@@ -27,4 +27,16 @@ class User < ApplicationRecord
   def executor?
     role == "executor"
   end
+
+  # Whitelist exigida pelo Ransack (usado em UsersController#index e, via
+  # associação "user", em DemandasController#index para ordenar por
+  # responsável). Sem isso o Ransack recusa buscar/ordenar por qualquer
+  # atributo, por segurança.
+  def self.ransackable_attributes(_auth_object = nil)
+    %w[name email role]
+  end
+
+  def self.ransackable_associations(_auth_object = nil)
+    []
+  end
 end

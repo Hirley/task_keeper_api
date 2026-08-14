@@ -7,6 +7,7 @@ API REST em Ruby on Rails para criar, organizar e acompanhar demandas diárias, 
 - Ruby 4.0.6 · Ruby on Rails 8.1
 - Devise (autenticação) + CanCanCan (autorização)
 - HAML + Bootstrap (interface web mínima)
+- Ransack (mecanismo interno de filtro/ordenação — ver "Identidade visual e busca/paginação")
 - RSpec + FactoryBot + Shoulda Matchers (testes)
 - SQLite
 
@@ -135,6 +136,10 @@ Há também uma tela em `/users` (menu "Acessos" no topo, visível apenas ao lí
 ## Identidade visual e busca/paginação
 
 O layout usa uma identidade visual própria (`app/assets/stylesheets/application.css`), com gradiente verde-petróleo, tipografia Kanit/Open Sans e componentes reutilizáveis (navbar, cards, badges, paginação). As telas de Demandas e Acessos ganharam um formulário de busca (com `<datalist>` de autocomplete) e paginação simples via `Paginatable` (`app/controllers/concerns/paginatable.rb`) — implementada só com Active Record (`limit`/`offset`), sem depender de gem externa como Kaminari.
+
+O filtro e a ordenação de `DemandasController#index` e `UsersController#index` são construídos internamente com [Ransack](https://github.com/activerecord-hackery/ransack), mas **a URL continua com o mesmo contrato simples de sempre** (`q`, `status`/`role`, `sort`, `direction`) — não expomos a sintaxe nativa do Ransack (`params[:q][:attr_predicate]`) para fora. `SORTABLE_COLUMNS`, em `DemandasController`, continua sendo a whitelist de colunas ordenáveis (agora traduzindo cada uma para o nome de atributo esperado pelo Ransack, ex.: `"responsavel" => "user_name"`, a convenção do Ransack para "atributo `name` da associação `user`"), e `status`/`role` continuam validados contra o enum antes de chegar ao Ransack. Por segurança, o Ransack exige que cada model libere explicitamente o que pode ser buscado/ordenado — ver `ransackable_attributes`/`ransackable_associations` em `Demanda` e `User`.
+
+⚠️ Esta mudança (adoção do Ransack) não pôde ser validada rodando a suíte de testes neste ambiente — só houve checagem estática (sintaxe Ruby). Ela também não roda `bundle install`, então `Gemfile.lock` não foi atualizado com a nova dependência: rode `bundle install` localmente antes de `bundle exec rspec`. Se algum teste de filtro/ordenação em `spec/requests/demandas_spec.rb` ou `spec/requests/users_spec.rb` falhar, cole a saída para uma correção — o ponto de maior risco é a interação entre o `.includes(:user)` (usado para evitar N+1 na view) e o `join` que o próprio Ransack adiciona automaticamente ao ordenar por "responsavel".
 
 As páginas de listagem (Demandas, Acessos) não repetem o nome da seção como um heading gigante logo abaixo do menu — o item ativo na navbar já indica onde você está, e o título de cada página fica no `<title>` da aba do navegador (`content_for :page_title`); o `%h1` continua no HTML por acessibilidade, só que visualmente oculto (`visually-hidden`).
 
