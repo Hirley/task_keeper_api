@@ -73,17 +73,24 @@ class UsersController < ApplicationController
   end
 
   # Filtro usado na busca da tela de Acessos (campo com autocomplete por
-  # nome/e-mail + select de permissão). Ambos são opcionais.
+  # nome/e-mail + select de permissão). Ambos são opcionais. Ransack é usado
+  # só como mecanismo interno de query — o contrato externo continua sendo
+  # os mesmos params simples de sempre (q, role), não a sintaxe nativa do
+  # Ransack. "name_or_email_cont" é a convenção do Ransack para combinar
+  # duas condições com OR a partir de um único termo de busca (equivalente
+  # ao antigo "users.name LIKE ? OR users.email LIKE ?"). A ordenação por
+  # nome continua fixa (.order(:name) em #index), não é ajustável por quem
+  # acessa a tela, então não passamos "sorts" para o Ransack aqui.
   def filter_users(scope)
-    if params[:q].present?
-      term = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q])}%"
-      scope = scope.where("users.name LIKE ? OR users.email LIKE ?", term, term)
-    end
+    scope.ransack(name_or_email_cont: params[:q].presence, role_eq: normalized_role_filter).result
+  end
 
-    if params[:role].present? && User.roles.key?(params[:role])
-      scope = scope.where(role: params[:role])
-    end
+  # Mesma validação de antes: só aplica o filtro de permissão se for uma
+  # chave válida do enum, para não deixar o Ransack tentar comparar com um
+  # valor arbitrário vindo da URL.
+  def normalized_role_filter
+    return nil unless params[:role].present? && User.roles.key?(params[:role])
 
-    scope
+    params[:role]
   end
 end

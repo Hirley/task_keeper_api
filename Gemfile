@@ -19,6 +19,14 @@ gem "haml-rails"
 gem "devise"
 gem "cancancan"
 
+# Construção de filtros/ordenação (ver DemandasController#index e
+# UsersController#index) — usado apenas como mecanismo interno de query;
+# não expomos a sintaxe nativa do Ransack (params[:q][:attr_predicate]) na
+# URL, para preservar o contrato simples já existente (q, status, sort,
+# direction). Ver ransackable_attributes/ransackable_associations em
+# Demanda e User.
+gem "ransack"
+
 group :development, :test do
   gem "debug", platforms: %i[mri windows], require: "debug/prelude"
   gem "rspec-rails"

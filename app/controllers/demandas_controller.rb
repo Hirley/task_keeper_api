@@ -5,30 +5,36 @@
 class DemandasController < ApplicationController
   before_action :set_demanda, only: %i[edit update destroy]
 
-  # Colunas que podem ser usadas para ordenar a listagem (whitelist —
-  # nunca interpolar params[:sort] direto numa query). A chave é o valor
-  # aceito em params[:sort]/usado nos links da view; o valor é a coluna
-  # SQL real (já qualificada, pois "responsavel" ordena pela tabela users).
+  # Colunas que podem ser usadas para ordenar a listagem (whitelist — nunca
+  # interpolar params[:sort] direto numa query). A chave é o valor aceito em
+  # params[:sort]/usado nos links da view; o valor é o nome do atributo no
+  # Ransack (ver Demanda.ransackable_attributes/ransackable_associations) —
+  # "user_name" é a convenção do Ransack para "atributo name da associação
+  # user" (antes disso usávamos a coluna SQL "users.name" diretamente).
   SORTABLE_COLUMNS = {
-    "title" => "demandas.title",
-    "data" => "demandas.data",
-    "status" => "demandas.status",
-    "responsavel" => "users.name",
-    "created_at" => "demandas.created_at"
+    "title" => "title",
+    "data" => "data",
+    "status" => "status",
+    "responsavel" => "user_name",
+    "created_at" => "created_at"
   }.freeze
 
   def index
-    scope = Demanda.accessible_by(current_ability).includes(:user).references(:user)
+    scope = Demanda.accessible_by(current_ability).includes(:user)
 
     @q = params[:q]
     @status_filter = params[:status]
     @sort = SORTABLE_COLUMNS.key?(params[:sort]) ? params[:sort] : "created_at"
     @direction = params[:direction] == "asc" ? "asc" : "desc"
 
-    scope = filter_demandas(scope)
-      .order(Arel.sql("#{SORTABLE_COLUMNS.fetch(@sort)} #{@direction}, demandas.id #{@direction}"))
+    # Ransack é usado só como mecanismo interno de query — o contrato
+    # externo continua sendo os mesmos params simples de sempre (q, status,
+    # sort, direction), não a sintaxe nativa do Ransack. "id" no fim mantém
+    # o desempate estável que já existia antes.
+    ransack_query = scope.ransack(title_cont: @q.presence, status_eq: normalized_status_filter)
+    ransack_query.sorts = ["#{SORTABLE_COLUMNS.fetch(@sort)} #{@direction}", "id #{@direction}"]
 
-    @demandas = paginate(scope)
+    @demandas = paginate(ransack_query.result)
     @title_suggestions = Demanda.distinct.order(:title).limit(50).pluck(:title)
   end
 
@@ -78,18 +84,12 @@ class DemandasController < ApplicationController
     params.require(:demanda).permit(:title, :description, :status, :data)
   end
 
-  # Filtro usado na busca da tela de listagem (campo com autocomplete por
-  # título + select de status). Ambos são opcionais.
-  def filter_demandas(scope)
-    if params[:q].present?
-      term = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q])}%"
-      scope = scope.where("demandas.title LIKE ?", term)
-    end
+  # Mesma validação de antes: só aplica o filtro de status se for uma chave
+  # válida do enum, para não deixar o Ransack tentar comparar com um valor
+  # arbitrário vindo da URL.
+  def normalized_status_filter
+    return nil unless params[:status].present? && Demanda.statuses.key?(params[:status])
 
-    if params[:status].present? && Demanda.statuses.key?(params[:status])
-      scope = scope.where(status: params[:status])
-    end
-
-    scope
+    params[:status]
   end
 end

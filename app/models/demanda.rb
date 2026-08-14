@@ -24,6 +24,22 @@ class Demanda < ApplicationRecord
   # novo no futuro, o responsável é avisado de novo.
   before_save :zerar_notificacao_de_atraso_se_nao_esta_mais_atrasada, if: -> { data_changed? || status_changed? }
 
+  # Whitelist exigida pelo Ransack (usado em DemandasController#index para
+  # filtro/ordenação — ver SORTABLE_COLUMNS lá). Sem isso o Ransack recusa
+  # buscar/ordenar por qualquer atributo, por segurança. "id" está aqui só
+  # para permitir o desempate estável na ordenação (mesmo critério que já
+  # existia antes do Ransack).
+  def self.ransackable_attributes(_auth_object = nil)
+    %w[title data status created_at id]
+  end
+
+  # "user" habilita ordenar por atributos da associação (ex.: "user_name",
+  # usado para ordenar por responsável — ver Demanda.ransackable_attributes
+  # equivalente em User).
+  def self.ransackable_associations(_auth_object = nil)
+    %w[user]
+  end
+
   private
 
   def zerar_notificacao_de_atraso_se_nao_esta_mais_atrasada
