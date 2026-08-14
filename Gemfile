@@ -3,7 +3,7 @@ source "https://rubygems.org"
 ruby "4.0.6"
 
 gem "rails", "~> 8.1"
-gem "sqlite3", ">= 2.1"
+gem "pg", "~> 1.5"
 gem "puma", ">= 6.0"
 gem "propshaft"
 gem "importmap-rails"

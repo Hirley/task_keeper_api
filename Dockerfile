@@ -19,7 +19,7 @@ WORKDIR /rails
 RUN apt-get update -qq && \
     apt-get install --no-install-recommends -y \
       curl \
-      libsqlite3-0 \
+      libpq5 \
     && rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
 ENV RAILS_ENV="production" \
@@ -36,7 +36,7 @@ RUN apt-get update -qq && \
     apt-get install --no-install-recommends -y \
       build-essential \
       git \
-      libsqlite3-dev \
+      libpq-dev \
       pkg-config \
     && rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
