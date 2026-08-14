@@ -173,7 +173,7 @@ Quando uma demanda de um executor fica atrasada (data no passado e ainda não co
 
 1. Crie um bot conversando com o [@BotFather](https://t.me/BotFather) no Telegram (`/newbot`) e copie o token gerado.
 2. Configure a variável de ambiente `TELEGRAM_BOT_TOKEN` com esse token (no Railway: aba **Variables** do serviço).
-3. Cada usuário que quiser receber avisos descobre o próprio `chat_id` conversando com o bot [@WhatChatIDBot](https://t.me/WhatChatIDBot) ou [@ShowJsonBot](https://t.me/ShowJsonBot) no Telegram (`/start` e o bot já responde com o ID numérico).
+3. Cada usuário que quiser receber avisos descobre o próprio `chat_id` com o bot [@userinfobot](https://t.me/userinfobot) — passo a passo pelo celular ou computador: abra a barra de pesquisa do Telegram, digite `@userinfobot`, selecione o bot oficial nos resultados, toque em Começar (ou envie `/start`) e copie o número exibido no campo **Id**.
 4. O líder cadastra esse `chat_id` no campo **Chat ID do Telegram** ao criar ou editar o usuário em `/users` — o próprio formulário tem um ícone ⓘ ao lado do campo com esse mesmo passo a passo, em forma de tooltip.
 
 **Como funciona:**
