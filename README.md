@@ -20,13 +20,47 @@ API REST em Ruby on Rails para criar, organizar e acompanhar demandas diárias, 
 - Apenas o líder pode cadastrar, alterar a permissão (papel) e excluir usuários (não há autocadastro).
 - Um líder não pode excluir a própria conta, nem excluir um usuário que já tenha demandas cadastradas.
 
+## Setup local
+
+```bash
+bundle install
+bin/rails db:prepare
+bin/rails db:seed   # cria um usuário líder e um executor de exemplo
+bin/rails server
+```
+
+Se você já tinha o banco criado localmente antes de alguma migration nova (ex.: campo **Data** em demandas, **Chat ID do Telegram**), rode `bin/rails db:migrate` para aplicar o que estiver pendente. Depois de puxar mudanças no `Gemfile`, rode `bundle install` de novo para atualizar o `Gemfile.lock`.
+
+Rodar a suíte de testes:
+
+```bash
+bundle exec rspec
+```
+
+Rodar o RuboCop (estilo de código — ver `.rubocop.yml`):
+
+```bash
+bundle exec rubocop
+```
+
+Usuários de exemplo criados pelo `db:seed`:
+
+| Papel    | E-mail                        | Senha        |
+|----------|--------------------------------|--------------|
+| líder    | lider@task-keeper.local        | senha123456  |
+| executor | executor@task-keeper.local     | senha123456  |
+
+## Integração contínua
+
+Ainda não há um workflow de GitHub Actions configurado neste repositório — `bundle exec rubocop` e `bundle exec rspec` são, por enquanto, rodados manualmente (localmente ou antes de cada merge). `.ruby-version` e `.rubocop.yml` já estão no repositório, prontos para quando um workflow de CI for adicionado.
+
 ## Cobertura de testes
 
 A suíte RSpec cobre:
 
 - **Models**: `User` e `Demanda` (`spec/models`), incluindo a validação do `telegram_chat_id` e o reset de `atraso_notificado_em`;
 - **Política de autorização**: `Ability` (`spec/models/ability_spec.rb`), validando cada combinação de papel × ação para `Demanda` e `User`;
-- **Serviços** (`spec/services`): `TelegramNotifier` — mensagem, envio e os casos de "não enviar" (sem token, sem chat_id, erro de rede), usando um dublê de transporte HTTP injetado no serviço (sem depender de gem de mock de rede); `Users::Destroy` — a regra de exclusão de usuário (self_deletion/demandas vinculadas), testada uma única vez e reaproveitada pela tela web e pela API;
+- **Serviços** (`spec/services`): `TelegramNotifier` — mensagem, envio e os casos de "não enviar" (sem token, sem chat_id, erro de rede), usando um dublê de transporte HTTP injetado no serviço (sem depender de gem de mock de rede); `Users::Destroy` — a regra de exclusão de usuário (exclusão da própria conta/demandas vinculadas), testada uma única vez e reaproveitada pela tela web e pela API;
 - **Tarefa agendada**: a rake task `demandas:notificar_atrasos` (`spec/tasks`) — idempotência, filtro por status/data/chat_id cadastrado;
 - **API** (`spec/requests/api/v1`): `demandas` e `users`;
 - **Telas web** (`spec/requests`): `demandas` (menu Demandas), `users` (menu Acessos), `dashboard` (painel inicial/Início) e a página pública `/acessibilidade`.
@@ -43,53 +77,19 @@ Cenários validados explicitamente:
 
 O que **não** tem cobertura automatizada, e por quê: interações que são só JavaScript/CSS (tamanho de fonte, alto contraste, o tooltip de ajuda do Chat ID) não têm teste, porque o `Gemfile` não inclui um driver Capybara/JS — foram verificadas manualmente (incluindo screenshots) antes de cada merge.
 
-## Setup local
-
-```bash
-bundle install
-bin/rails db:prepare
-bin/rails db:seed   # cria um usuário líder e um executor de exemplo
-bin/rails server
-```
-
-Se você já tinha o banco criado localmente (de antes do campo **Data** em demandas, ou do campo **Chat ID do Telegram** existirem), rode `bin/rails db:migrate` para aplicar as migrations novas.
-
-Rodar a suíte de testes:
-
-```bash
-bundle exec rspec
-```
-
-Rodar o RuboCop (estilo de código — ver `.rubocop.yml`):
-
-```bash
-bundle exec rubocop
-```
-
-Se você já tinha o `bundle install` rodado antes deste PR, rode de novo para instalar `rubocop`/`rubocop-rails`/`rubocop-rspec` e atualizar o `Gemfile.lock`.
-
-## Integração contínua
-
-Um workflow do GitHub Actions (`.github/workflows/ci.yml`) roda `bundle exec rubocop` e `bundle exec rspec` a cada push/PR para `main`. Ele foi escrito mas **não pôde ser validado rodando de verdade** neste ambiente (que não tem acesso a rubygems.org nem a versão de Ruby do Gemfile) — confira a primeira execução no GitHub após o merge. Se a etapa "Set up Ruby" falhar, é provável que o build do Ruby 4.0.6 ainda não esteja disponível na action `ruby/setup-ruby` (mesma ressalva sobre a versão de Ruby já documentada neste README); ajuste `ruby-version` no workflow e em `.ruby-version` para a versão real em uso.
-
-Usuários de exemplo criados pelo `db:seed`:
-
-| Papel    | E-mail                        | Senha        |
-|----------|--------------------------------|--------------|
-| líder    | lider@task-keeper.local        | senha123456  |
-| executor | executor@task-keeper.local     | senha123456  |
-
 ## Endpoints principais
 
-| Verbo  | Rota                    | Quem pode acessar          |
-|--------|--------------------------|-----------------------------|
-| GET    | `/api/v1/demandas`       | qualquer usuário autenticado |
-| POST   | `/api/v1/demandas`       | líder ou executor            |
-| PATCH  | `/api/v1/demandas/:id`   | apenas líder                 |
-| DELETE | `/api/v1/demandas/:id`   | apenas líder                 |
-| GET    | `/api/v1/users`          | apenas líder                 |
-| POST   | `/api/v1/users`          | apenas líder                 |
-| DELETE | `/api/v1/users/:id`      | apenas líder                 |
+| Verbo  | Rota                     | Quem pode acessar             |
+|--------|---------------------------|--------------------------------|
+| GET    | `/api/v1/demandas`        | qualquer usuário autenticado   |
+| GET    | `/api/v1/demandas/:id`    | qualquer usuário autenticado   |
+| POST   | `/api/v1/demandas`        | líder ou executor              |
+| PATCH  | `/api/v1/demandas/:id`    | apenas líder                   |
+| DELETE | `/api/v1/demandas/:id`    | apenas líder                   |
+| GET    | `/api/v1/users`           | apenas líder                   |
+| GET    | `/api/v1/users/:id`       | apenas líder                   |
+| POST   | `/api/v1/users`           | apenas líder                   |
+| DELETE | `/api/v1/users/:id`       | apenas líder                   |
 
 Toda ação de escrita (`POST`/`PATCH`/`DELETE`) exige o header `Content-Type: application/json` — uma requisição sem esse header recebe `415 Unsupported Media Type`. Isso não é um capricho de formato: essa API autentica por sessão (cookie do Devise) e tem o token CSRF desativado (`Api::V1::BaseController`), então exigir `application/json` é o que impede um `<form>` HTML comum de outro site de forjar uma requisição usando a sessão já autenticada do usuário — um formulário nunca consegue definir esse Content-Type, só `application/x-www-form-urlencoded`, `multipart/form-data` ou `text/plain`.
 
@@ -120,7 +120,7 @@ Quando uma demanda de um executor fica atrasada (data no passado e ainda não co
 
 **Como funciona:**
 
-- `TelegramNotifier` (`app/services/telegram_notifier.rb`) monta a mensagem e chama a API do Telegram (`sendMessage`) via `Net::HTTP` puro — sem gem nova, para não depender de `bundle install`/rede externa neste ambiente de desenvolvimento.
+- `TelegramNotifier` (`app/services/telegram_notifier.rb`) monta a mensagem e chama a API do Telegram (`sendMessage`) via `Net::HTTP` puro, sem depender de nenhuma gem adicional.
 - A mensagem é empática e objetiva: cita o título da demanda e há quantos dias está atrasada, sem tom de cobrança, e diz o que fazer a seguir (atualizar o status, ou avisar o líder se precisar de mais tempo/ajuda).
 - Como "ficar atrasada" é um estado que muda com o tempo (não com uma ação do usuário), o envio não acontece automaticamente na aplicação — é a tarefa `bin/rails demandas:notificar_atrasos` (`lib/tasks/telegram_notifications.rake`) que precisa rodar periodicamente (ex.: 1x ao dia). No Railway, isso é feito criando um segundo serviço do tipo **Cron Job** no mesmo projeto, rodando esse comando.
 - Cada atraso é notificado **uma única vez** (campo `Demanda#atraso_notificado_em`) — se a demanda deixar de estar atrasada (data adiada ou marcada como concluída) e depois atrasar de novo, um novo aviso é enviado.
@@ -152,9 +152,7 @@ Há também uma tela em `/users` (menu "Acessos" no topo, visível apenas ao lí
 
 O layout usa uma identidade visual própria (`app/assets/stylesheets/application.css`), com gradiente verde-petróleo, tipografia Kanit/Open Sans e componentes reutilizáveis (navbar, cards, badges, paginação). As telas de Demandas e Acessos ganharam um formulário de busca (com `<datalist>` de autocomplete) e paginação simples via `Paginatable` (`app/controllers/concerns/paginatable.rb`) — implementada só com Active Record (`limit`/`offset`), sem depender de gem externa como Kaminari.
 
-O filtro e a ordenação de `DemandasController#index` e `UsersController#index` são construídos internamente com [Ransack](https://github.com/activerecord-hackery/ransack), mas **a URL continua com o mesmo contrato simples de sempre** (`q`, `status`/`role`, `sort`, `direction`) — não expomos a sintaxe nativa do Ransack (`params[:q][:attr_predicate]`) para fora. `SORTABLE_COLUMNS`, em `DemandasController`, continua sendo a whitelist de colunas ordenáveis (agora traduzindo cada uma para o nome de atributo esperado pelo Ransack, ex.: `"responsavel" => "user_name"`, a convenção do Ransack para "atributo `name` da associação `user`"), e `status`/`role` continuam validados contra o enum antes de chegar ao Ransack. Por segurança, o Ransack exige que cada model libere explicitamente o que pode ser buscado/ordenado — ver `ransackable_attributes`/`ransackable_associations` em `Demanda` e `User`.
-
-⚠️ Esta mudança (adoção do Ransack) não pôde ser validada rodando a suíte de testes neste ambiente — só houve checagem estática (sintaxe Ruby). Ela também não roda `bundle install`, então `Gemfile.lock` não foi atualizado com a nova dependência: rode `bundle install` localmente antes de `bundle exec rspec`. Se algum teste de filtro/ordenação em `spec/requests/demandas_spec.rb` ou `spec/requests/users_spec.rb` falhar, cole a saída para uma correção — o ponto de maior risco é a interação entre o `.includes(:user)` (usado para evitar N+1 na view) e o `join` que o próprio Ransack adiciona automaticamente ao ordenar por "responsavel".
+O filtro e a ordenação de `DemandasController#index` e `UsersController#index` são construídos internamente com [Ransack](https://github.com/activerecord-hackery/ransack), mas **a URL continua com o mesmo contrato simples de sempre** (`q`, `status`/`role`, `sort`, `direction`) — não expomos a sintaxe nativa do Ransack (`params[:q][:attr_predicate]`) para fora. `SORTABLE_COLUMNS`, em `DemandasController`, continua sendo a whitelist de colunas ordenáveis (traduzindo cada uma para o nome de atributo esperado pelo Ransack, ex.: `"responsavel" => "user_name"`, a convenção do Ransack para "atributo `name` da associação `user`"), e `status`/`role` continuam validados contra o enum antes de chegar ao Ransack. Por segurança, o Ransack exige que cada model libere explicitamente o que pode ser buscado/ordenado — ver `ransackable_attributes`/`ransackable_associations` em `Demanda` e `User`.
 
 As páginas de listagem (Demandas, Acessos) não repetem o nome da seção como um heading gigante logo abaixo do menu — o item ativo na navbar já indica onde você está, e o título de cada página fica no `<title>` da aba do navegador (`content_for :page_title`); o `%h1` continua no HTML por acessibilidade, só que visualmente oculto (`visually-hidden`).
 
@@ -174,7 +172,3 @@ A implementação de fonte/contraste é só JS (`app/javascript/application.js`,
 ## Mensagens em pt-BR
 
 O locale padrão da aplicação é `pt-BR` (ver `config/application.rb`), mas nem o Rails nem o Devise têm tradução embutida para esse locale — sem `config/locales/pt-BR.yml`, mensagens como a de "faça login para continuar" apareciam como `Translation missing`. Esse arquivo traduz as mensagens do Devise (login, logout, credenciais inválidas, recuperação de senha), as mensagens padrão de validação do Rails (`não pode ficar em branco`, `já está em uso` etc.), incluindo os nomes dos campos (`Título`, `E-mail`, `Permissão`...), e também `datetime.distance_in_words` (usado por `time_ago_in_words` em "Atividade recente" no painel inicial — sem essa tradução, o mesmo `Translation missing` apareceria ali).
-
-## Nota sobre validação
-
-O scaffold inicial (models, controllers, views, migrations e specs) foi escrito diretamente em um ambiente sem acesso ao rubygems.org/Ruby 4.0.6, então não pôde ser testado automaticamente ali — mas já foi validado localmente (`bundle install`, migrations e `bundle exec rspec`) e mesclado à `main`. PRs subsequentes devem seguir o mesmo processo: rodar `bundle install && bin/rails db:prepare && bundle exec rspec` localmente antes do merge.
