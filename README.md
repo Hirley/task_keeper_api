@@ -63,7 +63,8 @@ A suíte RSpec cobre:
 - **Serviços** (`spec/services`): `TelegramNotifier` — mensagem, envio e os casos de "não enviar" (sem token, sem chat_id, erro de rede), usando um dublê de transporte HTTP injetado no serviço (sem depender de gem de mock de rede); `Users::Destroy` — a regra de exclusão de usuário (exclusão da própria conta/demandas vinculadas), testada uma única vez e reaproveitada pela tela web e pela API;
 - **Tarefa agendada**: a rake task `demandas:notificar_atrasos` (`spec/tasks`) — idempotência, filtro por status/data/chat_id cadastrado;
 - **API** (`spec/requests/api/v1`): `demandas` e `users`;
-- **Telas web** (`spec/requests`): `demandas` (menu Demandas), `users` (menu Acessos), `dashboard` (painel inicial/Início) e a página pública `/acessibilidade`.
+- **Telas web** (`spec/requests`): `demandas` (menu Demandas), `users` (menu Acessos), `dashboard` (painel inicial/Início) e a página pública `/acessibilidade`;
+- **Traduções pt-BR** (`spec/requests/devise_i18n_spec.rb`): regressão para a mensagem `Translation missing` do Devise (ver seção "Mensagens em pt-BR").
 
 Cenários validados explicitamente:
 
@@ -73,7 +74,8 @@ Cenários validados explicitamente:
 - um `líder` não consegue excluir a própria conta, nem um usuário com demandas vinculadas;
 - o botão "Excluir" (demandas e usuários) carrega o Turbo e mostra o alerta de confirmação antes de enviar o form;
 - uma demanda atrasada é notificada uma única vez no Telegram, e um novo aviso só é enviado se ela atrasar de novo depois de deixar de estar atrasada;
-- a API rejeita com `415` qualquer `POST`/`PATCH`/`DELETE` sem `Content-Type: application/json` (proteção contra CSRF — ver seção "Endpoints principais"), sem afetar `GET`.
+- a API rejeita com `415` qualquer `POST`/`PATCH`/`DELETE` sem `Content-Type: application/json` (proteção contra CSRF — ver seção "Endpoints principais"), sem afetar `GET`;
+- ao tentar acessar uma tela protegida sem login, ou ao errar e-mail/senha, a mensagem aparece traduzida em pt-BR (não `Translation missing` — ver seção "Mensagens em pt-BR").
 
 O que **não** tem cobertura automatizada, e por quê: interações que são só JavaScript/CSS (tamanho de fonte, alto contraste, o tooltip de ajuda do Chat ID) não têm teste, porque o `Gemfile` não inclui um driver Capybara/JS — foram verificadas manualmente (incluindo screenshots) antes de cada merge.
 
@@ -171,4 +173,4 @@ A implementação de fonte/contraste é só JS (`app/javascript/application.js`,
 
 ## Mensagens em pt-BR
 
-O locale padrão da aplicação é `pt-BR` (ver `config/application.rb`), mas nem o Rails nem o Devise têm tradução embutida para esse locale — sem `config/locales/pt-BR.yml`, mensagens como a de "faça login para continuar" apareciam como `Translation missing`. Esse arquivo traduz as mensagens do Devise (login, logout, credenciais inválidas, recuperação de senha), as mensagens padrão de validação do Rails (`não pode ficar em branco`, `já está em uso` etc.), incluindo os nomes dos campos (`Título`, `E-mail`, `Permissão`...), e também `datetime.distance_in_words` (usado por `time_ago_in_words` em "Atividade recente" no painel inicial — sem essa tradução, o mesmo `Translation missing` apareceria ali).
+O locale padrão da aplicação é `pt-BR` (ver `config/application.rb`), mas nem o Rails nem o Devise têm tradução embutida para esse locale — sem `config/locales/pt-BR.yml`, mensagens como a de "faça login para continuar" apareciam como `Translation missing`. Esse arquivo traduz as mensagens do Devise (login, logout, credenciais inválidas, recuperação de senha), as mensagens padrão de validação do Rails (`não pode ficar em branco`, `já está em uso` etc.), incluindo os nomes dos campos (`Título`, `E-mail`, `Permissão`...), e também `datetime.distance_in_words` (usado por `time_ago_in_words` em "Atividade recente" no painel inicial — sem essa tradução, o mesmo `Translation missing` apareceria ali). A regressão (mensagem sem login e credenciais inválidas) tem teste dedicado em `spec/requests/devise_i18n_spec.rb`.
