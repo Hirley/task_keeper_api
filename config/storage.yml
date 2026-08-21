@@ -1,0 +1,12 @@
+# Configuração do Active Storage (ver config/environments/*.rb, chave
+# active_storage.service). Não usamos nenhum serviço de nuvem (S3 etc.)
+# neste projeto — apenas disco local, tanto em desenvolvimento/produção
+# (:local) quanto em teste (:test).
+
+test:
+  service: Disk
+  root: <%= Rails.root.join("tmp/storage") %>
+
+local:
+  service: Disk
+  root: <%= Rails.root.join("storage") %>
