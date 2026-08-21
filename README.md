@@ -1,4 +1,4 @@
-# task_keeper_api
+ãá# task_keeper_api
 
 API REST em Ruby on Rails para criar, organizar e acompanhar demandas diárias, com controle de acesso via CanCanCan, interface web em HAML + Bootstrap e testes automatizados em RSpec.
 
@@ -107,7 +107,17 @@ Como este ambiente não pode confirmar um build completo, ainda vale rodar `dock
 
 ## Integração contínua
 
-Ainda não há um workflow de GitHub Actions configurado neste repositório — `bundle exec rubocop` e `bundle exec rspec` são, por enquanto, rodados manualmente (localmente ou antes de cada merge). `.ruby-version` e `.rubocop.yml` já estão no repositório, prontos para quando um workflow de CI for adicionado.
+`.github/workflows/ci.yml` roda no GitHub Actions em todo push para `main` e em toda pull request, com três jobs:
+
+- **rubocop** — `bundle exec rubocop` (usa o `.rubocop.yml` já existente no repositório);
+- **rspec** — sobe um serviço `postgres:16-alpine`, roda `bin/rails db:prepare`, depois `bin/rails zeitwerk:check` (eager load isolado num processo à parte, só pra pegar erro de autoload cedo — ver comentário em `config/environments/test.rb` sobre por que isso não é feito via `config.eager_load = true` no ambiente de teste) e por fim `bundle exec rspec` contra o banco `task_keeper_api_test`;
+- **docker** — builda a imagem de produção (`docker/build-push-action`); só roda depois que `rubocop` e `rspec` passam. Em pull request, só valida que o `Dockerfile` builda (sem publicar). Em push pra `main`, publica a imagem no GitHub Container Registry (`ghcr.io/hirley/task_keeper_api`), usando o `GITHUB_TOKEN` automático do Actions — não exige nenhum secret configurado manualmente. Cada build fica marcado com duas tags: `latest` e o SHA do commit (`sha-<commit completo>`), pra sempre dar pra rastrear exatamente qual código está publicado.
+
+⚠️ **Passo manual único**: por padrão, um pacote novo no GHCR nasce privado, mesmo em repositório público — depois do primeiro push em `main` que publicar a imagem, é preciso ir em *Package settings* (na página do pacote em `github.com/Hirley?tab=packages`) e trocar a visibilidade pra pública, se quiser puxar a imagem (`docker pull`) sem autenticação.
+
+`SECRET_KEY_BASE` no workflow é um valor fixo só para o boot da aplicação em CI (não é usado em nenhum ambiente real — produção continua exigindo a variável de ambiente própria, como descrito na seção "Docker"). As demais variáveis de banco seguem o mesmo padrão de `.env.example`/`config/database.yml`.
+
+⚠️ **Não verificado neste ambiente**: o sandbox usado para preparar este workflow não tem acesso ao `rubygems.org` (só a alguns registries específicos), então não foi possível rodar `bundle install`/`rubocop`/`rspec` aqui para confirmar o workflow de ponta a ponta antes do primeiro push — vale acompanhar a primeira execução no Actions.
 
 ## Cobertura de testes
 

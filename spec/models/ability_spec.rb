@@ -1,4 +1,6 @@
-require "rails_helper"
+# frozen_string_literal: true
+
+require 'rails_helper'
 
 RSpec.describe Ability, type: :model do
   subject(:ability) { described_class.new(user) }
@@ -6,7 +8,7 @@ RSpec.describe Ability, type: :model do
   let(:demanda) { create(:demanda) }
   let(:outro_usuario) { create(:user, :executor) }
 
-  context "quando o usuário é executor" do
+  context 'quando o usuário é executor' do
     let(:user) { create(:user, :executor) }
 
     it { is_expected.to be_able_to(:create, Demanda) }
@@ -18,7 +20,7 @@ RSpec.describe Ability, type: :model do
     it { is_expected.not_to be_able_to(:destroy, outro_usuario) }
   end
 
-  context "quando o usuário é líder" do
+  context 'quando o usuário é líder' do
     let(:user) { create(:user, :lider) }
 
     it { is_expected.to be_able_to(:create, Demanda) }
@@ -29,7 +31,7 @@ RSpec.describe Ability, type: :model do
     it { is_expected.to be_able_to(:destroy, outro_usuario) }
   end
 
-  context "quando não há usuário autenticado" do
+  context 'quando não há usuário autenticado' do
     let(:user) { nil }
 
     it { is_expected.not_to be_able_to(:create, Demanda) }

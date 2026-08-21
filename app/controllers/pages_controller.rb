@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Páginas informativas/estáticas que não fazem parte do fluxo de
 # demandas/usuários. A página de acessibilidade fica acessível mesmo sem
 # login — alguém pode precisar dela justamente para conseguir enxergar ou
@@ -6,6 +8,5 @@
 class PagesController < ApplicationController
   skip_before_action :authenticate_user!, only: :acessibilidade
 
-  def acessibilidade
-  end
+  def acessibilidade; end
 end

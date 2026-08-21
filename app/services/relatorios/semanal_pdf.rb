@@ -1,5 +1,7 @@
-require "prawn"
-require "prawn/table"
+# frozen_string_literal: true
+
+require 'prawn'
+require 'prawn/table'
 
 module Relatorios
   # Gera o PDF do relatório semanal (ver Relatorios::Semanal pros dados) —
@@ -11,11 +13,11 @@ module Relatorios
     end
 
     def render
-      Prawn::Document.new(page_size: "A4", margin: 40) do |pdf|
+      Prawn::Document.new(page_size: 'A4', margin: 40) do |pdf|
         cabecalho(pdf)
         resumo(pdf)
-        tabela_demandas(pdf, "Demandas criadas na semana", @relatorio.criadas)
-        tabela_demandas(pdf, "Demandas concluídas na semana", @relatorio.concluidas)
+        tabela_demandas(pdf, 'Demandas criadas na semana', @relatorio.criadas)
+        tabela_demandas(pdf, 'Demandas concluídas na semana', @relatorio.concluidas)
         carga_por_responsavel(pdf)
       end.render
     end
@@ -23,14 +25,14 @@ module Relatorios
     private
 
     def cabecalho(pdf)
-      pdf.text "Task Keeper API — Relatório semanal", size: 18, style: :bold
+      pdf.text 'Task Keeper API — Relatório semanal', size: 18, style: :bold
       periodo = "#{@relatorio.periodo_inicio.strftime('%d/%m/%Y')} a #{@relatorio.periodo_fim.strftime('%d/%m/%Y')}"
-      pdf.text "Período: #{periodo}", size: 11, color: "666666"
+      pdf.text "Período: #{periodo}", size: 11, color: '666666'
       pdf.move_down 16
     end
 
     def resumo(pdf)
-      pdf.text "Situação atual", size: 13, style: :bold
+      pdf.text 'Situação atual', size: 13, style: :bold
       pdf.move_down 4
 
       linhas = @relatorio.status_counts.map { |status, count| ["#{status.humanize}: #{count}"] }
@@ -47,16 +49,16 @@ module Relatorios
       pdf.move_down 4
 
       if demandas.empty?
-        pdf.text "Nenhuma.", size: 10, color: "666666"
+        pdf.text 'Nenhuma.', size: 10, color: '666666'
       else
-        linhas = [["Título", "Responsável", "Status", "Data"]]
+        linhas = [%w[Título Responsável Status Data]]
         demandas.each do |demanda|
-          linhas << [demanda.title, demanda.user&.name.to_s, demanda.status.humanize, demanda.data.strftime("%d/%m/%Y")]
+          linhas << [demanda.title, demanda.user&.name.to_s, demanda.status.humanize, demanda.data.strftime('%d/%m/%Y')]
         end
 
         pdf.table(linhas, header: true, width: pdf.bounds.width) do |t|
           t.row(0).font_style = :bold
-          t.row(0).background_color = "EEEEEE"
+          t.row(0).background_color = 'EEEEEE'
           t.cells.size = 9
           t.cells.padding = 6
         end
@@ -66,18 +68,18 @@ module Relatorios
     end
 
     def carga_por_responsavel(pdf)
-      pdf.text "Carga atual por responsável (demandas não concluídas)", size: 13, style: :bold
+      pdf.text 'Carga atual por responsável (demandas não concluídas)', size: 13, style: :bold
       pdf.move_down 4
 
       if @relatorio.carga_por_responsavel.empty?
-        pdf.text "Nenhuma.", size: 10, color: "666666"
+        pdf.text 'Nenhuma.', size: 10, color: '666666'
       else
-        linhas = [["Responsável", "Demandas em aberto"]]
+        linhas = [['Responsável', 'Demandas em aberto']]
         @relatorio.carga_por_responsavel.each { |nome, count| linhas << [nome, count.to_s] }
 
         pdf.table(linhas, header: true, width: pdf.bounds.width) do |t|
           t.row(0).font_style = :bold
-          t.row(0).background_color = "EEEEEE"
+          t.row(0).background_color = 'EEEEEE'
           t.cells.size = 9
           t.cells.padding = 6
         end

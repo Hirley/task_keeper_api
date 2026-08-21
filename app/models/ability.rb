@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Regras de autorização (CanCanCan) — refletem as regras de negócio:
 #
 #   * Ambos os papéis (líder e executor) podem cadastrar novas demandas.
@@ -12,7 +14,7 @@ class Ability
   include CanCan::Ability
 
   def initialize(user)
-    return unless user.present?
+    return if user.blank?
 
     if user.lider?
       can :manage, :all

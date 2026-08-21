@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Adiciona a "data" da demanda (data de referência escolhida pelo usuário
 # no cadastro, ex.: data prevista/realizada) — diferente de created_at, que
 # é o timestamp automático de quando o registro foi criado no sistema.

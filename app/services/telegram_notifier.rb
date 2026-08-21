@@ -1,5 +1,7 @@
-require "net/http"
-require "json"
+# frozen_string_literal: true
+
+require 'net/http'
+require 'json'
 
 # Envia lembretes de demanda atrasada via Telegram Bot API
 # (https://core.telegram.org/bots/api#sendmessage).
@@ -17,10 +19,10 @@ require "json"
 # configurado (ver lib/tasks/telegram_notifications.rake, que chama isso
 # periodicamente).
 class TelegramNotifier
-  API_BASE = "https://api.telegram.org".freeze
+  API_BASE = 'https://api.telegram.org'
 
   DEFAULT_TRANSPORT = lambda do |uri, body|
-    Net::HTTP.post(uri, body, "Content-Type" => "application/json")
+    Net::HTTP.post(uri, body, 'Content-Type' => 'application/json')
   end
 
   # Transporte pro envio de documentos (sendDocument é multipart/form-data
@@ -32,11 +34,11 @@ class TelegramNotifier
       request = Net::HTTP::Post.new(uri)
       request.set_form(
         [
-          ["chat_id", chat_id],
-          ["caption", legenda],
-          ["document", arquivo, { filename: filename, content_type: "application/pdf" }]
+          ['chat_id', chat_id],
+          ['caption', legenda],
+          ['document', arquivo, { filename: filename, content_type: 'application/pdf' }]
         ],
-        "multipart/form-data"
+        'multipart/form-data'
       )
       http.request(request)
     end
@@ -50,7 +52,7 @@ class TelegramNotifier
   # nos testes (evita depender de uma gem de mock de HTTP e evita
   # chamadas de rede reais).
   def initialize(
-    bot_token: ENV["TELEGRAM_BOT_TOKEN"],
+    bot_token: ENV.fetch('TELEGRAM_BOT_TOKEN', nil),
     transport: DEFAULT_TRANSPORT,
     document_transport: DEFAULT_DOCUMENT_TRANSPORT
   )
@@ -96,12 +98,12 @@ class TelegramNotifier
   # compostos comuns no Brasil, como "Ana Paula" ou "Maria Clara".
   def mensagem_atraso(demanda)
     dias = [(Date.current - demanda.data).to_i, 1].max
-    prazo = demanda.data.strftime("%d/%m/%Y")
+    prazo = demanda.data.strftime('%d/%m/%Y')
 
     <<~MSG.strip
       Oi, #{demanda.user.name}! 👋
 
-      Passando para lembrar com carinho: a demanda "#{demanda.title}" está #{dias == 1 ? "há 1 dia" : "há #{dias} dias"} com o prazo vencido (era #{prazo}).
+      Passando para lembrar com carinho: a demanda "#{demanda.title}" está #{dias == 1 ? 'há 1 dia' : "há #{dias} dias"} com o prazo vencido (era #{prazo}).
 
       Sem cobrança — só um lembrete objetivo. Se estiver precisando de mais tempo ou de uma mão, vale alinhar com o seu líder. Se já está resolvida, é só atualizar o status em Demandas.
     MSG

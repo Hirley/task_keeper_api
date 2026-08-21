@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Relatório semanal de demandas — só o líder tem acesso (ver
 # app/models/ability.rb: líder tem `can :manage, :all`, que já cobre o
 # símbolo :relatorio usado em #authorize_relatorio!; executor não tem
@@ -15,7 +17,7 @@ class RelatoriosController < ApplicationController
   # GET /relatorios/semanal.pdf — baixa o mesmo relatório em PDF.
   def semanal_pdf
     pdf = gerar_pdf
-    send_data pdf, filename: nome_arquivo, type: "application/pdf", disposition: "inline"
+    send_data pdf, filename: nome_arquivo, type: 'application/pdf', disposition: 'inline'
   end
 
   # POST /relatorios/enviar_telegram — envia o PDF pro Telegram do próprio
@@ -26,15 +28,15 @@ class RelatoriosController < ApplicationController
       current_user,
       filename: nome_arquivo,
       conteudo: pdf,
-      legenda: "Relatório semanal — Task Keeper API"
+      legenda: 'Relatório semanal — Task Keeper API'
     )
 
     if enviado
-      redirect_to relatorios_path, notice: "Relatório enviado no seu Telegram."
+      redirect_to relatorios_path, notice: 'Relatório enviado no seu Telegram.'
     else
       redirect_to relatorios_path,
-        alert: "Não foi possível enviar pelo Telegram. Confira se o servidor tem TELEGRAM_BOT_TOKEN " \
-          "configurado e se você tem um Chat ID do Telegram cadastrado (em Acessos → Editar permissões)."
+                  alert: 'Não foi possível enviar pelo Telegram. Confira se o servidor tem TELEGRAM_BOT_TOKEN ' \
+                         'configurado e se você tem um Chat ID do Telegram cadastrado (em Acessos → Editar permissões).'
     end
   end
 

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Users
   # Regra de exclusão de usuário, compartilhada entre a tela web
   # (UsersController) e a API (Api::V1::UsersController) — antes vivia
@@ -22,7 +24,7 @@ module Users
     end
 
     def call
-      return failure(:self_deletion, "Você não pode excluir o seu próprio usuário.") if user == actor
+      return failure(:self_deletion, 'Você não pode excluir o seu próprio usuário.') if user == actor
       return failure(:user_has_demandas, demandas_error_message) if user.demandas.exists?
 
       if user.destroy
@@ -31,7 +33,7 @@ module Users
         # dependent: :restrict_with_error (ver Demanda/User) pode
         # popular user.errors mesmo sem cair no "user.demandas.exists?"
         # acima, em corridas raras — fallback defensivo.
-        failure(:destroy_failed, user.errors.full_messages.to_sentence.presence || "Não foi possível excluir o usuário.")
+        failure(:destroy_failed, user.errors.full_messages.to_sentence.presence || 'Não foi possível excluir o usuário.')
       end
     end
 

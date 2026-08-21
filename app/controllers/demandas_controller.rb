@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Controller web (HAML) para a tela de demandas. Ambos os papéis podem
 # criar demandas; apenas o líder pode editar ou excluir uma demanda já
 # existente (ver app/models/ability.rb). As ações de editar/excluir só
@@ -12,11 +14,11 @@ class DemandasController < ApplicationController
   # "user_name" é a convenção do Ransack para "atributo name da associação
   # user" (antes disso usávamos a coluna SQL "users.name" diretamente).
   SORTABLE_COLUMNS = {
-    "title" => "title",
-    "data" => "data",
-    "status" => "status",
-    "responsavel" => "user_name",
-    "created_at" => "created_at"
+    'title' => 'title',
+    'data' => 'data',
+    'status' => 'status',
+    'responsavel' => 'user_name',
+    'created_at' => 'created_at'
   }.freeze
 
   def index
@@ -24,8 +26,8 @@ class DemandasController < ApplicationController
 
     @q = params[:q]
     @status_filter = normalized_status_filter
-    @sort = SORTABLE_COLUMNS.key?(params[:sort]) ? params[:sort] : "created_at"
-    @direction = params[:direction] == "asc" ? "asc" : "desc"
+    @sort = SORTABLE_COLUMNS.key?(params[:sort]) ? params[:sort] : 'created_at'
+    @direction = params[:direction] == 'asc' ? 'asc' : 'desc'
 
     # Ransack é usado só como mecanismo interno de query — o contrato
     # externo continua sendo os mesmos params simples de sempre (q, status,
@@ -50,35 +52,35 @@ class DemandasController < ApplicationController
     @demanda = Demanda.new
   end
 
+  def edit
+    authorize! :update, @demanda
+  end
+
   def create
     authorize! :create, Demanda
     @demanda = current_user.demandas.new(demanda_params)
 
     if @demanda.save
-      redirect_to demandas_path, notice: "Demanda criada com sucesso."
+      redirect_to demandas_path, notice: 'Demanda criada com sucesso.'
     else
-      render :new, status: :unprocessable_entity
+      render :new, status: :unprocessable_content
     end
-  end
-
-  def edit
-    authorize! :update, @demanda
   end
 
   def update
     authorize! :update, @demanda
 
     if @demanda.update(demanda_params)
-      redirect_to demandas_path, notice: "Demanda atualizada com sucesso."
+      redirect_to demandas_path, notice: 'Demanda atualizada com sucesso.'
     else
-      render :edit, status: :unprocessable_entity
+      render :edit, status: :unprocessable_content
     end
   end
 
   def destroy
     authorize! :destroy, @demanda
     @demanda.destroy
-    redirect_to demandas_path, notice: "Demanda excluída com sucesso."
+    redirect_to demandas_path, notice: 'Demanda excluída com sucesso.'
   end
 
   private
@@ -96,8 +98,16 @@ class DemandasController < ApplicationController
   # URL. Aceita um valor único (status=x, formato antigo, ainda usado por
   # quem já tinha um link/favorito salvo) ou vários (status[]=x&status[]=y,
   # do <select multiple> da tela) — Array() normaliza os dois formatos.
+  #
+  # Também traduz para o valor inteiro do enum (Demanda.statuses[status])
+  # antes de repassar ao Ransack: a coluna "status" é integer no banco e o
+  # Ransack não conhece o enum do Rails — sem essa tradução, "status_in"
+  # recebia a string ("concluida") e o cast pro tipo da coluna zerava o
+  # valor (equivalia a status 0/"pendente"), filtrando errado em silêncio.
   def normalized_status_filter
-    Array(params[:status]).select { |status| Demanda.statuses.key?(status) }
+    Array(params[:status])
+      .select { |status| Demanda.statuses.key?(status) }
+      .map { |status| Demanda.statuses[status] }
   end
 
   # Divide o campo de busca por título em vários termos (separados por
@@ -105,6 +115,6 @@ class DemandasController < ApplicationController
   # title_cont_any em #index). Um único termo sem vírgula (o caso mais
   # comum) se comporta exatamente como antes.
   def title_terms
-    @q.to_s.split(",").map(&:strip).reject(&:blank?)
+    @q.to_s.split(',').map(&:strip).compact_blank
   end
 end

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Api
   module V1
     class BaseController < ActionController::Base
@@ -34,9 +36,9 @@ module Api
       private
 
       def require_json_content_type!
-        return if request.content_type == "application/json"
+        return if request.content_type == 'application/json'
 
-        render json: { error: "Content-Type deve ser application/json." }, status: :unsupported_media_type
+        render json: { error: 'Content-Type deve ser application/json.' }, status: :unsupported_media_type
       end
     end
   end

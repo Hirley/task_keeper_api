@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Paginação simples, sem dependência de gem externa (kaminari/will_paginate).
 #
 # Optamos por implementar isso "na mão" porque este sandbox de

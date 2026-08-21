@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Usuário da aplicação. Não há autocadastro: apenas um líder pode criar
 # novos usuários (ver Api::V1::UsersController), por isso o módulo
 # :registerable do Devise não é habilitado aqui.
@@ -17,15 +19,15 @@ class User < ApplicationRecord
   # /users; o próprio usuário descobre o chat_id conversando com um bot
   # como @userinfobot no Telegram.
   validates :telegram_chat_id,
-    format: { with: /\A-?\d+\z/, message: "deve conter só números (o chat_id do Telegram)" },
-    allow_blank: true
+            format: { with: /\A-?\d+\z/, message: 'deve conter só números (o chat_id do Telegram)' },
+            allow_blank: true
 
   def lider?
-    role == "lider"
+    role == 'lider'
   end
 
   def executor?
-    role == "executor"
+    role == 'executor'
   end
 
   # Whitelist exigida pelo Ransack (usado em UsersController#index e, via

@@ -1,7 +1,9 @@
+# frozen_string_literal: true
+
 FactoryBot.define do
   factory :demanda do
-    title { "Demanda de teste" }
-    description { "Descrição da demanda de teste" }
+    title { 'Demanda de teste' }
+    description { 'Descrição da demanda de teste' }
     status { :pendente }
     association :user
 
