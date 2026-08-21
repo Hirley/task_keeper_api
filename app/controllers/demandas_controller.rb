@@ -92,13 +92,21 @@ class DemandasController < ApplicationController
   end
 
   # Mesma validação de antes: só deixa passar chaves válidas do enum, pra
-  # não deixar o Ransack tentar comparar com um valor arbitrário vindo da
-  # URL. Aceita um valor único (status=x, formato antigo, ainda usado por
-  # quem já tinha um link/favorito salvo) ou vários (status[]=x&status[]=y,
-  # do <select multiple> da tela) — Array() normaliza os dois formatos.
-  def normalized_status_filter
-    Array(params[:status]).select { |status| Demanda.statuses.key?(status) }
-  end
+# não deixar o Ransack tentar comparar com um valor arbitrário vindo da
+# URL. Aceita um valor único (status=x, formato antigo, ainda usado por
+# quem já tinha um link/favorito salvo) ou vários (status[]=x&status[]=y,
+# do <select multiple> da tela) — Array() normaliza os dois formatos.
+#
+# Também traduz para o valor inteiro do enum (Demanda.statuses[status])
+# antes de repassar ao Ransack: a coluna "status" é integer no banco e o
+# Ransack não conhece o enum do Rails — sem essa tradução, "status_in"
+# recebia a string ("concluida") e o cast pro tipo da coluna zerava o
+# valor (equivalia a status 0/"pendente"), filtrando errado em silêncio.
+def normalized_status_filter
+  Array(params[:status])
+    .select { |status| Demanda.statuses.key?(status) }
+    .map { |status| Demanda.statuses[status] }
+end
 
   # Divide o campo de busca por título em vários termos (separados por
   # vírgula) — cada um vira uma condição "contém" combinada com OR (ver
