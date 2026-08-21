@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class AddTelegramNotificationFields < ActiveRecord::Migration[8.1]
   def change
     # Preenchido pelo líder em /users (ver app/views/users/_form.html.haml)

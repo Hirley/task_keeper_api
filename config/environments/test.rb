@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 Rails.application.configure do
   config.enable_reloading = false
   # Eager loading em CI (ENV["CI"].present?) foi tentado para pegar erros

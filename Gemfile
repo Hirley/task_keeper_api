@@ -1,23 +1,25 @@
-source "https://rubygems.org"
+# frozen_string_literal: true
 
-ruby "4.0.6"
+source 'https://rubygems.org'
 
-gem "rails", "~> 8.1"
-gem "pg", "~> 1.5"
-gem "puma", ">= 6.0"
-gem "propshaft"
-gem "importmap-rails"
-gem "turbo-rails"
-gem "stimulus-rails"
-gem "bootsnap", require: false
-gem "tzinfo-data", platforms: %i[mingw mswin x64_mingw jruby]
+ruby '4.0.6'
+
+gem 'bootsnap', require: false
+gem 'importmap-rails'
+gem 'pg', '~> 1.5'
+gem 'propshaft'
+gem 'puma', '>= 6.0'
+gem 'rails', '~> 8.1'
+gem 'stimulus-rails'
+gem 'turbo-rails'
+gem 'tzinfo-data', platforms: %i[mingw mswin x64_mingw jruby]
 
 # View layer
-gem "haml-rails"
+gem 'haml-rails'
 
 # Autenticação e autorização
-gem "devise"
-gem "cancancan"
+gem 'cancancan'
+gem 'devise'
 
 # Construção de filtros/ordenação (ver DemandasController#index e
 # UsersController#index) — usado apenas como mecanismo interno de query;
@@ -25,7 +27,7 @@ gem "cancancan"
 # URL, para preservar o contrato simples já existente (q, status, sort,
 # direction). Ver ransackable_attributes/ransackable_associations em
 # Demanda e User.
-gem "ransack"
+gem 'ransack'
 
 # Geração do PDF do relatório semanal (ver RelatoriosController). Prawn é
 # puro Ruby (sem binário externo tipo wkhtmltopdf/Chrome headless, ao
@@ -33,8 +35,8 @@ gem "ransack"
 # em produção/Docker, e consistente com o resto do projeto (que evita
 # dependências pesadas — ver, por ex., a ausência de um driver
 # Capybara/JS no Gemfile).
-gem "prawn"
-gem "prawn-table"
+gem 'prawn'
+gem 'prawn-table'
 
 # Prawn usa a lib "matrix" internamente (prawn/transformation_stack.rb).
 # "matrix" saiu do conjunto de gems padrão do Ruby (deixou de vir
@@ -43,25 +45,25 @@ gem "prawn-table"
 # `LoadError: cannot load such file -- matrix` assim que o Prawn tenta
 # carregar. Erro real, reproduzido rodando `rails db:migrate` no Ruby
 # 4.0.6 do projeto.
-gem "matrix"
+gem 'matrix'
 
 group :development, :test do
-  gem "debug", platforms: %i[mri windows], require: "debug/prelude"
-  gem "rspec-rails"
-  gem "factory_bot_rails"
-  gem "shoulda-matchers"
+  gem 'debug', platforms: %i[mri windows], require: 'debug/prelude'
+  gem 'factory_bot_rails'
+  gem 'rspec-rails'
+  gem 'shoulda-matchers'
 
   # Style guide automatizado (ver .rubocop.yml). require: false porque só
   # é usado via linha de comando/CI, não precisa ser carregado pela app.
-  gem "rubocop", require: false
-  gem "rubocop-rails", require: false
-  gem "rubocop-rspec", require: false
+  gem 'rubocop', require: false
+  gem 'rubocop-rails', require: false
+  gem 'rubocop-rspec', require: false
 end
 
 group :development do
-  gem "web-console"
+  gem 'web-console'
 end
 
 group :test do
-  gem "rails-controller-testing"
+  gem 'rails-controller-testing'
 end

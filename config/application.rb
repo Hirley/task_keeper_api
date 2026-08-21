@@ -1,6 +1,8 @@
-require_relative "boot"
+# frozen_string_literal: true
 
-require "rails/all"
+require_relative 'boot'
+
+require 'rails/all'
 
 Bundler.require(*Rails.groups)
 
@@ -10,8 +12,8 @@ module TaskKeeperApi
 
     config.autoload_lib(ignore: %w[assets tasks])
 
-    config.time_zone = "America/Fortaleza"
-    config.i18n.default_locale = :"pt-BR"
-    config.i18n.available_locales = [:"pt-BR", :en]
+    config.time_zone = 'America/Fortaleza'
+    config.i18n.default_locale = :'pt-BR'
+    config.i18n.available_locales = %i[pt-BR en]
   end
 end

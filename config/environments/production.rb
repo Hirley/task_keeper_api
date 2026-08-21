@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 Rails.application.configure do
   config.enable_reloading = false
   config.eager_load = true
@@ -8,8 +10,8 @@ Rails.application.configure do
   config.active_storage.service = :local
 
   config.log_tags = [:request_id]
-  config.logger = ActiveSupport::TaggedLogging.logger(STDOUT)
-  config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "info")
+  config.logger = ActiveSupport::TaggedLogging.logger($stdout)
+  config.log_level = ENV.fetch('RAILS_LOG_LEVEL', 'info')
 
   config.action_mailer.perform_caching = false
 
@@ -19,5 +21,5 @@ Rails.application.configure do
 
   config.active_record.attributes_for_inspect = [:id]
 
-  config.hosts << ENV["APP_HOST"] if ENV["APP_HOST"]
+  config.hosts << ENV['APP_HOST'] if ENV['APP_HOST']
 end

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Api
   module V1
     # Apenas o líder pode listar/cadastrar/excluir usuários. Não há autocadastro.
@@ -8,12 +10,12 @@ module Api
       # GET /api/v1/users
       def index
         @users = User.order(:name)
-        render json: @users, except: [:encrypted_password, :reset_password_token]
+        render json: @users, except: %i[encrypted_password reset_password_token]
       end
 
       # GET /api/v1/users/:id
       def show
-        render json: @user, except: [:encrypted_password, :reset_password_token]
+        render json: @user, except: %i[encrypted_password reset_password_token]
       end
 
       # POST /api/v1/users
@@ -21,9 +23,9 @@ module Api
         @user = User.new(user_params)
 
         if @user.save
-          render json: @user, except: [:encrypted_password, :reset_password_token], status: :created
+          render json: @user, except: %i[encrypted_password reset_password_token], status: :created
         else
-          render json: { errors: @user.errors.full_messages }, status: :unprocessable_entity
+          render json: { errors: @user.errors.full_messages }, status: :unprocessable_content
         end
       end
 
@@ -34,7 +36,7 @@ module Api
         if result.success?
           head :no_content
         else
-          render json: { error: result.error_message }, status: :unprocessable_entity
+          render json: { error: result.error_message }, status: :unprocessable_content
         end
       end
 

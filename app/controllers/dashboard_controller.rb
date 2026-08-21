@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Painel inicial (home) da aplicação — visão geral das demandas para
 # qualquer usuário autenticado (líder ou executor). Não há ações de
 # escrita aqui, só leitura, então não precisa de `authorize!`: as
@@ -13,23 +15,23 @@ class DashboardController < ApplicationController
     @status_counts = status_counts(demandas)
 
     @minhas_demandas = current_user.demandas
-      .order(Arel.sql("(status = 2) ASC, data ASC"))
-      .limit(6)
+                                   .order(Arel.sql('(status = 2) ASC, data ASC'))
+                                   .limit(6)
 
     @atividade_recente = demandas.order(created_at: :desc).limit(5)
 
     abertas = demandas.where.not(status: :concluida)
     hoje = Date.current
-    @atrasadas = abertas.where("data < ?", hoje).count
+    @atrasadas = abertas.where(data: ...hoje).count
     @vencem_hoje = abertas.where(data: hoje).count
     @vencem_em_breve = abertas.where(data: (hoje + 1)..(hoje + PRAZO_PROXIMO_DIAS)).count
 
     @carga_por_responsavel = carga_por_responsavel(abertas)
 
-    if current_user.lider?
-      @total_lideres = User.lider.count
-      @total_executores = User.executor.count
-    end
+    return unless current_user.lider?
+
+    @total_lideres = User.lider.count
+    @total_executores = User.executor.count
   end
 
   private
@@ -42,8 +44,8 @@ class DashboardController < ApplicationController
   # Quantidade de demandas ainda abertas (não concluídas) por responsável,
   # da maior carga para a menor.
   def carga_por_responsavel(abertas)
-    abertas.joins(:user).group("users.id", "users.name").count
-      .map { |(_id, name), count| [name, count] }
-      .sort_by { |(_name, count)| -count }
+    abertas.joins(:user).group('users.id', 'users.name').count
+           .map { |(_id, name), count| [name, count] }
+           .sort_by { |(_name, count)| -count }
   end
 end

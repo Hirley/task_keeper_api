@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Monta a lista de páginas a exibir na paginação, com "..." (:gap) quando
 # há muitas páginas — evita renderizar uma lista gigante de números.
 #
@@ -7,7 +9,7 @@ module PaginationHelper
     return (1..total_pages).to_a if total_pages <= (radius * 2) + 5
 
     pages = ([1, 2] + ((current_page - radius)..(current_page + radius)).to_a + [total_pages - 1, total_pages])
-            .select { |page| page.between?(1, total_pages) }
+            .grep(1..total_pages)
             .uniq
             .sort
 

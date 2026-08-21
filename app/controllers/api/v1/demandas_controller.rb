@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Api
   module V1
     class DemandasController < BaseController
@@ -24,7 +26,7 @@ module Api
         if @demanda.save
           render json: @demanda, status: :created
         else
-          render json: { errors: @demanda.errors.full_messages }, status: :unprocessable_entity
+          render json: { errors: @demanda.errors.full_messages }, status: :unprocessable_content
         end
       end
 
@@ -36,7 +38,7 @@ module Api
         if @demanda.update(demanda_params)
           render json: @demanda
         else
-          render json: { errors: @demanda.errors.full_messages }, status: :unprocessable_entity
+          render json: { errors: @demanda.errors.full_messages }, status: :unprocessable_content
         end
       end
 

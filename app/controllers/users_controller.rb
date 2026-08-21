@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Tela de Acessos (web): apenas o líder pode cadastrar novos usuários,
 # alterar as permissões (papel líder/executor) e excluir usuários já
 # existentes. Não há autocadastro — só o líder chega a esta tela (ver
@@ -11,9 +13,9 @@ class UsersController < ApplicationController
   # interpolar params[:sort] direto numa query). Mesma convenção usada em
   # DemandasController::SORTABLE_COLUMNS.
   SORTABLE_COLUMNS = {
-    "name" => "name",
-    "email" => "email",
-    "role" => "role"
+    'name' => 'name',
+    'email' => 'email',
+    'role' => 'role'
   }.freeze
 
   def index
@@ -21,10 +23,10 @@ class UsersController < ApplicationController
 
     @q = params[:q]
     @role_filter = normalized_role_filter
-    @sort = SORTABLE_COLUMNS.key?(params[:sort]) ? params[:sort] : "name"
+    @sort = SORTABLE_COLUMNS.key?(params[:sort]) ? params[:sort] : 'name'
     # Default "asc" (não "desc" como em Demandas) pra preservar o
     # comportamento antigo, que era sempre `.order(:name)` ascendente.
-    @direction = params[:direction] == "desc" ? "desc" : "asc"
+    @direction = params[:direction] == 'desc' ? 'desc' : 'asc'
 
     @users = paginate(filter_users(scope))
     @name_suggestions = User.order(:name).limit(50).pluck(:name)
@@ -34,24 +36,23 @@ class UsersController < ApplicationController
     @user = User.new
   end
 
+  def edit; end
+
   def create
     @user = User.new(user_params)
 
     if @user.save
-      redirect_to users_path, notice: "Usuário cadastrado com sucesso."
+      redirect_to users_path, notice: 'Usuário cadastrado com sucesso.'
     else
-      render :new, status: :unprocessable_entity
+      render :new, status: :unprocessable_content
     end
-  end
-
-  def edit
   end
 
   def update
     if @user.update(permission_params)
-      redirect_to users_path, notice: "Permissões atualizadas com sucesso."
+      redirect_to users_path, notice: 'Permissões atualizadas com sucesso.'
     else
-      render :edit, status: :unprocessable_entity
+      render :edit, status: :unprocessable_content
     end
   end
 
@@ -59,7 +60,7 @@ class UsersController < ApplicationController
     result = Users::Destroy.call(user: @user, actor: current_user)
 
     if result.success?
-      redirect_to users_path, notice: "Usuário excluído com sucesso."
+      redirect_to users_path, notice: 'Usuário excluído com sucesso.'
     else
       redirect_to users_path, alert: result.error_message
     end
@@ -103,20 +104,20 @@ class UsersController < ApplicationController
   end
 
   # Mesma validação de antes: só deixa passar chaves válidas do enum.
-# Aceita um valor único (role=x, formato antigo) ou vários
-# (role[]=x&role[]=y, do <select multiple> da tela) — ver
-# DemandasController#normalized_status_filter pro mesmo padrão —
-# inclusive o motivo do .map traduzindo pro inteiro do enum (Ransack
-# não conhece o enum do Rails e comparava direto com a string).
-def normalized_role_filter
-  Array(params[:role])
-    .select { |role| User.roles.key?(role) }
-    .map { |role| User.roles[role] }
-end
+  # Aceita um valor único (role=x, formato antigo) ou vários
+  # (role[]=x&role[]=y, do <select multiple> da tela) — ver
+  # DemandasController#normalized_status_filter pro mesmo padrão —
+  # inclusive o motivo do .map traduzindo pro inteiro do enum (Ransack
+  # não conhece o enum do Rails e comparava direto com a string).
+  def normalized_role_filter
+    Array(params[:role])
+      .select { |role| User.roles.key?(role) }
+      .map { |role| User.roles[role] }
+  end
 
   # Mesma ideia de DemandasController#title_terms: divide a busca por
   # nome/e-mail em vários termos separados por vírgula.
   def q_terms
-    @q.to_s.split(",").map(&:strip).reject(&:blank?)
+    @q.to_s.split(',').map(&:strip).compact_blank
   end
 end

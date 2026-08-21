@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Pensado para rodar periodicamente (ex.: uma vez por dia) via um
 # scheduler externo — no Railway, um serviço "Cron Job" separado rodando
 # `bin/rails demandas:notificar_atrasos`. Não é chamado automaticamente
@@ -5,21 +7,21 @@
 # passagem do tempo, não com uma ação do usuário — precisa de alguém
 # perguntando periodicamente "o que está atrasado agora?".
 namespace :demandas do
-  desc "Envia um lembrete no Telegram para o responsável de cada demanda atrasada (uma vez por atraso)"
+  desc 'Envia um lembrete no Telegram para o responsável de cada demanda atrasada (uma vez por atraso)'
   task notificar_atrasos: :environment do
-    if ENV["TELEGRAM_BOT_TOKEN"].blank?
-      puts "TELEGRAM_BOT_TOKEN não configurado — nada a fazer."
+    if ENV['TELEGRAM_BOT_TOKEN'].blank?
+      puts 'TELEGRAM_BOT_TOKEN não configurado — nada a fazer.'
       next
     end
 
     demandas_atrasadas = Demanda
-      .where.not(status: :concluida)
-      .where("data < ?", Date.current)
-      .where(atraso_notificado_em: nil)
-      .includes(:user)
+                         .where.not(status: :concluida)
+                         .where(data: ...Date.current)
+                         .where(atraso_notificado_em: nil)
+                         .includes(:user)
 
     if demandas_atrasadas.none?
-      puts "Nenhuma demanda atrasada pendente de notificação."
+      puts 'Nenhuma demanda atrasada pendente de notificação.'
       next
     end
 

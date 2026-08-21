@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ApplicationHelper
   # Cabeçalho de coluna clicável para ordenar uma listagem (Demandas,
   # Acessos...). Preserva os demais filtros/parâmetros de busca já
@@ -11,30 +13,30 @@ module ApplicationHelper
   # há params[:direction] na URL — precisa bater com o default de cada
   # controller (ver DemandasController/UsersController #index), senão o
   # ícone mostrado (▲/▼) fica invertido em relação à ordenação real.
-  def sort_header(column, label, default_column:, default_direction: "desc")
+  def sort_header(column, label, default_column:, default_direction: 'desc')
     is_default = params[:sort].blank? && column == default_column
     active = params[:sort] == column || is_default
 
     current_direction = if !active
-      nil
-    elsif params[:direction] == "asc" || params[:direction] == "desc"
-      params[:direction]
-    else
-      default_direction
-    end
+                          nil
+                        elsif %w[asc desc].include?(params[:direction])
+                          params[:direction]
+                        else
+                          default_direction
+                        end
 
-    next_direction = current_direction == "asc" ? "desc" : "asc"
+    next_direction = current_direction == 'asc' ? 'desc' : 'asc'
 
     url = url_for(request.query_parameters.merge(
-      "sort" => column, "direction" => next_direction, "page" => nil
-    ))
+                    'sort' => column, 'direction' => next_direction, 'page' => nil
+                  ))
 
     icon = if active
-      content_tag(:span, current_direction == "asc" ? "▲" : "▼", class: "tk-sort-icon", "aria-hidden" => "true")
-    end
+             content_tag(:span, current_direction == 'asc' ? '▲' : '▼', class: 'tk-sort-icon', 'aria-hidden' => 'true')
+           end
 
     link_to url, class: "tk-sort-link#{' tk-sort-active' if active}" do
-      safe_join([label, icon].compact, " ")
+      safe_join([label, icon].compact, ' ')
     end
   end
 end

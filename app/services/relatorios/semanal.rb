@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Relatorios
   # Monta os dados do relatório semanal de demandas — usado tanto pelo PDF
   # (Relatorios::SemanalPdf) quanto pela tela de pré-visualização
@@ -46,8 +48,8 @@ module Relatorios
     # concluída nesta semana. Documentado também no README.
     def concluidas_no_periodo(inicio, fim)
       Demanda.includes(:user).concluida
-        .where(updated_at: inicio.beginning_of_day..fim.end_of_day)
-        .order(:updated_at)
+             .where(updated_at: inicio.beginning_of_day..fim.end_of_day)
+             .order(:updated_at)
     end
 
     # Retrato atual (não é "da semana") — quantas demandas existem hoje em
@@ -59,13 +61,13 @@ module Relatorios
     end
 
     def atrasadas
-      Demanda.where.not(status: :concluida).where("data < ?", Date.current).count
+      Demanda.where.not(status: :concluida).where(data: ...Date.current).count
     end
 
     def carga_por_responsavel
-      Demanda.where.not(status: :concluida).joins(:user).group("users.id", "users.name").count
-        .map { |(_id, name), count| [name, count] }
-        .sort_by { |(_name, count)| -count }
+      Demanda.where.not(status: :concluida).joins(:user).group('users.id', 'users.name').count
+             .map { |(_id, name), count| [name, count] }
+             .sort_by { |(_name, count)| -count }
     end
   end
 end

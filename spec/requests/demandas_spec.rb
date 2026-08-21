@@ -1,6 +1,8 @@
-require "rails_helper"
+# frozen_string_literal: true
 
-RSpec.describe "Demandas (tela web)", type: :request do
+require 'rails_helper'
+
+RSpec.describe 'Demandas (tela web)', type: :request do
   let(:lider) { create(:user, :lider) }
   let(:executor) { create(:user, :executor) }
 
@@ -10,298 +12,298 @@ RSpec.describe "Demandas (tela web)", type: :request do
   # resultados exibidos na tabela, os testes de filtro/ordenação devem
   # inspecionar apenas o HTML dentro do <tbody> da tabela de resultados.
   def results_table(response)
-    response.body[/<tbody>.*?<\/tbody>/m]
+    response.body[%r{<tbody>.*?</tbody>}m]
   end
 
-  describe "GET /demandas" do
-    it "mostra o botão de nova demanda mas esconde as ações de editar/excluir para o executor" do
+  describe 'GET /demandas' do
+    it 'mostra o botão de nova demanda mas esconde as ações de editar/excluir para o executor' do
       create(:demanda, user: lider)
       sign_in executor
 
-      get "/demandas"
+      get '/demandas'
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Nova demanda")
-      expect(response.body).not_to include("Editar")
-      expect(response.body).not_to include("Excluir")
+      expect(response.body).to include('Nova demanda')
+      expect(response.body).not_to include('Editar')
+      expect(response.body).not_to include('Excluir')
     end
 
-    it "mostra as ações de editar e excluir para o líder" do
+    it 'mostra as ações de editar e excluir para o líder' do
       create(:demanda, user: executor)
       sign_in lider
 
-      get "/demandas"
+      get '/demandas'
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Nova demanda")
-      expect(response.body).to include("Editar")
-      expect(response.body).to include("Excluir")
+      expect(response.body).to include('Nova demanda')
+      expect(response.body).to include('Editar')
+      expect(response.body).to include('Excluir')
     end
 
-    it "carrega o importmap com o Turbo para o alerta de confirmação funcionar" do
+    it 'carrega o importmap com o Turbo para o alerta de confirmação funcionar' do
       sign_in executor
 
-      get "/demandas"
+      get '/demandas'
 
       expect(response.body).to include('type="importmap"')
-      expect(response.body).to include("@hotwired/turbo-rails")
+      expect(response.body).to include('@hotwired/turbo-rails')
     end
 
-    it "não repete o título da página como um heading visível igual ao item do menu" do
+    it 'não repete o título da página como um heading visível igual ao item do menu' do
       sign_in executor
 
-      get "/demandas"
+      get '/demandas'
 
-      expect(response.body).to include("<title>Demandas · Task Keeper API</title>")
-      expect(response.body).to include("visually-hidden")
+      expect(response.body).to include('<title>Demandas · Task Keeper API</title>')
+      expect(response.body).to include('visually-hidden')
     end
 
-    it "os alertas de flash podem ser fechados (têm botão de fechar)" do
+    it 'os alertas de flash podem ser fechados (têm botão de fechar)' do
       sign_in executor
-      post "/demandas", params: { demanda: { title: "Nova demanda web" } }
+      post '/demandas', params: { demanda: { title: 'Nova demanda web' } }
 
       follow_redirect!
 
-      expect(response.body).to include("alert-dismissible")
-      expect(response.body).to include("btn-close")
+      expect(response.body).to include('alert-dismissible')
+      expect(response.body).to include('btn-close')
     end
 
-    it "pede confirmação antes de excluir" do
+    it 'pede confirmação antes de excluir' do
       create(:demanda, user: executor)
       sign_in lider
 
-      get "/demandas"
+      get '/demandas'
 
-      expect(response.body).to include("data-turbo-confirm")
-      expect(response.body).to include("Tem certeza que deseja excluir esta demanda?")
+      expect(response.body).to include('data-turbo-confirm')
+      expect(response.body).to include('Tem certeza que deseja excluir esta demanda?')
     end
 
-    it "filtra por título via o formulário de busca" do
-      create(:demanda, title: "Revisar contrato", user: lider)
-      create(:demanda, title: "Organizar sala", user: lider)
+    it 'filtra por título via o formulário de busca' do
+      create(:demanda, title: 'Revisar contrato', user: lider)
+      create(:demanda, title: 'Organizar sala', user: lider)
       sign_in lider
 
-      get "/demandas", params: { q: "contrato" }
+      get '/demandas', params: { q: 'contrato' }
 
-      expect(results_table(response)).to include("Revisar contrato")
-      expect(results_table(response)).not_to include("Organizar sala")
+      expect(results_table(response)).to include('Revisar contrato')
+      expect(results_table(response)).not_to include('Organizar sala')
     end
 
-    it "filtra por status" do
-      create(:demanda, title: "Demanda pendente", status: :pendente, user: lider)
-      create(:demanda, title: "Demanda concluída", status: :concluida, user: lider)
+    it 'filtra por status' do
+      create(:demanda, title: 'Demanda pendente', status: :pendente, user: lider)
+      create(:demanda, title: 'Demanda concluída', status: :concluida, user: lider)
       sign_in lider
 
-      get "/demandas", params: { status: "concluida" }
+      get '/demandas', params: { status: 'concluida' }
 
-      expect(results_table(response)).to include("Demanda concluída")
-      expect(results_table(response)).not_to include("Demanda pendente")
+      expect(results_table(response)).to include('Demanda concluída')
+      expect(results_table(response)).not_to include('Demanda pendente')
     end
 
-    it "filtra por mais de um status ao mesmo tempo (select multiple)" do
-      create(:demanda, title: "Demanda pendente", status: :pendente, user: lider)
-      create(:demanda, title: "Demanda em andamento", status: :em_andamento, user: lider)
-      create(:demanda, title: "Demanda concluída", status: :concluida, user: lider)
+    it 'filtra por mais de um status ao mesmo tempo (select multiple)' do
+      create(:demanda, title: 'Demanda pendente', status: :pendente, user: lider)
+      create(:demanda, title: 'Demanda em andamento', status: :em_andamento, user: lider)
+      create(:demanda, title: 'Demanda concluída', status: :concluida, user: lider)
       sign_in lider
 
-      get "/demandas", params: { status: %w[pendente concluida] }
+      get '/demandas', params: { status: %w[pendente concluida] }
 
       table = results_table(response)
-      expect(table).to include("Demanda pendente")
-      expect(table).to include("Demanda concluída")
-      expect(table).not_to include("Demanda em andamento")
+      expect(table).to include('Demanda pendente')
+      expect(table).to include('Demanda concluída')
+      expect(table).not_to include('Demanda em andamento')
     end
 
-    it "filtra por mais de um termo de título, separados por vírgula" do
-      create(:demanda, title: "Revisar contrato", user: lider)
-      create(:demanda, title: "Organizar sala", user: lider)
-      create(:demanda, title: "Comprar material", user: lider)
+    it 'filtra por mais de um termo de título, separados por vírgula' do
+      create(:demanda, title: 'Revisar contrato', user: lider)
+      create(:demanda, title: 'Organizar sala', user: lider)
+      create(:demanda, title: 'Comprar material', user: lider)
       sign_in lider
 
-      get "/demandas", params: { q: "contrato, sala" }
+      get '/demandas', params: { q: 'contrato, sala' }
 
       table = results_table(response)
-      expect(table).to include("Revisar contrato")
-      expect(table).to include("Organizar sala")
-      expect(table).not_to include("Comprar material")
+      expect(table).to include('Revisar contrato')
+      expect(table).to include('Organizar sala')
+      expect(table).not_to include('Comprar material')
     end
 
-    it "pagina os resultados quando há mais de 10 demandas" do
+    it 'pagina os resultados quando há mais de 10 demandas' do
       create_list(:demanda, 11, user: lider)
       sign_in lider
 
-      get "/demandas"
+      get '/demandas'
 
-      expect(response.body).to include("Próxima")
+      expect(response.body).to include('Próxima')
 
-      get "/demandas", params: { page: 2 }
+      get '/demandas', params: { page: 2 }
       expect(response).to have_http_status(:ok)
     end
 
-    it "ordena por título quando a coluna é clicada" do
-      create(:demanda, title: "Zebra", user: lider)
-      create(:demanda, title: "Abacaxi", user: lider)
+    it 'ordena por título quando a coluna é clicada' do
+      create(:demanda, title: 'Zebra', user: lider)
+      create(:demanda, title: 'Abacaxi', user: lider)
       sign_in lider
 
-      get "/demandas", params: { sort: "title", direction: "asc" }
+      get '/demandas', params: { sort: 'title', direction: 'asc' }
 
       table = results_table(response)
-      expect(table.index("Abacaxi")).to be < table.index("Zebra")
+      expect(table.index('Abacaxi')).to be < table.index('Zebra')
     end
 
-    it "inverte a direção da ordenação ao clicar novamente na mesma coluna" do
-      create(:demanda, title: "Zebra", user: lider)
-      create(:demanda, title: "Abacaxi", user: lider)
+    it 'inverte a direção da ordenação ao clicar novamente na mesma coluna' do
+      create(:demanda, title: 'Zebra', user: lider)
+      create(:demanda, title: 'Abacaxi', user: lider)
       sign_in lider
 
-      get "/demandas", params: { sort: "title", direction: "desc" }
+      get '/demandas', params: { sort: 'title', direction: 'desc' }
 
       table = results_table(response)
-      expect(table.index("Zebra")).to be < table.index("Abacaxi")
+      expect(table.index('Zebra')).to be < table.index('Abacaxi')
     end
 
-    it "ordena por responsável" do
-      ana = create(:user, name: "Ana")
-      bruno = create(:user, name: "Bruno")
-      create(:demanda, title: "Demanda do Bruno", user: bruno)
-      create(:demanda, title: "Demanda da Ana", user: ana)
+    it 'ordena por responsável' do
+      ana = create(:user, name: 'Ana')
+      bruno = create(:user, name: 'Bruno')
+      create(:demanda, title: 'Demanda do Bruno', user: bruno)
+      create(:demanda, title: 'Demanda da Ana', user: ana)
       sign_in lider
 
-      get "/demandas", params: { sort: "responsavel", direction: "asc" }
+      get '/demandas', params: { sort: 'responsavel', direction: 'asc' }
 
       table = results_table(response)
-      expect(table.index("Demanda da Ana")).to be < table.index("Demanda do Bruno")
+      expect(table.index('Demanda da Ana')).to be < table.index('Demanda do Bruno')
     end
 
-    it "ordena por status" do
-      create(:demanda, title: "Demanda concluída", status: :concluida, user: lider)
-      create(:demanda, title: "Demanda pendente", status: :pendente, user: lider)
+    it 'ordena por status' do
+      create(:demanda, title: 'Demanda concluída', status: :concluida, user: lider)
+      create(:demanda, title: 'Demanda pendente', status: :pendente, user: lider)
       sign_in lider
 
-      get "/demandas", params: { sort: "status", direction: "asc" }
+      get '/demandas', params: { sort: 'status', direction: 'asc' }
 
       table = results_table(response)
-      expect(table.index("Demanda pendente")).to be < table.index("Demanda concluída")
+      expect(table.index('Demanda pendente')).to be < table.index('Demanda concluída')
     end
 
-    it "ordena por data" do
-      create(:demanda, title: "Demanda futura", data: 10.days.from_now.to_date, user: lider)
-      create(:demanda, title: "Demanda de hoje", data: Date.current, user: lider)
+    it 'ordena por data' do
+      create(:demanda, title: 'Demanda futura', data: 10.days.from_now.to_date, user: lider)
+      create(:demanda, title: 'Demanda de hoje', data: Date.current, user: lider)
       sign_in lider
 
-      get "/demandas", params: { sort: "data", direction: "asc" }
+      get '/demandas', params: { sort: 'data', direction: 'asc' }
 
       table = results_table(response)
-      expect(table.index("Demanda de hoje")).to be < table.index("Demanda futura")
+      expect(table.index('Demanda de hoje')).to be < table.index('Demanda futura')
     end
 
-    it "por padrão ordena por criada em, mais recente primeiro" do
-      antiga = create(:demanda, title: "Demanda antiga", user: lider, created_at: 2.days.ago)
-      recente = create(:demanda, title: "Demanda recente", user: lider, created_at: 1.hour.ago)
+    it 'por padrão ordena por criada em, mais recente primeiro' do
+      create(:demanda, title: 'Demanda antiga', user: lider, created_at: 2.days.ago)
+      create(:demanda, title: 'Demanda recente', user: lider, created_at: 1.hour.ago)
       sign_in lider
 
-      get "/demandas"
+      get '/demandas'
 
       table = results_table(response)
-      expect(table.index("Demanda recente")).to be < table.index("Demanda antiga")
+      expect(table.index('Demanda recente')).to be < table.index('Demanda antiga')
     end
 
-    it "ignora um parâmetro de ordenação inválido/malicioso e não quebra a página" do
+    it 'ignora um parâmetro de ordenação inválido/malicioso e não quebra a página' do
       create(:demanda, user: lider)
       sign_in lider
 
-      get "/demandas", params: { sort: "1; DROP TABLE demandas;--", direction: "asc" }
+      get '/demandas', params: { sort: '1; DROP TABLE demandas;--', direction: 'asc' }
 
       expect(response).to have_http_status(:ok)
     end
   end
 
-  describe "GET /demandas/new" do
-    it "permite que um executor acesse o formulário de criação" do
+  describe 'GET /demandas/new' do
+    it 'permite que um executor acesse o formulário de criação' do
       sign_in executor
-      get "/demandas/new"
+      get '/demandas/new'
       expect(response).to have_http_status(:ok)
     end
 
-    it "permite que um líder acesse o formulário de criação" do
+    it 'permite que um líder acesse o formulário de criação' do
       sign_in lider
-      get "/demandas/new"
+      get '/demandas/new'
       expect(response).to have_http_status(:ok)
     end
 
-    it "traz o campo de data preenchido com a data atual por padrão" do
+    it 'traz o campo de data preenchido com a data atual por padrão' do
       sign_in executor
-      get "/demandas/new"
+      get '/demandas/new'
 
       expect(response.body).to include(%(value="#{Date.current.iso8601}"))
     end
   end
 
-  describe "POST /demandas" do
-    it "permite que um executor crie uma demanda pela tela" do
+  describe 'POST /demandas' do
+    it 'permite que um executor crie uma demanda pela tela' do
       sign_in executor
-      expect {
-        post "/demandas", params: { demanda: { title: "Nova demanda web" } }
-      }.to change(Demanda, :count).by(1)
+      expect do
+        post '/demandas', params: { demanda: { title: 'Nova demanda web' } }
+      end.to change(Demanda, :count).by(1)
       expect(response).to redirect_to(demandas_path)
     end
 
-    it "permite que um líder crie uma demanda pela tela" do
+    it 'permite que um líder crie uma demanda pela tela' do
       sign_in lider
-      expect {
-        post "/demandas", params: { demanda: { title: "Nova demanda web" } }
-      }.to change(Demanda, :count).by(1)
+      expect do
+        post '/demandas', params: { demanda: { title: 'Nova demanda web' } }
+      end.to change(Demanda, :count).by(1)
       expect(response).to redirect_to(demandas_path)
     end
 
-    it "usa a data de hoje quando o campo de data não é alterado" do
+    it 'usa a data de hoje quando o campo de data não é alterado' do
       sign_in executor
-      post "/demandas", params: { demanda: { title: "Nova demanda web" } }
+      post '/demandas', params: { demanda: { title: 'Nova demanda web' } }
       expect(Demanda.last.data).to eq(Date.current)
     end
 
-    it "permite que um executor selecione outra data ao cadastrar" do
+    it 'permite que um executor selecione outra data ao cadastrar' do
       outra_data = 7.days.from_now.to_date
       sign_in executor
-      post "/demandas", params: { demanda: { title: "Nova demanda web", data: outra_data } }
+      post '/demandas', params: { demanda: { title: 'Nova demanda web', data: outra_data } }
       expect(Demanda.last.data).to eq(outra_data)
     end
   end
 
-  describe "GET /demandas/:id/edit" do
+  describe 'GET /demandas/:id/edit' do
     let!(:demanda) { create(:demanda, user: lider) }
 
-    it "bloqueia um executor" do
+    it 'bloqueia um executor' do
       sign_in executor
       get "/demandas/#{demanda.id}/edit"
       expect(response).to redirect_to(root_path)
     end
 
-    it "permite um líder" do
+    it 'permite um líder' do
       sign_in lider
       get "/demandas/#{demanda.id}/edit"
       expect(response).to have_http_status(:ok)
     end
   end
 
-  describe "PATCH /demandas/:id" do
+  describe 'PATCH /demandas/:id' do
     let!(:demanda) { create(:demanda, user: lider) }
 
-    it "bloqueia um executor e não altera a demanda" do
+    it 'bloqueia um executor e não altera a demanda' do
       sign_in executor
-      patch "/demandas/#{demanda.id}", params: { demanda: { title: "Alterada" } }
+      patch "/demandas/#{demanda.id}", params: { demanda: { title: 'Alterada' } }
       expect(response).to redirect_to(root_path)
-      expect(demanda.reload.title).not_to eq("Alterada")
+      expect(demanda.reload.title).not_to eq('Alterada')
     end
 
-    it "permite que um líder atualize a demanda" do
+    it 'permite que um líder atualize a demanda' do
       sign_in lider
-      patch "/demandas/#{demanda.id}", params: { demanda: { title: "Alterada" } }
+      patch "/demandas/#{demanda.id}", params: { demanda: { title: 'Alterada' } }
       expect(response).to redirect_to(demandas_path)
-      expect(demanda.reload.title).to eq("Alterada")
+      expect(demanda.reload.title).to eq('Alterada')
     end
 
-    it "impede que um executor altere a data de uma demanda já cadastrada" do
+    it 'impede que um executor altere a data de uma demanda já cadastrada' do
       outra_data = 15.days.from_now.to_date
       sign_in executor
       patch "/demandas/#{demanda.id}", params: { demanda: { data: outra_data } }
@@ -309,7 +311,7 @@ RSpec.describe "Demandas (tela web)", type: :request do
       expect(demanda.reload.data).not_to eq(outra_data)
     end
 
-    it "permite que um líder altere a data de uma demanda já cadastrada" do
+    it 'permite que um líder altere a data de uma demanda já cadastrada' do
       outra_data = 15.days.from_now.to_date
       sign_in lider
       patch "/demandas/#{demanda.id}", params: { demanda: { data: outra_data } }
@@ -318,22 +320,22 @@ RSpec.describe "Demandas (tela web)", type: :request do
     end
   end
 
-  describe "DELETE /demandas/:id" do
+  describe 'DELETE /demandas/:id' do
     let!(:demanda) { create(:demanda, user: lider) }
 
-    it "bloqueia um executor e não exclui a demanda" do
+    it 'bloqueia um executor e não exclui a demanda' do
       sign_in executor
-      expect {
+      expect do
         delete "/demandas/#{demanda.id}"
-      }.not_to change(Demanda, :count)
+      end.not_to change(Demanda, :count)
       expect(response).to redirect_to(root_path)
     end
 
-    it "permite que um líder exclua a demanda" do
+    it 'permite que um líder exclua a demanda' do
       sign_in lider
-      expect {
+      expect do
         delete "/demandas/#{demanda.id}"
-      }.to change(Demanda, :count).by(-1)
+      end.to change(Demanda, :count).by(-1)
       expect(response).to redirect_to(demandas_path)
     end
   end
