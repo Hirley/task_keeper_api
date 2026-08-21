@@ -73,8 +73,8 @@ RSpec.describe "Usuários (tela web de Acessos)", type: :request do
     it "filtra por mais de uma permissão ao mesmo tempo (select multiple)" do
       um_lider = create(:user, :lider, name: "Fulano Líder")
       um_executor = create(:user, :executor, name: "Fulano Executor")
-      create(:user, :executor, name: "Nunca aparece", email: "nao-e-fulano@task-keeper.local")
-      sign_in lider
+        create(:user, :executor, name: "Nunca aparece", email: "outro-usuario@task-keeper.local")
+        sign_in lider
 
       get "/users", params: { role: %w[lider executor], q: "Fulano" }
 
