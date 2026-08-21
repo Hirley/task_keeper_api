@@ -103,12 +103,16 @@ class UsersController < ApplicationController
   end
 
   # Mesma validação de antes: só deixa passar chaves válidas do enum.
-  # Aceita um valor único (role=x, formato antigo) ou vários
-  # (role[]=x&role[]=y, do <select multiple> da tela) — ver
-  # DemandasController#normalized_status_filter pro mesmo padrão.
-  def normalized_role_filter
-    Array(params[:role]).select { |role| User.roles.key?(role) }
-  end
+# Aceita um valor único (role=x, formato antigo) ou vários
+# (role[]=x&role[]=y, do <select multiple> da tela) — ver
+# DemandasController#normalized_status_filter pro mesmo padrão —
+# inclusive o motivo do .map traduzindo pro inteiro do enum (Ransack
+# não conhece o enum do Rails e comparava direto com a string).
+def normalized_role_filter
+  Array(params[:role])
+    .select { |role| User.roles.key?(role) }
+    .map { |role| User.roles[role] }
+end
 
   # Mesma ideia de DemandasController#title_terms: divide a busca por
   # nome/e-mail em vários termos separados por vírgula.
