@@ -1,4 +1,4 @@
-# task_keeper_api
+ãá# task_keeper_api
 
 API REST em Ruby on Rails para criar, organizar e acompanhar demandas diárias, com controle de acesso via CanCanCan, interface web em HAML + Bootstrap e testes automatizados em RSpec.
 
@@ -107,7 +107,15 @@ Como este ambiente não pode confirmar um build completo, ainda vale rodar `dock
 
 ## Integração contínua
 
-Ainda não há um workflow de GitHub Actions configurado neste repositório — `bundle exec rubocop` e `bundle exec rspec` são, por enquanto, rodados manualmente (localmente ou antes de cada merge). `.ruby-version` e `.rubocop.yml` já estão no repositório, prontos para quando um workflow de CI for adicionado.
+`.github/workflows/ci.yml` roda no GitHub Actions em todo push para `main` e em toda pull request, com três jobs:
+
+- **rubocop** — `bundle exec rubocop` (usa o `.rubocop.yml` já existente no repositório);
+- **rspec** — sobe um serviço `postgres:16-alpine`, roda `bin/rails db:prepare` e depois `bundle exec rspec` contra o banco `task_keeper_api_test`;
+- **docker** — builda a imagem de produção (`docker/build-push-action`, sem push) para pegar cedo qualquer regressão no `Dockerfile`; só roda depois que `rubocop` e `rspec` passam.
+
+`SECRET_KEY_BASE` no workflow é um valor fixo só para o boot da aplicação em CI (não é usado em nenhum ambiente real — produção continua exigindo a variável de ambiente própria, como descrito na seção "Docker"). As demais variáveis de banco seguem o mesmo padrão de `.env.example`/`config/database.yml`.
+
+⚠️ **Não verificado neste ambiente**: o sandbox usado para preparar este workflow não tem acesso ao `rubygems.org` (só a alguns registries específicos), então não foi possível rodar `bundle install`/`rubocop`/`rspec` aqui para confirmar o workflow de ponta a ponta antes do primeiro push — vale acompanhar a primeira execução no Actions.
 
 ## Cobertura de testes
 
