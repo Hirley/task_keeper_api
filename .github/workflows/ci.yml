@@ -83,17 +83,47 @@ jobs:
     name: Build da imagem Docker
     runs-on: ubuntu-latest
     needs: [rubocop, rspec]
+    # Só precisa de permissão de escrita no registry (packages: write) para
+    # publicar; em pull_request isso fica sem efeito (push abaixo é false),
+    # então não é um risco de PR de fork conseguir publicar imagem.
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build da imagem (sem push — só valida que o Dockerfile builda)
+      # Só publica quando o CI roda por push (ex.: merge em main) — em
+      # pull_request o job continua só validando que o Dockerfile builda,
+      # sem publicar imagem de branch/fork ainda não revisado.
+      - name: Login no GitHub Container Registry
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # docker/metadata-action normaliza owner/repo pra minúsculas (exigido
+      # pelo GHCR) e gera as tags: "latest" (default branch) + o SHA do
+      # commit, pra sempre dar pra apontar exatamente qual build está rodando.
+      - name: Metadados da imagem (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,format=long
+
+      - name: Build da imagem (publica só em push; em pull_request só valida o build)
         uses: docker/build-push-action@v6
         with:
           context: .
-          push: false
-          tags: task_keeper_api:ci
+          push: ${{ github.event_name == 'push' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
