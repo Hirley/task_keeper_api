@@ -110,7 +110,7 @@ Como este ambiente não pode confirmar um build completo, ainda vale rodar `dock
 `.github/workflows/ci.yml` roda no GitHub Actions em todo push para `main` e em toda pull request, com três jobs:
 
 - **rubocop** — `bundle exec rubocop` (usa o `.rubocop.yml` já existente no repositório);
-- **rspec** — sobe um serviço `postgres:16-alpine`, roda `bin/rails db:prepare` e depois `bundle exec rspec` contra o banco `task_keeper_api_test`;
+- **rspec** — sobe um serviço `postgres:16-alpine`, roda `bin/rails db:prepare`, depois `bin/rails zeitwerk:check` (eager load isolado num processo à parte, só pra pegar erro de autoload cedo — ver comentário em `config/environments/test.rb` sobre por que isso não é feito via `config.eager_load = true` no ambiente de teste) e por fim `bundle exec rspec` contra o banco `task_keeper_api_test`;
 - **docker** — builda a imagem de produção (`docker/build-push-action`, sem push) para pegar cedo qualquer regressão no `Dockerfile`; só roda depois que `rubocop` e `rspec` passam.
 
 `SECRET_KEY_BASE` no workflow é um valor fixo só para o boot da aplicação em CI (não é usado em nenhum ambiente real — produção continua exigindo a variável de ambiente própria, como descrito na seção "Docker"). As demais variáveis de banco seguem o mesmo padrão de `.env.example`/`config/database.yml`.

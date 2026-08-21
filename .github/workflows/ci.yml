@@ -73,6 +73,9 @@ jobs:
       - name: Prepara o banco de dados
         run: bin/rails db:prepare
 
+      - name: Zeitwerk check (eager load isolado, fora do processo do RSpec)
+        run: bin/rails zeitwerk:check
+
       - name: RSpec
         run: bundle exec rspec
 
