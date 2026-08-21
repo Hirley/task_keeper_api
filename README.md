@@ -1,17 +1,19 @@
-ãá# task_keeper_api
+# Task Keeper API
 
-API REST em Ruby on Rails para criar, organizar e acompanhar demandas diárias, com controle de acesso via CanCanCan, interface web em HAML + Bootstrap e testes automatizados em RSpec.
+Aplicação Ruby on Rails full-stack (API REST + interface web) para times pequenos organizarem e acompanharem demandas do dia a dia: quem é responsável por quê, o que está atrasado, e um jeito rápido de saber "o que precisa da minha atenção agora?".
+
+Dois papéis com permissões diferentes (líder/executor), autenticação e autorização de verdade (Devise + CanCanCan), notificação automática de atraso via Telegram, relatório semanal em PDF, e uma API JSON versionada ao lado da tela web — tudo com suíte de testes automatizados, CI (RuboCop + RSpec + build/publish da imagem Docker) e deploy em container.
+
+**Rodando em produção:** ver seção "Docker" — imagem publicada automaticamente em `ghcr.io/hirley/task_keeper_api` a cada merge em `main`.
 
 ## Stack
 
-- Ruby 4.0.6 · Ruby on Rails 8.1
-- Devise (autenticação) + CanCanCan (autorização)
-- HAML + Bootstrap (interface web mínima)
-- Ransack (mecanismo interno de filtro/ordenação — ver "Identidade visual e busca/paginação")
+- Ruby 4.0.6 · Ruby on Rails 8.1 · PostgreSQL
+- Devise (autenticação) + CanCanCan (autorização, papéis líder/executor)
+- HAML + Bootstrap (interface web) + Ransack (filtro/ordenação — ver "Identidade visual e busca/paginação")
 - Prawn + prawn-table (PDF do relatório semanal — ver "Relatório semanal")
-- RSpec + FactoryBot + Shoulda Matchers (testes)
-- PostgreSQL
-- Docker (opcional — ver seção "Docker")
+- RSpec + FactoryBot + Shoulda Matchers (testes) · RuboCop (estilo)
+- Docker + GitHub Actions (CI: lint, testes, build e publish da imagem)
 
 ## Regras de negócio
 
@@ -55,32 +57,23 @@ Usuários de exemplo criados pelo `db:seed`:
 | líder    | lider@task-keeper.local        | senha123456  |
 | executor | executor@task-keeper.local     | senha123456  |
 
-## Migração de SQLite para PostgreSQL
-
-O projeto usava SQLite (arquivo local em `storage/*.sqlite3`) e passou a usar PostgreSQL — `config/database.yml` agora lê a conexão de variáveis de ambiente (ver `.env.example`) em vez de apontar pra um arquivo.
-
-O que foi conferido de fato (este ambiente tem um PostgreSQL local disponível, então deu pra validar sem depender só de leitura de código):
-
-- o DDL equivalente ao `db/schema.rb` (tipos de coluna, índices, a foreign key de `demandas.user_id`) foi criado manualmente num Postgres real sem erro;
-- a migration `AddDataToDemandas` usa `DATE('now')` num `UPDATE` — sintaxe que também funciona no PostgreSQL (não é exclusiva do SQLite, então essa migration não precisou mudar);
-- a consulta com SQL cru do painel inicial (`ORDER BY (status = 2) ASC, data ASC`, em `DashboardController#index`) também funciona no PostgreSQL;
-- o predicado `_cont` do Ransack (busca por título/nome/e-mail) usa o método `matches` do Arel, não `LIKE` cru — no PostgreSQL isso vira `ILIKE` automaticamente (case-insensitive, igual já era no SQLite); não deveria haver regressão de comportamento na busca.
-- `config/database.yml` foi renderizado (ERB) com Ruby puro em 3 cenários (sem `DATABASE_URL`, com `DATABASE_URL` simulando Railway, e com as variáveis do `docker-compose.yml`) para confirmar que a URL de conexão monta certo em cada caso.
-
-O que **não** pôde ser verificado: rodar a aplicação Rails de verdade contra esse Postgres (sem acesso ao rubygems.org/à versão de Ruby do projeto neste ambiente — mesma limitação já documentada nas seções de CI e Docker) e `bundle exec rspec` na íntegra.
-
-⚠️ **Bloqueio conhecido**: `pg` foi adicionado ao `Gemfile` no lugar de `sqlite3`, mas o `Gemfile.lock` **ainda não foi regenerado** — ele continua resolvendo `sqlite3`, não `pg` (este ambiente não tem a versão de Ruby do projeto disponível para gerar um lockfile válido, então essa correção precisa vir de fora). Isso afeta principalmente fluxos que exigem o lockfile já alinhado ao `Gemfile` antes de rodar — `bundle install` local (a linha "Depois de puxar mudanças no `Gemfile`, rode `bundle install` de novo" na seção "Setup local" resolve isso automaticamente, já que fora do modo `--deployment` o Bundler re-resolve e atualiza o lockfile sozinho) e qualquer futuro CI em modo frozen. **Não bloqueia o Docker**: o `Dockerfile` já roda `bundle lock --add-platform` (não-frozen) antes do `bundle install --deployment` (ver seção "Docker"), o que resolve `pg` e atualiza o lockfile dentro da própria imagem antes do passo que exige alinhamento — confirmado com um build real que chegou a instalar as gems (inclusive `pg`) sem esse erro, embora ainda seja recomendável commitar o `Gemfile.lock` já corrigido assim que possível, em vez de depender desse auto-ajuste a cada build.
-
 ## Docker
 
 O `Dockerfile` builda uma imagem de produção em 2 etapas (build → final): a etapa final não carrega compilador nem código-fonte de gems, só o necessário para rodar a aplicação — Puma servindo direto (sem Thruster/Kamal, que não fazem parte do Gemfile deste projeto).
 
+Pra subir localmente, um único comando, sem nenhum passo manual antes:
+
 ```bash
-cp .env.example .env   # preencha SECRET_KEY_BASE (obrigatória — ver .env.example)
 docker compose up --build
 ```
 
-Isso sobe a imagem de produção **e** um serviço `db` (PostgreSQL) localmente, na porta `3000`, com os dados do banco persistidos num volume nomeado (sobrevivem a `docker compose down`, mas não a `docker compose down -v`). Não é um ambiente de desenvolvimento com hot-reload — para isso, continue usando `bundle install && bin/rails server` (apontando pro serviço `db` ou pra um Postgres local), como na seção anterior.
+Isso sobe a imagem de produção **e** um serviço `db` (PostgreSQL) localmente, na porta `3000`, com os dados do banco persistidos num volume nomeado (sobrevivem a `docker compose down`, mas não a `docker compose down -v`). O `docker-compose.yml` já traz um `SECRET_KEY_BASE` padrão pra esse uso local/demo (só copie `.env.example` para `.env` se quiser sobrescrever algum valor). Não é um ambiente de desenvolvimento com hot-reload — para isso, continue usando `bundle install && bin/rails server` (apontando pro serviço `db` ou pra um Postgres local), como na seção anterior.
+
+Também dá pra usar a imagem já publicada em vez de buildar localmente (ver seção "Integração contínua"):
+
+```bash
+docker pull ghcr.io/hirley/task_keeper_api:latest
+```
 
 Sem `docker compose` (conectando a um PostgreSQL já existente em outro lugar):
 
@@ -98,12 +91,10 @@ Este projeto não tem `config/master.key`/`config/credentials.yml.enc`, então `
 
 **Sobre a plataforma do `Gemfile.lock`**: o lockfile deste projeto foi gerado originalmente numa máquina Windows — a seção `PLATFORMS` só tem `x64-mingw-ucrt`, sem a plataforma Linux. Sem isso, `bundle install` falha dentro de um container Linux ao tentar resolver as gems com extensão nativa (`pg`, `nokogiri`). O `Dockerfile` já corrige isso sozinho (roda `bundle lock --add-platform x86_64-linux` antes do `bundle install`, dentro da própria imagem), então não é preciso fazer nada manualmente por causa disso — mas é bom saber que esse ajuste existe, caso apareça algum erro de plataforma ao rodar `bundle install` fora do Docker também (nesse caso, `bundle lock --add-platform x86_64-linux` resolve, e o mesmo vale se você desenvolver num Mac Apple Silicon: `bundle lock --add-platform arm64-darwin`).
 
-⚠️ **Não totalmente verificado**: este ambiente não tem acesso ao registro do Docker Hub, então não foi possível rodar `docker build`/`docker compose up` de verdade aqui — só validação estática (sintaxe do `docker-compose.yml`, `docker compose config`, `bash -n` no entrypoint). O build já foi tentado de verdade fora deste ambiente (Docker Desktop no Windows), o que confirmou a versão `ruby:4.0.6-slim` da imagem-base e revelou dois bugs reais, já corrigidos:
+O build é validado automaticamente a cada push/PR pelo CI (ver seção "Integração contínua"). Durante o desenvolvimento, dois bugs reais de build já apareceram e foram corrigidos:
 
 1. **`COPY . .` sobrescrevendo o `Gemfile.lock` corrigido**: rodava depois do `bundle lock --add-platform`, apagando silenciosamente o ajuste de plataforma antes do `bootsnap precompile app/ lib/` seguinte (`bundle exec` revalida a plataforma a cada chamada). Corrigido copiando o projeto inteiro antes de mexer no `Gemfile.lock`.
 2. **CRLF em `bin/*`**: quem desenvolve no Windows normalmente tem `core.autocrlf=true` no Git, que converte os scripts de `bin/` (LF no repositório) para CRLF no checkout local; como `docker build` copia o contexto direto do disco (não do objeto Git), o CRLF ia parar no container e o shebang `#!/usr/bin/env ruby` de `bin/rails` virava `ruby\r` — `env: 'ruby\r': No such file or directory`. Corrigido normalizando `bin/*` para LF em tempo de build (`sed -i 's/\r$//' bin/*`, logo após o `COPY . .`), além de um `.gitattributes` (`* text=auto eol=lf`) pra evitar isso em checkouts novos.
-
-Como este ambiente não pode confirmar um build completo, ainda vale rodar `docker compose build --progress=plain web` de novo (ou `docker compose up --build`) antes de considerar o Dockerfile plenamente validado.
 
 ## Integração contínua
 
@@ -116,8 +107,6 @@ Como este ambiente não pode confirmar um build completo, ainda vale rodar `dock
 ⚠️ **Passo manual único**: por padrão, um pacote novo no GHCR nasce privado, mesmo em repositório público — depois do primeiro push em `main` que publicar a imagem, é preciso ir em *Package settings* (na página do pacote em `github.com/Hirley?tab=packages`) e trocar a visibilidade pra pública, se quiser puxar a imagem (`docker pull`) sem autenticação.
 
 `SECRET_KEY_BASE` no workflow é um valor fixo só para o boot da aplicação em CI (não é usado em nenhum ambiente real — produção continua exigindo a variável de ambiente própria, como descrito na seção "Docker"). As demais variáveis de banco seguem o mesmo padrão de `.env.example`/`config/database.yml`.
-
-⚠️ **Não verificado neste ambiente**: o sandbox usado para preparar este workflow não tem acesso ao `rubygems.org` (só a alguns registries específicos), então não foi possível rodar `bundle install`/`rubocop`/`rspec` aqui para confirmar o workflow de ponta a ponta antes do primeiro push — vale acompanhar a primeira execução no Actions.
 
 ## Cobertura de testes
 

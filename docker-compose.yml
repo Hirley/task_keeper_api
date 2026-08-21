@@ -1,11 +1,11 @@
 # Sobe a imagem de produção (mesmo Dockerfile do deploy) + um banco
-# PostgreSQL local, pra testar o container antes de publicar em algum
-# lugar — não é um ambiente de desenvolvimento com hot-reload (pra isso,
-# continue usando `bundle install && bin/rails server`, como descrito no
-# README, apontando pra um Postgres local ou pro serviço "db" abaixo).
+# PostgreSQL local — não é um ambiente de desenvolvimento com hot-reload
+# (pra isso, continue usando `bundle install && bin/rails server`, como
+# descrito no README, apontando pra um Postgres local ou pro serviço "db"
+# abaixo).
 #
-# Uso:
-#   cp .env.example .env   # e ajuste SECRET_KEY_BASE (ver README)
+# Uso (sem nenhum passo manual — já sobe com um SECRET_KEY_BASE padrão
+# pra uso local/demo, ver o default abaixo):
 #   docker compose up --build
 #
 # Os dados do Postgres ficam num volume nomeado (tk_pgdata), então
@@ -33,7 +33,11 @@ services:
     ports:
       - "${PORT:-3000}:3000"
     environment:
-      SECRET_KEY_BASE: ${SECRET_KEY_BASE:?defina SECRET_KEY_BASE no .env — veja .env.example}
+      # Só serve pra rodar local/demo sem passo manual — em produção de
+      # verdade, defina SECRET_KEY_BASE de verdade via variável de
+      # ambiente/.env (ver README, seção "Docker"), nunca reaproveite este
+      # valor.
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:-507f0ac1cad395ebf59321b19903ca5926a5fda68872d87ef9a6106d83ec4ac5a09de644578b7ac2d8c531623d2940a9301fe030f441cced29da4fcd9a662500}
       DB_HOST: db
       DB_PORT: 5432
       DB_USERNAME: ${DB_USERNAME:-postgres}

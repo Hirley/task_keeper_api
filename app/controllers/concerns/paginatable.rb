@@ -1,13 +1,9 @@
 # frozen_string_literal: true
 
-# Paginação simples, sem dependência de gem externa (kaminari/will_paginate).
-#
-# Optamos por implementar isso "na mão" porque este sandbox de
-# desenvolvimento não tem acesso à rede para o rubygems.org nem uma versão
-# de Ruby compatível com o Gemfile — então não dá pra rodar `bundle install`
-# e validar uma gem nova aqui. A paginação abaixo usa só Active Record
-# (limit/offset), então funciona com o Gemfile atual sem exigir nenhuma
-# instalação adicional.
+# Paginação simples, sem dependência de gem externa (kaminari/will_paginate)
+# — usa só Active Record (limit/offset), consistente com a filosofia do
+# projeto de manter poucas dependências (ver, por exemplo, a ausência de
+# um driver Capybara/JS no Gemfile).
 module Paginatable
   extend ActiveSupport::Concern
 
