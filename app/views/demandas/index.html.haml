@@ -26,13 +26,16 @@
             %option{ value: title }
         %div.form-text Separe vários termos com vírgula pra buscar qualquer um deles (ex.: "contrato, sala").
       .col-md-3
-        = f.label :status, "Status", class: "tk-filter-label form-label mb-1"
-        = f.select :status, Demanda.statuses.keys.map { |status| [status.humanize, status] },
-          { selected: @status_filter }, class: "form-select", multiple: true, size: 3
-        %div.form-text Nenhum selecionado = todos. Segure Ctrl/Cmd para selecionar mais de um.
+        %span.tk-filter-label.form-label.mb-1.d-block Status
+        .d-flex.flex-wrap.gap-2
+          - Demanda.statuses.each_key do |status|
+            = check_box_tag "status[]", status, @status_filter_keys.include?(status),
+              id: "status_#{status}", class: "btn-check", autocomplete: "off"
+            = label_tag "status_#{status}", status.humanize, class: "btn btn-sm btn-outline-secondary"
+        %div.form-text Nenhum selecionado = todos.
       .col-md-3.d-flex.gap-2
-        = f.submit "Filtrar", class: "btn btn-tk-outline w-50"
-        = link_to "Limpar", demandas_path, class: "btn btn-outline-secondary w-50"
+        = f.submit "Filtrar", class: "btn btn-outline-secondary w-50"
+        = link_to "Limpar", demandas_path, class: "btn btn-link text-secondary text-decoration-none w-50"
 
 .table-responsive.tk-card
   %table.table.table-hover.align-middle

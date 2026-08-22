@@ -22,7 +22,8 @@ class UsersController < ApplicationController
     scope = User.all
 
     @q = params[:q]
-    @role_filter = normalized_role_filter
+    @role_filter_keys = normalized_role_filter_keys
+    @role_filter = @role_filter_keys.map { |role| User.roles[role] }
     @sort = SORTABLE_COLUMNS.key?(params[:sort]) ? params[:sort] : 'name'
     # Default "asc" (não "desc" como em Demandas) pra preservar o
     # comportamento antigo, que era sempre `.order(:name)` ascendente.
@@ -105,14 +106,15 @@ class UsersController < ApplicationController
 
   # Mesma validação de antes: só deixa passar chaves válidas do enum.
   # Aceita um valor único (role=x, formato antigo) ou vários
-  # (role[]=x&role[]=y, do <select multiple> da tela) — ver
-  # DemandasController#normalized_status_filter pro mesmo padrão —
-  # inclusive o motivo do .map traduzindo pro inteiro do enum (Ransack
-  # não conhece o enum do Rails e comparava direto com a string).
-  def normalized_role_filter
-    Array(params[:role])
-      .select { |role| User.roles.key?(role) }
-      .map { |role| User.roles[role] }
+  # (role[]=x&role[]=y, dos checkboxes da tela) — ver
+  # DemandasController#normalized_status_filter_keys pro mesmo padrão.
+  #
+  # Devolve as chaves do enum (strings, ex.: "lider") — @role_filter
+  # (acima, em #index) traduz pro valor inteiro que o Ransack precisa; as
+  # chaves em si são o que a view usa pra marcar quais checkboxes ficam
+  # pré-selecionados.
+  def normalized_role_filter_keys
+    Array(params[:role]).select { |role| User.roles.key?(role) }
   end
 
   # Mesma ideia de DemandasController#title_terms: divide a busca por

@@ -21,13 +21,16 @@
             %option{ value: name }
         %div.form-text Separe vários termos com vírgula pra buscar qualquer um deles.
       .col-md-3
-        = f.label :role, "Permissão", class: "tk-filter-label form-label mb-1"
-        = f.select :role, User.roles.keys.map { |role| [role.humanize, role] },
-          { selected: @role_filter }, class: "form-select", multiple: true, size: 2
+        %span.tk-filter-label.form-label.mb-1.d-block Permissão
+        .d-flex.flex-wrap.gap-2
+          - User.roles.each_key do |role|
+            = check_box_tag "role[]", role, @role_filter_keys.include?(role),
+              id: "role_#{role}", class: "btn-check", autocomplete: "off"
+            = label_tag "role_#{role}", role.humanize, class: "btn btn-sm btn-outline-secondary"
         %div.form-text Nenhum selecionado = todos.
       .col-md-3.d-flex.gap-2
-        = f.submit "Filtrar", class: "btn btn-tk-outline w-50"
-        = link_to "Limpar", users_path, class: "btn btn-outline-secondary w-50"
+        = f.submit "Filtrar", class: "btn btn-outline-secondary w-50"
+        = link_to "Limpar", users_path, class: "btn btn-link text-secondary text-decoration-none w-50"
 
 .table-responsive.tk-card
   %table.table.table-hover.align-middle

@@ -25,7 +25,8 @@ class DemandasController < ApplicationController
     scope = Demanda.accessible_by(current_ability).includes(:user)
 
     @q = params[:q]
-    @status_filter = normalized_status_filter
+    @status_filter_keys = normalized_status_filter_keys
+    @status_filter = @status_filter_keys.map { |status| Demanda.statuses[status] }
     @sort = SORTABLE_COLUMNS.key?(params[:sort]) ? params[:sort] : 'created_at'
     @direction = params[:direction] == 'asc' ? 'asc' : 'desc'
 
@@ -97,17 +98,14 @@ class DemandasController < ApplicationController
   # não deixar o Ransack tentar comparar com um valor arbitrário vindo da
   # URL. Aceita um valor único (status=x, formato antigo, ainda usado por
   # quem já tinha um link/favorito salvo) ou vários (status[]=x&status[]=y,
-  # do <select multiple> da tela) — Array() normaliza os dois formatos.
+  # dos checkboxes da tela) — Array() normaliza os dois formatos.
   #
-  # Também traduz para o valor inteiro do enum (Demanda.statuses[status])
-  # antes de repassar ao Ransack: a coluna "status" é integer no banco e o
-  # Ransack não conhece o enum do Rails — sem essa tradução, "status_in"
-  # recebia a string ("concluida") e o cast pro tipo da coluna zerava o
-  # valor (equivalia a status 0/"pendente"), filtrando errado em silêncio.
-  def normalized_status_filter
-    Array(params[:status])
-      .select { |status| Demanda.statuses.key?(status) }
-      .map { |status| Demanda.statuses[status] }
+  # Devolve as chaves do enum (strings, ex.: "concluida") — @status_filter
+  # (acima, em #index) traduz pro valor inteiro que o Ransack precisa; as
+  # chaves em si são o que a view usa pra marcar quais checkboxes ficam
+  # pré-selecionados.
+  def normalized_status_filter_keys
+    Array(params[:status]).select { |status| Demanda.statuses.key?(status) }
   end
 
   # Divide o campo de busca por título em vários termos (separados por
