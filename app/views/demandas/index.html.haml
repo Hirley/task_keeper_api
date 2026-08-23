@@ -10,6 +10,20 @@
   - if can? :create, Demanda
     = link_to "Nova demanda", new_demanda_path, class: "btn btn-tk-primary text-nowrap"
 
+- if @prazo_filter.present? || @responsavel_filtrado.present?
+  .alert.alert-info.d-flex.justify-content-between.align-items-center.flex-wrap.gap-2.mb-3
+    %span
+      %strong Vindo do painel:
+      - if @prazo_filter == "atrasada"
+        demandas atrasadas.
+      - elsif @prazo_filter == "hoje"
+        demandas que vencem hoje.
+      - elsif @prazo_filter == "breve"
+        = "demandas que vencem nos próximos #{DashboardController::PRAZO_PROXIMO_DIAS} dias."
+      - if @responsavel_filtrado.present?
+        = " Responsável: #{@responsavel_filtrado.name}."
+    = link_to "Limpar filtro", demandas_path, class: "btn btn-sm btn-outline-secondary text-nowrap"
+
 .card.tk-card.mb-3
   .card-body
     = form_with url: demandas_path, method: :get, local: true, class: "row g-2 align-items-end" do |f|

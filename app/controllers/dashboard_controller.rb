@@ -48,10 +48,13 @@ class DashboardController < ApplicationController
   end
 
   # Quantidade de demandas ainda abertas (não concluídas) por responsável,
-  # da maior carga para a menor.
+  # da maior carga para a menor. Mantém o id (não só o nome) porque a view
+  # usa ele pra montar o link de drilldown pra listagem de demandas
+  # filtrada por responsável (ver app/views/dashboard/index.html.haml e
+  # DemandasController#index).
   def carga_por_responsavel(abertas)
     abertas.joins(:user).group('users.id', 'users.name').count
-           .map { |(_id, name), count| [name, count] }
-           .sort_by { |(_name, count)| -count }
+           .map { |(id, name), count| [id, name, count] }
+           .sort_by { |(_id, _name, count)| -count }
   end
 end

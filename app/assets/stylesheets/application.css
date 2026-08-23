@@ -491,6 +491,28 @@ input:focus-visible {
   min-height: 1.1em;
 }
 
+/* Drilldown: os KPIs do topo, a legenda de status, os prazos e a carga
+   por responsável levam pra listagem de Demandas já filtrada (ver
+   app/views/dashboard/index.html.haml e DemandasController#index) — o
+   painel funciona como ponto de entrada pra investigar o que os números
+   mostram, não só pra exibi-los. */
+
+.stat-tile-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.stat-tile-link .stat-tile {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.stat-tile-link:hover .stat-tile,
+.stat-tile-link:focus-visible .stat-tile {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 40, 34, 0.14);
+}
+
 /* Badge de urgência de prazo — canal separado do badge de status
    (tk-badge-status-*): esse mostra "está no prazo?", não "em que fase". */
 
@@ -528,6 +550,19 @@ input:focus-visible {
   font-size: 0.82rem;
 }
 
+.status-legend-item {
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+  text-decoration: none;
+}
+
+.status-legend-item:hover,
+.status-legend-item:focus-visible {
+  color: var(--tk-teal);
+  text-decoration: underline;
+}
+
 .status-dot {
   width: 10px;
   height: 10px;
@@ -552,6 +587,21 @@ input:focus-visible {
 
 .prazo-row:last-child { border-bottom: none; }
 
+.prazo-row-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.prazo-row-link:hover .prazo-row,
+.prazo-row-link:focus-visible .prazo-row {
+  background-color: rgba(0, 127, 109, 0.05);
+  margin: 0 -0.5rem;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  border-radius: var(--tk-radius-sm);
+}
+
 .prazo-count {
   font-family: "Kanit", sans-serif;
   font-weight: 600;
@@ -572,6 +622,23 @@ input:focus-visible {
 }
 
 .load-row:last-child { margin-bottom: 0; }
+
+.load-row-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  border-radius: var(--tk-radius-sm);
+}
+
+.load-row-link:hover,
+.load-row-link:focus-visible {
+  background-color: rgba(0, 127, 109, 0.05);
+}
+
+.load-row-link:hover .load-name,
+.load-row-link:focus-visible .load-name {
+  color: var(--tk-teal);
+}
 
 .load-name {
   width: 40%;
@@ -628,6 +695,20 @@ input:focus-visible {
 .activity-time {
   font-size: 0.76rem;
   color: #667077;
+}
+
+/* Card "Equipe" — cada contagem (admin/líder/executor) é um link de
+   drilldown pra Acessos já filtrada por permissão. */
+
+.team-count-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.team-count-link:hover,
+.team-count-link:focus-visible {
+  color: var(--tk-teal);
+  text-decoration: underline;
 }
 
 /* ---------- Barra de acessibilidade ---------- */

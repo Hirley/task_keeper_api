@@ -21,14 +21,27 @@ class DemandasController < ApplicationController
     'created_at' => 'created_at'
   }.freeze
 
-  def index
-    scope = Demanda.accessible_by(current_ability).includes(:user)
+  # Valores aceitos por "prazo" — mesmos três baldes do painel inicial
+  # (ver DashboardController#index e #aplicar_filtro_de_prazo abaixo).
+  PRAZOS = %w[atrasada hoje breve].freeze
 
+  # "prazo" e "responsavel_id" são os parâmetros usados pelo drilldown do
+  # painel inicial (ver app/views/dashboard/index.html.haml) — clicar num
+  # total ali (Atrasadas, Vencem hoje, carga por responsável...) traz pra
+  # essa mesma listagem, já filtrada. Não têm controle próprio no
+  # formulário de busca (diferente de "q"/"status"): só chegam por link.
+  def index
     @q = params[:q]
     @status_filter_keys = normalized_status_filter_keys
     @status_filter = @status_filter_keys.map { |status| Demanda.statuses[status] }
+    @prazo_filter = normalized_prazo_filter
+    @responsavel_filtrado = User.find_by(id: params[:responsavel_id]) if params[:responsavel_id].present?
     @sort = SORTABLE_COLUMNS.key?(params[:sort]) ? params[:sort] : 'created_at'
     @direction = params[:direction] == 'asc' ? 'asc' : 'desc'
+
+    scope = Demanda.accessible_by(current_ability).includes(:user)
+    scope = aplicar_filtro_de_prazo(scope)
+    scope = aplicar_filtro_de_responsavel(scope)
 
     # Ransack é usado só como mecanismo interno de query — o contrato
     # externo continua sendo os mesmos params simples de sempre (q, status,
@@ -114,5 +127,31 @@ class DemandasController < ApplicationController
   # comum) se comporta exatamente como antes.
   def title_terms
     @q.to_s.split(',').map(&:strip).compact_blank
+  end
+
+  def normalized_prazo_filter
+    params[:prazo] if PRAZOS.include?(params[:prazo])
+  end
+
+  # Mesmo critério usado no painel inicial pra "Atrasadas"/"Vencem
+  # hoje"/"Vencem em breve" (ver DashboardController#index) — replicado
+  # aqui pra a listagem bater com o número que o usuário clicou.
+  def aplicar_filtro_de_prazo(scope)
+    return scope if @prazo_filter.blank?
+
+    hoje = Date.current
+    abertas = scope.where.not(status: :concluida)
+
+    case @prazo_filter
+    when 'atrasada' then abertas.where(data: ...hoje)
+    when 'hoje' then abertas.where(data: hoje)
+    when 'breve' then abertas.where(data: (hoje + 1)..(hoje + DashboardController::PRAZO_PROXIMO_DIAS))
+    end
+  end
+
+  def aplicar_filtro_de_responsavel(scope)
+    return scope if params[:responsavel_id].blank?
+
+    scope.where(user_id: params[:responsavel_id])
   end
 end

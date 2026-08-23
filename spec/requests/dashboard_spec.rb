@@ -31,6 +31,48 @@ RSpec.describe 'Painel inicial (dashboard)', type: :request do
       expect(response.body).to include('<div class="stat-value">1</div>')
     end
 
+    it 'os KPIs de status são links de drilldown pra Demandas já filtrada' do
+      create(:demanda, status: :pendente, user: lider)
+      sign_in lider
+
+      get '/'
+
+      expect(response.body).to include('href="/demandas"')
+      expect(response.body).to include('href="/demandas?status%5B%5D=pendente"')
+      expect(response.body).to include('href="/demandas?status%5B%5D=em_andamento"')
+      expect(response.body).to include('href="/demandas?status%5B%5D=concluida"')
+    end
+
+    it 'os prazos (Atrasadas/Vencem hoje/Vencem em breve) são links de drilldown' do
+      sign_in lider
+
+      get '/'
+
+      expect(response.body).to include('href="/demandas?prazo=atrasada"')
+      expect(response.body).to include('href="/demandas?prazo=hoje"')
+      expect(response.body).to include('href="/demandas?prazo=breve"')
+    end
+
+    it 'a carga por responsável é um link de drilldown pra Demandas filtrada por responsável' do
+      demanda = create(:demanda, status: :pendente, user: lider)
+      sign_in lider
+
+      get '/'
+
+      expect(response.body).to include("href=\"/demandas?responsavel_id=#{demanda.user_id}\"")
+    end
+
+    it 'o card Equipe tem um link de drilldown por papel, pra Acessos' do
+      admin = create(:user, :admin)
+      sign_in admin
+
+      get '/'
+
+      expect(response.body).to include('href="/users?role%5B%5D=admin"')
+      expect(response.body).to include('href="/users?role%5B%5D=lider"')
+      expect(response.body).to include('href="/users?role%5B%5D=executor"')
+    end
+
     it 'mostra estado vazio quando não há nenhuma demanda' do
       sign_in lider
 
