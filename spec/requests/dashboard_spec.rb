@@ -151,14 +151,15 @@ RSpec.describe 'Painel inicial (dashboard)', type: :request do
       expect(response.body).not_to include('líder(es)')
     end
 
-    it "traz o item 'Início' no menu, ativo, e não repete o título como heading visível" do
+    it 'não repete o título como heading visível; a marca leva pra home, sem item "Início" no menu' do
       sign_in executor
 
       get '/'
 
       expect(response.body).to include('<title>Início · Task Keeper API</title>')
       expect(response.body).to include('visually-hidden')
-      expect(response.body).to include('>Início<')
+      expect(response.body).not_to include('>Início</a>')
+      expect(response.body).to include('<a class="navbar-brand tk-brand" href="/">')
     end
   end
 end

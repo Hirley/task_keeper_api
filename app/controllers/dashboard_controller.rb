@@ -28,14 +28,19 @@ class DashboardController < ApplicationController
 
     @carga_por_responsavel = carga_por_responsavel(abertas)
 
-    return unless current_user.lider_ou_admin?
+    contagem_por_papel if current_user.lider_ou_admin?
+  end
 
+  private
+
+  # Card "Equipe", visível só pra líder/admin (ver
+  # app/views/dashboard/index.html.haml) — extraído do #index só pra não
+  # estourar o limite do Metrics/AbcSize (ver .rubocop.yml).
+  def contagem_por_papel
     @total_lideres = User.lider.count
     @total_executores = User.executor.count
     @total_admins = User.admin.count
   end
-
-  private
 
   def status_counts(demandas)
     counts = demandas.group(:status).count

@@ -156,7 +156,7 @@ Toda ação de escrita (`POST`/`PATCH`/`DELETE`) exige o header `Content-Type: a
 
 ## Painel inicial (dashboard)
 
-A home (`/`, menu "Início") é um painel com uma visão geral das demandas, pensado para responder duas perguntas diferentes: "o que precisa da minha atenção agora?" e "como está a equipe?" — nessa ordem de prioridade:
+A home (`/`, acessível clicando na marca "Task Keeper API" na navbar — não há um item "Início" separado no menu) é um painel com uma visão geral das demandas, pensado para responder duas perguntas diferentes: "o que precisa da minha atenção agora?" e "como está a equipe?" — nessa ordem de prioridade:
 
 - KPIs no topo: total de demandas e quantas estão em cada status;
 - **Minhas demandas**: as demandas do próprio usuário logado, ordenadas por urgência (atrasada primeiro, depois o que vence antes); cada uma tem um badge de prazo (`Atrasada há N dias`, `Vence hoje`, `Vence amanhã`, `Vence em N dias`) — um canal separado do badge de status, porque "em que fase está" e "está no prazo?" são informações diferentes;

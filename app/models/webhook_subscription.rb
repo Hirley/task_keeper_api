@@ -60,9 +60,9 @@ class WebhookSubscription < ApplicationRecord
     enderecos = Resolv.getaddresses(uri.host).map { |ip| IPAddr.new(ip) }
     return errors.add(:url, 'host não pôde ser resolvido') if enderecos.empty?
 
-    if enderecos.any? { |ip| endereco_bloqueado?(ip) }
-      errors.add(:url, 'não pode apontar pra um endereço de rede privado/local')
-    end
+    return unless enderecos.any? { |ip| endereco_bloqueado?(ip) }
+
+    errors.add(:url, 'não pode apontar pra um endereço de rede privado/local')
   rescue URI::InvalidURIError
     errors.add(:url, 'deve ser uma URL http:// ou https:// válida')
   rescue Resolv::ResolvError
