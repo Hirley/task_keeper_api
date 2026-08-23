@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Painel inicial (home) da aplicação — visão geral das demandas para
-# qualquer usuário autenticado (líder ou executor). Não há ações de
+# qualquer usuário autenticado (executor, líder ou admin). Não há ações de
 # escrita aqui, só leitura, então não precisa de `authorize!`: as
 # consultas já são todas escopadas por `current_ability`, igual à
 # listagem de demandas (ver DemandasController#index).
@@ -28,13 +28,19 @@ class DashboardController < ApplicationController
 
     @carga_por_responsavel = carga_por_responsavel(abertas)
 
-    return unless current_user.lider?
-
-    @total_lideres = User.lider.count
-    @total_executores = User.executor.count
+    contagem_por_papel if current_user.lider_ou_admin?
   end
 
   private
+
+  # Card "Equipe", visível só pra líder/admin (ver
+  # app/views/dashboard/index.html.haml) — extraído do #index só pra não
+  # estourar o limite do Metrics/AbcSize (ver .rubocop.yml).
+  def contagem_por_papel
+    @total_lideres = User.lider.count
+    @total_executores = User.executor.count
+    @total_admins = User.admin.count
+  end
 
   def status_counts(demandas)
     counts = demandas.group(:status).count
@@ -42,10 +48,13 @@ class DashboardController < ApplicationController
   end
 
   # Quantidade de demandas ainda abertas (não concluídas) por responsável,
-  # da maior carga para a menor.
+  # da maior carga para a menor. Mantém o id (não só o nome) porque a view
+  # usa ele pra montar o link de drilldown pra listagem de demandas
+  # filtrada por responsável (ver app/views/dashboard/index.html.haml e
+  # DemandasController#index).
   def carga_por_responsavel(abertas)
     abertas.joins(:user).group('users.id', 'users.name').count
-           .map { |(_id, name), count| [name, count] }
-           .sort_by { |(_name, count)| -count }
+           .map { |(id, name), count| [id, name, count] }
+           .sort_by { |(_id, _name, count)| -count }
   end
 end

@@ -128,6 +128,87 @@ RSpec.describe 'Demandas (tela web)', type: :request do
       expect(table).not_to include('Comprar material')
     end
 
+    it 'filtra por prazo "atrasada" (drilldown do painel inicial)' do
+      create(:demanda, title: 'Demanda atrasada', status: :pendente, data: 3.days.ago.to_date, user: lider)
+      create(:demanda, title: 'Demanda em dia', status: :pendente, data: 3.days.from_now.to_date, user: lider)
+      create(:demanda, title: 'Concluída mas com data passada', status: :concluida, data: 3.days.ago.to_date, user: lider)
+      sign_in lider
+
+      get '/demandas', params: { prazo: 'atrasada' }
+
+      table = results_table(response)
+      expect(table).to include('Demanda atrasada')
+      expect(table).not_to include('Demanda em dia')
+      expect(table).not_to include('Concluída mas com data passada')
+    end
+
+    it 'filtra por prazo "hoje"' do
+      create(:demanda, title: 'Vence hoje', status: :pendente, data: Date.current, user: lider)
+      create(:demanda, title: 'Vence amanhã', status: :pendente, data: 1.day.from_now.to_date, user: lider)
+      sign_in lider
+
+      get '/demandas', params: { prazo: 'hoje' }
+
+      table = results_table(response)
+      expect(table).to include('Vence hoje')
+      expect(table).not_to include('Vence amanhã')
+    end
+
+    it 'filtra por prazo "breve" (dentro da janela de PRAZO_PROXIMO_DIAS, sem contar hoje)' do
+      create(:demanda, title: 'Vence em 2 dias', status: :pendente, data: 2.days.from_now.to_date, user: lider)
+      create(:demanda, title: 'Vence hoje', status: :pendente, data: Date.current, user: lider)
+      create(:demanda, title: 'Vence muito longe', status: :pendente, data: 30.days.from_now.to_date, user: lider)
+      sign_in lider
+
+      get '/demandas', params: { prazo: 'breve' }
+
+      table = results_table(response)
+      expect(table).to include('Vence em 2 dias')
+      expect(table).not_to include('Vence hoje')
+      expect(table).not_to include('Vence muito longe')
+    end
+
+    it 'ignora um valor de prazo desconhecido/malicioso' do
+      create(:demanda, title: 'Demanda qualquer', user: lider)
+      sign_in lider
+
+      get '/demandas', params: { prazo: "1' OR '1'='1" }
+
+      expect(response).to have_http_status(:ok)
+      expect(results_table(response)).to include('Demanda qualquer')
+    end
+
+    it 'filtra por responsável (drilldown de "carga por responsável" no painel inicial)' do
+      outro_lider = create(:user, :lider, name: 'Outro Líder')
+      create(:demanda, title: 'Demanda do líder', user: lider)
+      create(:demanda, title: 'Demanda do outro líder', user: outro_lider)
+      sign_in lider
+
+      get '/demandas', params: { responsavel_id: lider.id }
+
+      table = results_table(response)
+      expect(table).to include('Demanda do líder')
+      expect(table).not_to include('Demanda do outro líder')
+    end
+
+    it 'mostra um aviso de drilldown (com link pra limpar) quando vem filtrado por prazo ou responsável' do
+      create(:demanda, user: lider)
+      sign_in lider
+
+      get '/demandas', params: { prazo: 'atrasada' }
+
+      expect(response.body).to include('Vindo do painel')
+      expect(response.body).to include('Limpar filtro')
+    end
+
+    it 'não mostra o aviso de drilldown numa visita normal (sem prazo/responsável)' do
+      sign_in lider
+
+      get '/demandas'
+
+      expect(response.body).not_to include('Vindo do painel')
+    end
+
     it 'pagina os resultados quando há mais de 10 demandas' do
       create_list(:demanda, 11, user: lider)
       sign_in lider

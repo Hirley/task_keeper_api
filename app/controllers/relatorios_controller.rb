@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-# Relatório semanal de demandas — só o líder tem acesso (ver
-# app/models/ability.rb: líder tem `can :manage, :all`, que já cobre o
+# Relatório semanal de demandas — líder e admin têm acesso (ver
+# app/models/ability.rb: os dois têm `can :manage, :all`, que já cobre o
 # símbolo :relatorio usado em #authorize_relatorio!; executor não tem
 # nenhuma permissão concedida sobre isso, então fica bloqueado por
-# padrão). Geração é sob demanda (o líder decide quando gerar/baixar/
+# padrão). Geração é sob demanda (quem acessa decide quando gerar/baixar/
 # enviar), não há envio automático agendado — ver README, seção
 # "Relatório semanal".
 class RelatoriosController < ApplicationController
@@ -46,8 +46,26 @@ class RelatoriosController < ApplicationController
     authorize! :read, :relatorio
   end
 
+  # Dispara o webhook "relatorio_gerado" aqui (não em #show) porque #show
+  # é a tela de pré-visualização, visitada toda vez que o líder abre
+  # /relatorios — disparar um evento externo a cada visita seria ruído.
+  # #gerar_pdf só roda quando o líder efetivamente baixa ou envia o PDF
+  # (ações deliberadas), ver #semanal_pdf e #enviar_telegram.
   def gerar_pdf
-    Relatorios::SemanalPdf.new(Relatorios::Semanal.new.gerar).render
+    relatorio = Relatorios::Semanal.new.gerar
+    WebhookDispatcher.dispatch('relatorio_gerado', relatorio_webhook_payload(relatorio))
+    Relatorios::SemanalPdf.new(relatorio).render
+  end
+
+  def relatorio_webhook_payload(relatorio)
+    {
+      periodo_inicio: relatorio.periodo_inicio.iso8601,
+      periodo_fim: relatorio.periodo_fim.iso8601,
+      total_criadas: relatorio.criadas.size,
+      total_concluidas: relatorio.concluidas.size,
+      total_atrasadas: relatorio.atrasadas,
+      status_counts: relatorio.status_counts
+    }
   end
 
   def nome_arquivo

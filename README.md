@@ -2,14 +2,14 @@
 
 Aplicação Ruby on Rails full-stack (API REST + interface web) para times pequenos organizarem e acompanharem demandas do dia a dia: quem é responsável por quê, o que está atrasado, e um jeito rápido de saber "o que precisa da minha atenção agora?".
 
-Dois papéis com permissões diferentes (líder/executor), autenticação e autorização (Devise + CanCanCan), notificação automática de atraso via Telegram, relatório semanal em PDF, e uma API JSON versionada ao lado da tela web — tudo com suíte de testes automatizados, CI (RuboCop + RSpec + build/publish da imagem Docker) e deploy em container.
+Três papéis com permissões diferentes (executor/líder/admin), autenticação e autorização (Devise + CanCanCan), notificação automática de atraso via Telegram, webhooks de saída (Slack/Teams/Discord/n8n), relatório semanal em PDF, e uma API JSON versionada ao lado da tela web — tudo com suíte de testes automatizados, CI (RuboCop + RSpec + build/publish da imagem Docker) e deploy em container.
 
 **Rodando em produção:** ver seção "Docker" — imagem publicada automaticamente em `ghcr.io/hirley/task_keeper_api` a cada merge em `main`.
 
 ## Stack
 
 - Ruby 4.0.6 · Ruby on Rails 8.1 · PostgreSQL
-- Devise (autenticação) + CanCanCan (autorização, papéis líder/executor)
+- Devise (autenticação) + CanCanCan (autorização, papéis executor/líder/admin)
 - HAML + Bootstrap (interface web) + Ransack (filtro/ordenação — ver "Identidade visual e busca/paginação")
 - Prawn + prawn-table (PDF do relatório semanal — ver "Relatório semanal")
 - RSpec + FactoryBot + Shoulda Matchers (testes) · RuboCop (estilo)
@@ -17,12 +17,13 @@ Dois papéis com permissões diferentes (líder/executor), autenticação e auto
 
 ## Regras de negócio
 
-- Existem dois papéis de usuário: **líder** e **executor**.
-- Ambos os papéis podem cadastrar novas demandas.
-- Apenas o líder pode editar ou excluir uma demanda já existente.
-- O cadastro de demanda traz a data atual por padrão, mas permite escolher outra; após criada, só o líder pode alterar essa data.
-- Apenas o líder pode cadastrar, alterar a permissão (papel) e excluir usuários (não há autocadastro).
-- Um líder não pode excluir a própria conta, nem excluir um usuário que já tenha demandas cadastradas.
+- Existem três papéis de usuário: **executor**, **líder** e **admin**.
+- Todos os papéis podem cadastrar novas demandas.
+- Líder e admin podem editar ou excluir uma demanda já existente.
+- O cadastro de demanda traz a data atual por padrão, mas permite escolher outra; após criada, só líder/admin pode alterar essa data.
+- Líder e admin podem cadastrar, alterar a permissão (papel) e excluir usuários (não há autocadastro).
+- Um usuário com permissão de gerenciar acessos não pode excluir a própria conta, nem excluir um usuário que já tenha demandas cadastradas.
+- **Admin é o único papel** que cadastra o **Chat ID do Telegram** de um usuário e que cadastra/gerencia **Webhooks de saída** — nem o líder tem esses dois privilégios, mesmo tendo `can :manage, :all` para o resto (ver `app/models/ability.rb`).
 
 ## Setup local
 
@@ -32,7 +33,7 @@ Requer um PostgreSQL rodando (localmente instalado, ou via `docker compose up db
 cp .env.example .env   # ajuste as credenciais do Postgres se precisar
 bundle install
 bin/rails db:prepare
-bin/rails db:seed   # cria um usuário líder e um executor de exemplo
+bin/rails db:seed   # cria um usuário admin, um líder e um executor de exemplo
 bin/rails server
 ```
 
@@ -54,6 +55,7 @@ Usuários de exemplo criados pelo `db:seed`:
 
 | Papel    | E-mail                        | Senha        |
 |----------|--------------------------------|--------------|
+| admin    | admin@task-keeper.local        | senha123456  |
 | líder    | lider@task-keeper.local        | senha123456  |
 | executor | executor@task-keeper.local     | senha123456  |
 
@@ -113,20 +115,22 @@ O build é validado automaticamente a cada push/PR pelo CI (ver seção "Integra
 A suíte RSpec cobre:
 
 - **Models**: `User` e `Demanda` (`spec/models`), incluindo a validação do `telegram_chat_id` e o reset de `atraso_notificado_em`;
-- **Política de autorização**: `Ability` (`spec/models/ability_spec.rb`), validando cada combinação de papel × ação para `Demanda` e `User`;
-- **Serviços** (`spec/services`): `TelegramNotifier` — mensagem, envio (incluindo `#enviar_documento`, usado pelo relatório semanal) e os casos de "não enviar" (sem token, sem chat_id, erro de rede), usando um dublê de transporte HTTP injetado no serviço (sem depender de gem de mock de rede); `Users::Destroy` — a regra de exclusão de usuário (exclusão da própria conta/demandas vinculadas), testada uma única vez e reaproveitada pela tela web e pela API; `Relatorios::Semanal` — período considerado, filtro por período/status das demandas criadas/concluídas, contagens e carga por responsável;
+- **Política de autorização**: `Ability` (`spec/models/ability_spec.rb`), validando cada combinação de papel (executor/líder/admin) × ação para `Demanda`, `User` e `WebhookSubscription`;
+- **Serviços** (`spec/services`): `TelegramNotifier` — mensagem, envio (incluindo `#enviar_documento`, usado pelo relatório semanal) e os casos de "não enviar" (sem token, sem chat_id, erro de rede), usando um dublê de transporte HTTP injetado no serviço (sem depender de gem de mock de rede); `WebhookDelivery`/`WebhookDispatcher` — montagem do payload, entrega (com o mesmo padrão de dublê de transporte), e quais assinaturas são notificadas por evento; `Users::Destroy` — a regra de exclusão de usuário (exclusão da própria conta/demandas vinculadas), testada uma única vez e reaproveitada pela tela web e pela API; `Relatorios::Semanal` — período considerado, filtro por período/status das demandas criadas/concluídas, contagens e carga por responsável;
+- **Job** (`spec/jobs`): `WebhookDeliveryJob` — busca a assinatura e delega a entrega, sem quebrar se ela já não existir mais;
 - **Tarefa agendada**: a rake task `demandas:notificar_atrasos` (`spec/tasks`) — idempotência, filtro por status/data/chat_id cadastrado;
 - **API** (`spec/requests/api/v1`): `demandas` e `users`;
-- **Telas web** (`spec/requests`): `demandas` (menu Demandas, incluindo filtro por múltiplos status/termos), `users` (menu Acessos, incluindo filtro múltiplo e ordenação por todas as colunas), `dashboard` (painel inicial/Início), `relatorios` (menu Relatórios — acesso restrito ao líder, download do PDF, envio por Telegram) e a página pública `/acessibilidade`;
+- **Telas web** (`spec/requests`): `demandas` (menu Demandas, incluindo filtro por múltiplos status/termos), `users` (menu Acessos, incluindo filtro múltiplo, ordenação por todas as colunas, e a restrição de `telegram_chat_id` a admin), `webhooks` (menu Webhooks — acesso restrito ao admin, cadastro/edição/exclusão, bloqueio de URL privada/local), `dashboard` (painel inicial/Início), `relatorios` (menu Relatórios — acesso restrito a líder/admin, download do PDF, envio por Telegram) e a página pública `/acessibilidade`;
 - **Traduções pt-BR** (`spec/requests/devise_i18n_spec.rb`): regressão para a mensagem `Translation missing` do Devise (ver seção "Mensagens em pt-BR").
 - **Compatibilidade do Devise com Turbo Drive** (`spec/requests/devise_turbo_spec.rb`): regressão para um login inválido responder `200` em vez de `422` (ver "Devise + Turbo Drive" abaixo).
 
 Cenários validados explicitamente:
 
 - um `executor` consegue criar uma demanda (via tela ou API), mas recebe `403`/é redirecionado ao tentar atualizar ou excluir;
-- um `líder` consegue criar, atualizar e excluir demandas;
-- apenas um `líder` consegue listar/criar/excluir usuários, tanto pela tela `/users` quanto por `/api/v1/users`;
-- um `líder` não consegue excluir a própria conta, nem um usuário com demandas vinculadas;
+- líder e admin conseguem criar, atualizar e excluir demandas;
+- líder e admin conseguem listar/criar/excluir usuários, tanto pela tela `/users` quanto por `/api/v1/users` — mas só admin consegue definir o `telegram_chat_id` de um usuário (um líder que tenta é ignorado silenciosamente, sem erro);
+- só admin acessa `/webhooks` — um líder que tenta é redirecionado, do mesmo jeito que um executor;
+- um usuário com permissão de gerenciar acessos não consegue excluir a própria conta, nem um usuário com demandas vinculadas;
 - o botão "Excluir" (demandas e usuários) carrega o Turbo e mostra o alerta de confirmação antes de enviar o form;
 - uma demanda atrasada é notificada uma única vez no Telegram, e um novo aviso só é enviado se ela atrasar de novo depois de deixar de estar atrasada;
 - a API rejeita com `415` qualquer `POST`/`PATCH`/`DELETE` sem `Content-Type: application/json` (proteção contra CSRF — ver seção "Endpoints principais"), sem afetar `GET`;
@@ -140,27 +144,27 @@ O que **não** tem cobertura automatizada, e por quê: interações que são só
 |--------|---------------------------|--------------------------------|
 | GET    | `/api/v1/demandas`        | qualquer usuário autenticado   |
 | GET    | `/api/v1/demandas/:id`    | qualquer usuário autenticado   |
-| POST   | `/api/v1/demandas`        | líder ou executor              |
-| PATCH  | `/api/v1/demandas/:id`    | apenas líder                   |
-| DELETE | `/api/v1/demandas/:id`    | apenas líder                   |
-| GET    | `/api/v1/users`           | apenas líder                   |
-| GET    | `/api/v1/users/:id`       | apenas líder                   |
-| POST   | `/api/v1/users`           | apenas líder                   |
-| DELETE | `/api/v1/users/:id`       | apenas líder                   |
+| POST   | `/api/v1/demandas`        | qualquer usuário autenticado   |
+| PATCH  | `/api/v1/demandas/:id`    | líder ou admin                 |
+| DELETE | `/api/v1/demandas/:id`    | líder ou admin                 |
+| GET    | `/api/v1/users`           | líder ou admin                 |
+| GET    | `/api/v1/users/:id`       | líder ou admin                 |
+| POST   | `/api/v1/users`           | líder ou admin (campo `telegram_chat_id` só é salvo se quem cadastra é admin) |
+| DELETE | `/api/v1/users/:id`       | líder ou admin                 |
 
 Toda ação de escrita (`POST`/`PATCH`/`DELETE`) exige o header `Content-Type: application/json` — uma requisição sem esse header recebe `415 Unsupported Media Type`. Isso não é um capricho de formato: essa API autentica por sessão (cookie do Devise) e tem o token CSRF desativado (`Api::V1::BaseController`), então exigir `application/json` é o que impede um `<form>` HTML comum de outro site de forjar uma requisição usando a sessão já autenticada do usuário — um formulário nunca consegue definir esse Content-Type, só `application/x-www-form-urlencoded`, `multipart/form-data` ou `text/plain`.
 
 ## Painel inicial (dashboard)
 
-A home (`/`, menu "Início") é um painel com uma visão geral das demandas, pensado para responder duas perguntas diferentes: "o que precisa da minha atenção agora?" e "como está a equipe?" — nessa ordem de prioridade:
+A home (`/`, acessível clicando na marca "Task Keeper API" na navbar — não há um item "Início" separado no menu) é um painel com uma visão geral das demandas, pensado para responder duas perguntas diferentes: "o que precisa da minha atenção agora?" e "como está a equipe?" — nessa ordem de prioridade:
 
 - KPIs no topo: total de demandas e quantas estão em cada status;
 - **Minhas demandas**: as demandas do próprio usuário logado, ordenadas por urgência (atrasada primeiro, depois o que vence antes); cada uma tem um badge de prazo (`Atrasada há N dias`, `Vence hoje`, `Vence amanhã`, `Vence em N dias`) — um canal separado do badge de status, porque "em que fase está" e "está no prazo?" são informações diferentes;
 - **Atividade recente**: últimas demandas criadas por toda a equipe;
 - **Distribuição por status**: uma única barra empilhada (não faz sentido um gráfico maior para 3 fatias) com a proporção pendente/em andamento/concluída;
 - **Prazos**: quantas demandas (de toda a equipe) estão atrasadas, vencem hoje, ou vencem nos próximos `DashboardController::PRAZO_PROXIMO_DIAS` dias (3 por padrão);
-- **Carga por responsável**: quantas demandas abertas (não concluídas) cada pessoa tem, da maior carga para a menor — visível para os dois papéis, já que qualquer usuário autenticado já enxerga todas as demandas na listagem;
-- **Equipe** (só para o líder): contagem de líderes/executores, com atalho para `/users`.
+- **Carga por responsável**: quantas demandas abertas (não concluídas) cada pessoa tem, da maior carga para a menor — visível pros três papéis, já que qualquer usuário autenticado já enxerga todas as demandas na listagem;
+- **Equipe** (só pra líder e admin): contagem de admins/líderes/executores, com atalho para `/users`.
 
 Todos os dados vêm do banco (nada é fixo/mockado) e respeitam a mesma autorização já usada na listagem de demandas (`Demanda.accessible_by(current_ability)`).
 
@@ -173,7 +177,7 @@ Quando uma demanda de um executor fica atrasada (data no passado e ainda não co
 1. Crie um bot conversando com o [@BotFather](https://t.me/BotFather) no Telegram (`/newbot`) e copie o token gerado.
 2. Configure a variável de ambiente `TELEGRAM_BOT_TOKEN` com esse token (no Railway: aba **Variables** do serviço).
 3. Cada usuário que quiser receber avisos descobre o próprio `chat_id` com o bot [@userinfobot](https://t.me/userinfobot) — passo a passo pelo celular ou computador: abra a barra de pesquisa do Telegram, digite `@userinfobot`, selecione o bot oficial nos resultados, toque em Começar (ou envie `/start`) e copie o número exibido no campo **Id**.
-4. O líder cadastra esse `chat_id` no campo **Chat ID do Telegram** ao criar ou editar o usuário em `/users` — o próprio formulário tem um ícone ⓘ ao lado do campo com esse mesmo passo a passo, em forma de tooltip.
+4. O **admin** cadastra esse `chat_id` no campo **Chat ID do Telegram** ao criar ou editar o usuário em `/users` — o próprio formulário tem um ícone ⓘ ao lado do campo com esse mesmo passo a passo, em forma de tooltip. É o único campo do formulário exclusivo do admin: nem o líder (que também cadastra/edita usuários) vê ou edita esse campo.
 
 **Como funciona:**
 
@@ -183,14 +187,27 @@ Quando uma demanda de um executor fica atrasada (data no passado e ainda não co
 - Cada atraso é notificado **uma única vez** (campo `Demanda#atraso_notificado_em`) — se a demanda deixar de estar atrasada (data adiada ou marcada como concluída) e depois atrasar de novo, um novo aviso é enviado.
 - Sem `TELEGRAM_BOT_TOKEN` configurado, ou sem `telegram_chat_id` no usuário, a notificação é simplesmente pulada (não é um erro).
 
+## Webhooks de saída
+
+Além do Telegram, o **admin** pode cadastrar webhooks genéricos em `/webhooks` — uma URL que recebe um `POST` com JSON toda vez que um dos eventos escolhidos acontece. Serve tanto pra notificar um canal de chat (Slack/Teams/Discord, apontando pra um webhook incoming deles) quanto pra disparar uma automação no-code (n8n, Knime) — o mecanismo é o mesmo, só muda quem recebe o `POST`.
+
+**Eventos disponíveis:** `demanda_criada`, `demanda_concluida`, `demanda_excluida` (disparados por callbacks no model `Demanda` — cobrem tanto a tela web quanto a API) e `relatorio_gerado` (disparado só quando o relatório semanal é efetivamente baixado ou enviado por Telegram, não a cada visita à pré-visualização).
+
+**Como funciona:**
+
+- `WebhookSubscription` (`app/models/webhook_subscription.rb`) guarda a URL e os eventos escolhidos (array nativo do Postgres). Um webhook pode ser pausado (`active: false`) sem precisar excluir o cadastro.
+- `WebhookDispatcher` (`app/services/webhook_dispatcher.rb`) encontra as assinaturas ativas que escutam o evento e enfileira `WebhookDeliveryJob` pra cada uma — em background (adapter `:async` padrão do Rails; este projeto não tem Sidekiq/Solid Queue configurado), pra não travar a request original no tempo de resposta de um serviço de terceiro.
+- `WebhookDelivery` (`app/services/webhook_delivery.rb`) faz o `POST` de fato, com timeout curto (5s). Um endpoint de terceiro fora do ar, lento ou respondendo erro não derruba nada — só loga e segue; não há retry.
+- **Proteção contra SSRF**: a URL cadastrada é validada no momento do cadastro/edição — o host é resolvido e endereços de rede privada/local (`127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16` e as faixas IPv6 equivalentes) são recusados, pra reduzir o risco do admin apontar um webhook pra um serviço interno da própria rede.
+
 ## Relatório semanal
 
-Tela em `/relatorios` (menu **Relatórios**), visível só pro líder (`can? :read, :relatorio` — ver `app/models/ability.rb`), com um resumo dos últimos 7 dias corridos (hoje e os 6 dias anteriores, não a semana de calendário): demandas criadas na semana, demandas concluídas na semana, situação atual por status, atrasadas, e carga atual por responsável. Os dados são montados por `Relatorios::Semanal` (`app/services/relatorios/semanal.rb`) e reutilizados tanto pela tela de pré-visualização quanto pelo PDF.
+Tela em `/relatorios` (menu **Relatórios**), visível pra líder e admin (`can? :read, :relatorio` — ver `app/models/ability.rb`), com um resumo dos últimos 7 dias corridos (hoje e os 6 dias anteriores, não a semana de calendário): demandas criadas na semana, demandas concluídas na semana, situação atual por status, atrasadas, e carga atual por responsável. Os dados são montados por `Relatorios::Semanal` (`app/services/relatorios/semanal.rb`) e reutilizados tanto pela tela de pré-visualização quanto pelo PDF.
 
-**Geração é sob demanda** — o líder decide quando gerar, não há envio automático agendado (diferente do lembrete de atraso, que roda periodicamente por natureza). Duas formas de obter o relatório, ambas na mesma tela:
+**Geração é sob demanda** — quem acessa decide quando gerar, não há envio automático agendado (diferente do lembrete de atraso, que roda periodicamente por natureza). Duas formas de obter o relatório, ambas na mesma tela:
 
-- **Baixar PDF** (`GET /relatorios/semanal.pdf`): gerado com [Prawn](https://github.com/prawnpdf/prawn) + `prawn-table` (`Relatorios::SemanalPdf`, em `app/services/relatorios/semanal_pdf.rb`) — puro Ruby, sem depender de um binário externo tipo wkhtmltopdf ou Chrome headless (mesma filosofia de manter dependências leves já usada no restante do projeto).
-- **Enviar por Telegram** (`POST /relatorios/enviar_telegram`): envia o mesmo PDF como documento (`sendDocument` da API do Telegram) pro Chat ID do **próprio líder que pediu** — não pra outros usuários, mesmo que também tenham Chat ID cadastrado. Reaproveita a mesma configuração (`TELEGRAM_BOT_TOKEN`) e o mesmo padrão de "sem token/chat_id configurado não é erro, só não envia" já usado pelo lembrete de atraso; ver `TelegramNotifier#enviar_documento`.
+- **Baixar PDF** (`GET /relatorios/semanal.pdf`): gerado com [Prawn](https://github.com/prawnpdf/prawn) + `prawn-table` (`Relatorios::SemanalPdf`, em `app/services/relatorios/semanal_pdf.rb`) — puro Ruby, sem depender de um binário externo tipo wkhtmltopdf ou Chrome headless (mesma filosofia de manter dependências leves já usada no restante do projeto). Dispara o webhook `relatorio_gerado` (ver "Webhooks de saída").
+- **Enviar por Telegram** (`POST /relatorios/enviar_telegram`): envia o mesmo PDF como documento (`sendDocument` da API do Telegram) pro Chat ID de **quem pediu** — não pra outros usuários, mesmo que também tenham Chat ID cadastrado. Reaproveita a mesma configuração (`TELEGRAM_BOT_TOKEN`) e o mesmo padrão de "sem token/chat_id configurado não é erro, só não envia" já usado pelo lembrete de atraso; ver `TelegramNotifier#enviar_documento`. Também dispara `relatorio_gerado`.
 
 ⚠️ Como o model `Demanda` não tem um campo dedicado de "concluída em", "demandas concluídas na semana" é uma aproximação baseada em `updated_at` das demandas já concluídas — pode incluir uma demanda que só teve outro campo editado depois de já estar concluída, não necessariamente a que virou concluída nesta semana exata. Documentado também no comentário de `Relatorios::Semanal#concluidas_no_periodo`.
 
@@ -198,22 +215,23 @@ Tela em `/relatorios` (menu **Relatórios**), visível só pro líder (`can? :re
 
 Além da API, há uma tela em `/demandas` (menu "Demandas" no topo) para uso pelos usuários autenticados:
 
-- ambos os papéis veem o botão **Nova demanda** e podem cadastrar;
-- apenas o líder vê a coluna **Ações**, com os botões **Editar** e **Excluir** em cada linha;
+- os três papéis veem o botão **Nova demanda** e podem cadastrar;
+- só líder e admin veem a coluna **Ações**, com os botões **Editar** e **Excluir** em cada linha;
 - se um executor tentar acessar `/demandas/:id/edit` diretamente, é redirecionado com aviso de permissão negada;
 - o botão **Excluir** pede confirmação (`data-turbo-confirm`, via Turbo) antes de enviar o form de exclusão;
 - um formulário de busca (com autocomplete por título já cadastrado + filtro por status) e paginação (10 por página);
 - as colunas **Título**, **Data**, **Status**, **Responsável** e **Criada em** são clicáveis e ordenam a listagem (clicar de novo inverte a direção); o filtro de busca preserva a ordenação escolhida;
-- o cadastro tem um campo **Data**, preenchido por padrão com a data atual, mas que pode ser alterado para outra data no momento da criação; depois que a demanda já existe, só o líder pode alterar essa data (mesma regra de edição das demais informações da demanda).
+- o cadastro tem um campo **Data**, preenchido por padrão com a data atual, mas que pode ser alterado para outra data no momento da criação; depois que a demanda já existe, só líder/admin pode alterar essa data (mesma regra de edição das demais informações da demanda).
 
 ## Tela web de Acessos
 
-Há também uma tela em `/users` (menu "Acessos" no topo, visível apenas ao líder) para o líder cadastrar novos usuários e alterar a permissão (papel líder/executor) de usuários já existentes:
+Há também uma tela em `/users` (menu "Acessos" no topo, visível a líder e admin) para cadastrar novos usuários e alterar a permissão (papel executor/líder/admin) de usuários já existentes:
 
-- apenas o líder vê o menu "Acessos" e consegue acessar `/users`; um executor que tentar acessar diretamente é redirecionado com aviso de permissão negada;
-- o cadastro de um novo usuário exige nome, e-mail, senha e a permissão (líder ou executor) — não há autocadastro;
+- só líder e admin veem o menu "Acessos" e conseguem acessar `/users`; um executor que tentar acessar diretamente é redirecionado com aviso de permissão negada;
+- o cadastro de um novo usuário exige nome, e-mail, senha e a permissão (executor, líder ou admin) — não há autocadastro;
 - a edição permite alterar nome, e-mail e a permissão de um usuário existente (a troca de senha continua pelo fluxo de "esqueci minha senha" do Devise);
-- o líder também pode **excluir** outros usuários (com confirmação via Turbo). Duas travas de segurança: o líder não pode excluir a própria conta, e não é possível excluir um usuário que já tenha demandas cadastradas (é preciso reatribuir ou excluir as demandas dele antes);
+- **o campo Chat ID do Telegram só aparece pra quem está logado como admin** — nem no formulário, nem na edição, um líder vê ou consegue alterar esse campo de outro usuário (reforçado também do lado do servidor, não só escondido na tela);
+- líder e admin também podem **excluir** outros usuários (com confirmação via Turbo). Duas travas de segurança: não dá pra excluir a própria conta, nem excluir um usuário que já tenha demandas cadastradas (é preciso reatribuir ou excluir as demandas dele antes);
 - um formulário de busca (com autocomplete por nome/e-mail já cadastrados + filtro por permissão) e paginação (10 por página).
 
 ## Identidade visual e busca/paginação

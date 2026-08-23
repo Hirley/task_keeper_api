@@ -1,10 +1,11 @@
 # frozen_string_literal: true
 
-# Tela de Acessos (web): apenas o líder pode cadastrar novos usuários,
-# alterar as permissões (papel líder/executor) e excluir usuários já
-# existentes. Não há autocadastro — só o líder chega a esta tela (ver
-# menu "Acessos" em app/views/layouts/application.html.haml e
-# app/models/ability.rb).
+# Tela de Acessos (web): líder e admin podem cadastrar novos usuários,
+# alterar as permissões (papel executor/líder/admin) e excluir usuários já
+# existentes — mas só admin altera o telegram_chat_id (ver
+# #user_params/#permission_params abaixo). Não há autocadastro — só líder
+# e admin chegam a esta tela (ver menu "Acessos" em
+# app/views/layouts/application.html.haml e app/models/ability.rb).
 class UsersController < ApplicationController
   before_action :authorize_manage_users!
   before_action :set_user, only: %i[edit update destroy]
@@ -78,14 +79,26 @@ class UsersController < ApplicationController
   end
 
   def user_params
-    params.require(:user).permit(:name, :email, :password, :password_confirmation, :role, :telegram_chat_id)
+    params.require(:user).permit(:name, :email, :password, :password_confirmation, :role, *telegram_chat_id_param)
   end
 
   # Na edição não alteramos a senha por aqui (fluxo de "esqueci minha senha"
-  # do Devise cobre isso); apenas dados cadastrais, a permissão (papel) e o
-  # chat_id do Telegram usado para lembretes de atraso.
+  # do Devise cobre isso); apenas dados cadastrais, a permissão (papel) e —
+  # só pra admin — o chat_id do Telegram usado para lembretes de atraso.
   def permission_params
-    params.require(:user).permit(:name, :email, :role, :telegram_chat_id)
+    params.require(:user).permit(:name, :email, :role, *telegram_chat_id_param)
+  end
+
+  # Restrição de atributo (só admin edita telegram_chat_id) — não dá pra
+  # expressar isso com CanCan (que autoriza por model/ação, não por
+  # campo), então é feito aqui: se quem está mandando o request não é
+  # admin, o parâmetro nem é permitido, e #update/#save nem chegam a ver
+  # esse valor (o formulário também já esconde o campo pra líder — ver
+  # app/views/users/_form.html.haml — isso aqui é a garantia do lado do
+  # servidor, pra alguém não conseguir contornar escrevendo o parâmetro na
+  # mão).
+  def telegram_chat_id_param
+    current_user.admin? ? [:telegram_chat_id] : []
   end
 
   # Filtro usado na busca da tela de Acessos (campo com autocomplete por

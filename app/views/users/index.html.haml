@@ -46,8 +46,7 @@
           %td= user.name
           %td= user.email
           %td
-            %span{ class: "badge #{user.lider? ? 'tk-badge-lider' : 'tk-badge-executor'}" }
-              = user.lider? ? "Líder" : "Executor"
+            %span{ class: "badge #{user.role_badge_class}" }= user.role_label.capitalize
           %td.text-end
             .d-flex.gap-2.justify-content-end
               = link_to "Editar permissões", edit_user_path(user), class: "btn btn-sm btn-outline-secondary"

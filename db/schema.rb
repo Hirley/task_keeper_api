@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_13_000002) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_23_000001) do
   create_table "demandas", force: :cascade do |t|
     t.datetime "atraso_notificado_em"
     t.datetime "created_at", null: false
@@ -40,5 +40,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_13_000002) do
     t.index ["role"], name: "index_users_on_role"
   end
 
+  create_table "webhook_subscriptions", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.string "events", default: [], array: true, null: false
+    t.datetime "updated_at", null: false
+    t.string "url", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id"], name: "index_webhook_subscriptions_on_user_id"
+  end
+
   add_foreign_key "demandas", "users"
+  add_foreign_key "webhook_subscriptions", "users"
 end

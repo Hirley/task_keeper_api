@@ -39,12 +39,13 @@
           #tkNavbar.collapse.navbar-collapse
             %ul.navbar-nav.me-auto
               %li.nav-item
-                = link_to "Início", root_path, class: "nav-link#{' active' if current_page?(root_path)}"
-              %li.nav-item
                 = link_to "Demandas", demandas_path, class: "nav-link#{' active' if current_page?(demandas_path)}"
               - if can? :manage, User
                 %li.nav-item
                   = link_to "Acessos", users_path, class: "nav-link#{' active' if current_page?(users_path)}"
+              - if can? :manage, WebhookSubscription
+                %li.nav-item
+                  = link_to "Webhooks", webhook_subscriptions_path, class: "nav-link#{' active' if current_page?(webhook_subscriptions_path)}"
               - if can? :read, :relatorio
                 %li.nav-item
                   = link_to "Relatórios", relatorios_path, class: "nav-link#{' active' if current_page?(relatorios_path)}"
@@ -62,7 +63,7 @@
             .d-flex.align-items-center.gap-2.mt-3.mt-lg-0.flex-shrink-0
               %span.text-light.tk-user-chip.text-nowrap
                 = current_user.name
-                = " (#{current_user.lider? ? 'líder' : 'executor'})"
+                = " (#{current_user.role_label})"
               = button_to "Sair", destroy_user_session_path, method: :delete, class: "btn btn-outline-light btn-sm text-nowrap"
 
     .container.mt-4.mb-5

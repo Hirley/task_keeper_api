@@ -3,6 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Usuários (tela web de Acessos)', type: :request do
+  let(:admin) { create(:user, :admin) }
   let(:lider) { create(:user, :lider) }
   let(:executor) { create(:user, :executor) }
   let(:novo_usuario_params) do
@@ -188,13 +189,22 @@ RSpec.describe 'Usuários (tela web de Acessos)', type: :request do
       expect(User.last.executor?).to be true
     end
 
-    it 'salva o telegram_chat_id quando informado' do
-      sign_in lider
+    it 'salva o telegram_chat_id quando informado por um admin' do
+      sign_in admin
       params = novo_usuario_params.deep_merge(user: { telegram_chat_id: '999888777' })
 
       post '/users', params: params
 
       expect(User.last.telegram_chat_id).to eq('999888777')
+    end
+
+    it 'ignora o telegram_chat_id quando quem cadastra é líder (não admin)' do
+      sign_in lider
+      params = novo_usuario_params.deep_merge(user: { telegram_chat_id: '999888777' })
+
+      post '/users', params: params
+
+      expect(User.last.telegram_chat_id).to be_nil
     end
   end
 
@@ -238,17 +248,31 @@ RSpec.describe 'Usuários (tela web de Acessos)', type: :request do
       expect(outro_lider.reload.executor?).to be true
     end
 
-    it 'permite que um líder cadastre o telegram_chat_id de outro usuário' do
-      sign_in lider
+    it 'permite que um admin cadastre o telegram_chat_id de outro usuário' do
+      sign_in admin
       patch "/users/#{outro_usuario.id}", params: { user: { telegram_chat_id: '111222333' } }
       expect(outro_usuario.reload.telegram_chat_id).to eq('111222333')
     end
 
-    it 'rejeita um telegram_chat_id não numérico e não altera o usuário' do
-      sign_in lider
+    it 'rejeita um telegram_chat_id não numérico (enviado por um admin) e não altera o usuário' do
+      sign_in admin
       patch "/users/#{outro_usuario.id}", params: { user: { telegram_chat_id: 'não-é-um-numero' } }
       expect(response).to have_http_status(:unprocessable_entity)
       expect(outro_usuario.reload.telegram_chat_id).to be_nil
+    end
+
+    it 'ignora o telegram_chat_id quando quem edita é líder (não admin) — não é um erro, só não altera' do
+      sign_in lider
+      patch "/users/#{outro_usuario.id}", params: { user: { telegram_chat_id: '111222333' } }
+      expect(response).to redirect_to(users_path)
+      expect(outro_usuario.reload.telegram_chat_id).to be_nil
+    end
+
+    it 'um líder continua conseguindo alterar a permissão, mesmo sem poder tocar no telegram_chat_id' do
+      sign_in lider
+      patch "/users/#{outro_usuario.id}", params: { user: { role: 'lider', telegram_chat_id: '111222333' } }
+      expect(outro_usuario.reload.lider?).to be true
+      expect(outro_usuario.telegram_chat_id).to be_nil
     end
   end
 
