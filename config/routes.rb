@@ -18,6 +18,7 @@ Rails.application.routes.draw do
   post 'relatorios/enviar_telegram', to: 'relatorios#enviar_telegram', as: :relatorio_enviar_telegram
 
   get 'acessibilidade', to: 'pages#acessibilidade', as: :acessibilidade
+  get 'busca', to: 'search#index', as: :busca
 
   root 'dashboard#index'
 end
