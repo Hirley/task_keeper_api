@@ -1,0 +1,42 @@
+- content_for :page_title, "Webhooks"
+%h1.visually-hidden Webhooks
+
+.d-flex.justify-content-between.align-items-center.flex-wrap.gap-2.mb-3
+  %p.text-muted.mb-0
+    Cadastre uma URL pra ser avisado (Slack, Teams, Discord) ou disparar uma automação (n8n, Knime) sempre que um dos eventos abaixo acontecer.
+  = link_to "Novo webhook", new_webhook_subscription_path, class: "btn btn-tk-primary text-nowrap"
+
+.table-responsive.tk-card
+  %table.table.table-hover.align-middle
+    %thead
+      %tr
+        %th URL
+        %th Eventos
+        %th Status
+        %th Cadastrado por
+        %th.text-end Ações
+    %tbody
+      - @webhook_subscriptions.each do |webhook_subscription|
+        %tr
+          %td.text-break= webhook_subscription.url
+          %td
+            - Array(webhook_subscription.events).each do |event|
+              %span.badge.tk-badge-executor.me-1= event
+          %td
+            - if webhook_subscription.active?
+              %span.badge.tk-badge-status-concluida Ativo
+            - else
+              %span.badge.tk-badge-status-pendente Pausado
+          %td= webhook_subscription.user.name
+          %td.text-end
+            .d-flex.gap-2.justify-content-end
+              = link_to "Editar", edit_webhook_subscription_path(webhook_subscription), class: "btn btn-sm btn-outline-secondary"
+              = button_to "Excluir", webhook_subscription_path(webhook_subscription), method: :delete,
+                class: "btn btn-sm btn-outline-danger",
+                form: { data: { turbo_confirm: "Tem certeza que deseja excluir este webhook?" } }
+
+    - if @webhook_subscriptions.empty?
+      %tbody
+        %tr
+          %td.text-muted{ colspan: 5 }
+            Nenhum webhook cadastrado ainda.

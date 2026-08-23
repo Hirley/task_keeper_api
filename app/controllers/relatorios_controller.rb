@@ -46,8 +46,26 @@ class RelatoriosController < ApplicationController
     authorize! :read, :relatorio
   end
 
+  # Dispara o webhook "relatorio_gerado" aqui (não em #show) porque #show
+  # é a tela de pré-visualização, visitada toda vez que o líder abre
+  # /relatorios — disparar um evento externo a cada visita seria ruído.
+  # #gerar_pdf só roda quando o líder efetivamente baixa ou envia o PDF
+  # (ações deliberadas), ver #semanal_pdf e #enviar_telegram.
   def gerar_pdf
-    Relatorios::SemanalPdf.new(Relatorios::Semanal.new.gerar).render
+    relatorio = Relatorios::Semanal.new.gerar
+    WebhookDispatcher.dispatch('relatorio_gerado', relatorio_webhook_payload(relatorio))
+    Relatorios::SemanalPdf.new(relatorio).render
+  end
+
+  def relatorio_webhook_payload(relatorio)
+    {
+      periodo_inicio: relatorio.periodo_inicio.iso8601,
+      periodo_fim: relatorio.periodo_fim.iso8601,
+      total_criadas: relatorio.criadas.size,
+      total_concluidas: relatorio.concluidas.size,
+      total_atrasadas: relatorio.atrasadas,
+      status_counts: relatorio.status_counts
+    }
   end
 
   def nome_arquivo

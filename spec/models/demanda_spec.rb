@@ -33,6 +33,43 @@ RSpec.describe Demanda, type: :model do
     expect(executor_demanda).to be_valid
   end
 
+  describe 'webhooks de saída (ver WebhookDispatcher)' do
+    it 'dispara "demanda_criada" ao criar' do
+      demanda = build(:demanda, title: 'Revisar contrato')
+
+      expect(WebhookDispatcher).to receive(:dispatch).with('demanda_criada', hash_including(title: 'Revisar contrato'))
+
+      demanda.save!
+    end
+
+    it 'dispara "demanda_concluida" quando o status muda pra concluída' do
+      demanda = create(:demanda, status: :pendente)
+      allow(WebhookDispatcher).to receive(:dispatch)
+
+      expect(WebhookDispatcher).to receive(:dispatch).with('demanda_concluida', hash_including(status: 'concluida'))
+
+      demanda.update!(status: :concluida)
+    end
+
+    it 'não dispara "demanda_concluida" quando outro campo muda mas o status continua o mesmo' do
+      demanda = create(:demanda, status: :concluida)
+      allow(WebhookDispatcher).to receive(:dispatch)
+
+      expect(WebhookDispatcher).not_to receive(:dispatch).with('demanda_concluida', anything)
+
+      demanda.update!(description: 'Nova descrição')
+    end
+
+    it 'dispara "demanda_excluida" com os dados da demanda, mesmo depois dela já ter sido removida' do
+      demanda = create(:demanda, title: 'Revisar contrato')
+      allow(WebhookDispatcher).to receive(:dispatch)
+
+      expect(WebhookDispatcher).to receive(:dispatch).with('demanda_excluida', hash_including(title: 'Revisar contrato'))
+
+      demanda.destroy!
+    end
+  end
+
   describe '#atraso_notificado_em' do
     it 'é zerado quando a data é adiada para hoje ou o futuro' do
       demanda = create(:demanda, data: 3.days.ago.to_date, atraso_notificado_em: 1.hour.ago)

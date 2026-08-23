@@ -1,0 +1,30 @@
+= form_with model: webhook_subscription, local: true do |f|
+  - if webhook_subscription.errors.any?
+    .alert.alert-danger
+      %ul.mb-0
+        - webhook_subscription.errors.full_messages.each do |message|
+          %li= message
+
+  .mb-3
+    = f.label :url, "URL do webhook", class: "form-label"
+    = f.url_field :url, class: "form-control", required: true, placeholder: "https://hooks.slack.com/services/..."
+    %div.form-text Endpoint que recebe um POST com JSON a cada evento escolhido abaixo. Não pode apontar pra um endereço de rede privado/local.
+
+  .mb-3
+    %span.form-label.d-block Eventos
+    .d-flex.flex-wrap.gap-2
+      - WebhookSubscription::EVENTS.each do |event|
+        - checked = Array(webhook_subscription.events).include?(event)
+        = check_box_tag "webhook_subscription[events][]", event, checked,
+          id: "webhook_subscription_events_#{event}", class: "btn-check", autocomplete: "off"
+        = label_tag "webhook_subscription_events_#{event}", event, class: "btn btn-sm btn-outline-secondary"
+    %div.form-text Nenhum selecionado = o webhook não recebe nada (fica cadastrado, mas inativo na prática).
+
+  .mb-3.form-check
+    = f.check_box :active, class: "form-check-input"
+    = f.label :active, "Ativo", class: "form-check-label"
+    %div.form-text Desmarcar pausa o envio sem precisar excluir o cadastro.
+
+  .d-flex.gap-2
+    = f.submit "Salvar", class: "btn btn-tk-primary"
+    = link_to "Cancelar", webhook_subscriptions_path, class: "btn btn-outline-secondary"

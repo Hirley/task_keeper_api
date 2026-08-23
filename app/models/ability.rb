@@ -10,6 +10,9 @@
 #     porque não existe uma tabela/registro "Relatorio"; já coberto pelo
 #     `can :manage, :all` do líder abaixo, sem precisar de uma regra à
 #     parte).
+#   * Apenas o líder cadastra/gerencia webhooks de saída (WebhookSubscription
+#     — ver app/controllers/webhook_subscriptions_controller.rb), mesma
+#     lógica: já coberto por `can :manage, :all`, sem regra à parte.
 class Ability
   include CanCan::Ability
 

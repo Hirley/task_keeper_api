@@ -9,6 +9,7 @@ class User < ApplicationRecord
   enum :role, { executor: 0, lider: 1 }, default: :executor
 
   has_many :demandas, dependent: :restrict_with_error
+  has_many :webhook_subscriptions, dependent: :destroy
 
   validates :name, presence: true
   validates :role, presence: true
