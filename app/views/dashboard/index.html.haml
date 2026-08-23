@@ -44,9 +44,10 @@
 .row.g-3
   .col-lg-8
     .card.tk-card.mb-3
-      .card-header.d-flex.align-items-center.justify-content-between
-        %span Minhas demandas
-        = link_to "Ver todas →", demandas_path, class: "small fw-semibold text-decoration-none", style: "color: var(--tk-teal);"
+      = link_to demandas_path(responsavel_id: current_user.id), class: "card-drilldown" do
+        .card-header.d-flex.align-items-center.justify-content-between
+          %span Minhas demandas
+          %span.card-drilldown-chevron{ "aria-hidden" => "true" } ›
       .card-body.pt-2
         - if @minhas_demandas.any?
           %table.table.tk-table.mb-0
@@ -70,21 +71,26 @@
             = link_to "Criar demanda", new_demanda_path, style: "color: var(--tk-teal);"
 
     .card.tk-card
-      .card-header.d-flex.align-items-center.justify-content-between
-        %span Atividade recente
-        %small.text-muted últimas demandas criadas pela equipe
+      = link_to demandas_path, class: "card-drilldown" do
+        .card-header.d-flex.align-items-center.justify-content-between
+          %span Atividade recente
+          .d-flex.align-items-center.gap-2
+            %small.text-muted últimas demandas criadas pela equipe
+            %span.card-drilldown-chevron{ "aria-hidden" => "true" } ›
       .card-body.pt-2
         - if @atividade_recente.any?
           - @atividade_recente.each do |demanda|
-            .activity-item
-              %span.activity-dot
-              %div
+            - destino = can?(:update, demanda) ? edit_demanda_path(demanda) : demandas_path(q: demanda.title)
+            = link_to destino, class: "activity-item-link" do
+              .activity-item
+                %span.activity-dot
                 %div
-                  %strong= demanda.title
-                  = " — criada por #{demanda.user.name}"
-                  - if demanda.concluida?
-                    = ", concluída"
-                %div.activity-time= time_ago_in_words(demanda.created_at) + " atrás"
+                  %div
+                    %strong= demanda.title
+                    = " — criada por #{demanda.user.name}"
+                    - if demanda.concluida?
+                      = ", concluída"
+                  %div.activity-time= time_ago_in_words(demanda.created_at) + " atrás"
         - else
           %p.text-muted.mb-0 Nenhuma atividade ainda.
 

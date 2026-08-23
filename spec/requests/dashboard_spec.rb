@@ -95,6 +95,41 @@ RSpec.describe 'Painel inicial (dashboard)', type: :request do
       expect(table).not_to include('Demanda do executor')
     end
 
+    it 'não tem mais o link de texto "Ver todas" — o cabeçalho do card inteiro já é o link' do
+      sign_in lider
+
+      get '/'
+
+      expect(response.body).not_to include('Ver todas')
+      expect(response.body).to include(%(class="card-drilldown" href="/demandas?responsavel_id=#{lider.id}"))
+    end
+
+    it '"Atividade recente" tem o cabeçalho como link pra listagem completa' do
+      sign_in lider
+
+      get '/'
+
+      expect(response.body).to include('class="card-drilldown" href="/demandas"')
+    end
+
+    it 'um item de "Atividade recente" abre a edição direto quando quem vê pode editar (líder/admin)' do
+      demanda = create(:demanda, title: 'Revisar contrato', user: executor)
+      sign_in lider
+
+      get '/'
+
+      expect(response.body).to include(%(class="activity-item-link" href="/demandas/#{demanda.id}/edit"))
+    end
+
+    it 'um item de "Atividade recente" abre a listagem filtrada por título quando quem vê não pode editar (executor)' do
+      create(:demanda, title: 'Revisar contrato', user: lider)
+      sign_in executor
+
+      get '/'
+
+      expect(response.body).to include('class="activity-item-link" href="/demandas?q=Revisar+contrato"')
+    end
+
     it 'sinaliza uma demanda atrasada com o badge de urgência' do
       create(:demanda, title: 'Demanda atrasada', status: :pendente, data: 3.days.ago.to_date, user: lider)
       sign_in lider

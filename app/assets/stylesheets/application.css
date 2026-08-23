@@ -513,6 +513,38 @@ input:focus-visible {
   box-shadow: 0 6px 18px rgba(0, 40, 34, 0.14);
 }
 
+/* Cabeçalho de card inteiro como link (ex.: "Minhas demandas" → lista
+   filtrada por mim, mesmo drilldown de responsável usado em "Carga por
+   responsável") — a seta faz o papel visual que "Ver todas →" fazia
+   antes, sem precisar do texto: o cabeçalho inteiro já é clicável. */
+
+.card-drilldown {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.card-drilldown .card-header {
+  transition: background-color 0.15s ease;
+}
+
+.card-drilldown:hover .card-header,
+.card-drilldown:focus-visible .card-header {
+  background-color: rgba(0, 127, 109, 0.08);
+}
+
+.card-drilldown-chevron {
+  color: var(--tk-teal);
+  font-size: 1.2rem;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+
+.card-drilldown:hover .card-drilldown-chevron,
+.card-drilldown:focus-visible .card-drilldown-chevron {
+  transform: translateX(3px);
+}
+
 /* Badge de urgência de prazo — canal separado do badge de status
    (tk-badge-status-*): esse mostra "está no prazo?", não "em que fase". */
 
@@ -695,6 +727,25 @@ input:focus-visible {
 .activity-time {
   font-size: 0.76rem;
   color: #667077;
+}
+
+.activity-item-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  border-radius: var(--tk-radius-sm);
+}
+
+.activity-item-link:hover,
+.activity-item-link:focus-visible {
+  background-color: rgba(0, 127, 109, 0.05);
+}
+
+.activity-item-link:hover .activity-item,
+.activity-item-link:focus-visible .activity-item {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  margin: 0 -0.5rem;
 }
 
 /* Card "Equipe" — cada contagem (admin/líder/executor) é um link de
