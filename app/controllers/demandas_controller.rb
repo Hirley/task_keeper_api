@@ -35,29 +35,11 @@ class DemandasController < ApplicationController
     @status_filter_keys = normalized_status_filter_keys
     @status_filter = @status_filter_keys.map { |status| Demanda.statuses[status] }
     @prazo_filter = normalized_prazo_filter
-    @responsavel_filtrado = User.find_by(id: params[:responsavel_id]) if params[:responsavel_id].present?
+    @responsavel_filtrado = buscar_responsavel_filtrado
     @sort = SORTABLE_COLUMNS.key?(params[:sort]) ? params[:sort] : 'created_at'
     @direction = params[:direction] == 'asc' ? 'asc' : 'desc'
 
-    scope = Demanda.accessible_by(current_ability).includes(:user)
-    scope = aplicar_filtro_de_prazo(scope)
-    scope = aplicar_filtro_de_responsavel(scope)
-
-    # Ransack é usado só como mecanismo interno de query — o contrato
-    # externo continua sendo os mesmos params simples de sempre (q, status,
-    # sort, direction), não a sintaxe nativa do Ransack. "id" no fim mantém
-    # o desempate estável que já existia antes.
-    #
-    # "status" aceita um ou mais valores (status=x ou status[]=x&status[]=y
-    # — ver normalized_status_filter) — usa "_in" em vez de "_eq". "q"
-    # aceita um ou mais termos separados por vírgula (ex.: "contrato,
-    # sala") — usa "_cont_any" em vez de "_cont", pra continuar sendo
-    # busca por substring (não por título exato), só que agora permitindo
-    # combinar vários termos com OR.
-    ransack_query = scope.ransack(title_cont_any: title_terms.presence, status_in: @status_filter.presence)
-    ransack_query.sorts = ["#{SORTABLE_COLUMNS.fetch(@sort)} #{@direction}", "id #{@direction}"]
-
-    @demandas = paginate(ransack_query.result)
+    @demandas = paginate(demandas_filtradas)
     @title_suggestions = Demanda.distinct.order(:title).limit(50).pluck(:title)
   end
 
@@ -131,6 +113,37 @@ class DemandasController < ApplicationController
 
   def normalized_prazo_filter
     params[:prazo] if PRAZOS.include?(params[:prazo])
+  end
+
+  def buscar_responsavel_filtrado
+    return if params[:responsavel_id].blank?
+
+    User.find_by(id: params[:responsavel_id])
+  end
+
+  # Extraído de #index só pra não estourar o limite do Metrics/AbcSize
+  # (ver .rubocop.yml) — monta o escopo final (ability + drilldown +
+  # busca/status via Ransack) e devolve o resultado já pronto pra paginar.
+  #
+  # Ransack é usado só como mecanismo interno de query — o contrato
+  # externo continua sendo os mesmos params simples de sempre (q, status,
+  # sort, direction), não a sintaxe nativa do Ransack. "id" no fim mantém
+  # o desempate estável que já existia antes.
+  #
+  # "status" aceita um ou mais valores (status=x ou status[]=x&status[]=y
+  # — ver normalized_status_filter) — usa "_in" em vez de "_eq". "q"
+  # aceita um ou mais termos separados por vírgula (ex.: "contrato,
+  # sala") — usa "_cont_any" em vez de "_cont", pra continuar sendo
+  # busca por substring (não por título exato), só que agora permitindo
+  # combinar vários termos com OR.
+  def demandas_filtradas
+    scope = Demanda.accessible_by(current_ability).includes(:user)
+    scope = aplicar_filtro_de_prazo(scope)
+    scope = aplicar_filtro_de_responsavel(scope)
+
+    ransack_query = scope.ransack(title_cont_any: title_terms.presence, status_in: @status_filter.presence)
+    ransack_query.sorts = ["#{SORTABLE_COLUMNS.fetch(@sort)} #{@direction}", "id #{@direction}"]
+    ransack_query.result
   end
 
   # Mesmo critério usado no painel inicial pra "Atrasadas"/"Vencem
