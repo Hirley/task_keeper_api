@@ -2,7 +2,7 @@
 
 Aplicação Ruby on Rails full-stack (API REST + interface web) para times pequenos organizarem e acompanharem demandas do dia a dia: quem é responsável por quê, o que está atrasado, e um jeito rápido de saber "o que precisa da minha atenção agora?".
 
-Dois papéis com permissões diferentes (líder/executor), autenticação e autorização de verdade (Devise + CanCanCan), notificação automática de atraso via Telegram, relatório semanal em PDF, e uma API JSON versionada ao lado da tela web — tudo com suíte de testes automatizados, CI (RuboCop + RSpec + build/publish da imagem Docker) e deploy em container.
+Dois papéis com permissões diferentes (líder/executor), autenticação e autorização (Devise + CanCanCan), notificação automática de atraso via Telegram, relatório semanal em PDF, e uma API JSON versionada ao lado da tela web — tudo com suíte de testes automatizados, CI (RuboCop + RSpec + build/publish da imagem Docker) e deploy em container.
 
 **Rodando em produção:** ver seção "Docker" — imagem publicada automaticamente em `ghcr.io/hirley/task_keeper_api` a cada merge em `main`.
 
@@ -67,7 +67,7 @@ Pra subir localmente, um único comando, sem nenhum passo manual antes:
 docker compose up --build
 ```
 
-Isso sobe a imagem de produção **e** um serviço `db` (PostgreSQL) localmente, na porta `3000`, com os dados do banco persistidos num volume nomeado (sobrevivem a `docker compose down`, mas não a `docker compose down -v`). O `docker-compose.yml` já traz um `SECRET_KEY_BASE` padrão pra esse uso local/demo (só copie `.env.example` para `.env` se quiser sobrescrever algum valor). Não é um ambiente de desenvolvimento com hot-reload — para isso, continue usando `bundle install && bin/rails server` (apontando pro serviço `db` ou pra um Postgres local), como na seção anterior.
+Isso sobe a imagem de produção **e** um serviço `db` (PostgreSQL) localmente, na porta `3000`, com os dados do banco persistidos num volume nomeado (sobrevivem a `docker compose down`, mas não a `docker compose down -v`). O `docker-compose.yml` já traz um `SECRET_KEY_BASE` padrão pra esse uso local/demo (só copie `.env.example` para `.env` se quiser sobrescrever algum valor). Não é um ambiente de desenvolvimento com hot-reload — para isso, continue usando `bundle install && rails server` (apontando pro serviço `db` ou pra um Postgres local), como na seção anterior.
 
 Também dá pra usar a imagem já publicada em vez de buildar localmente (ver seção "Integração contínua"):
 
