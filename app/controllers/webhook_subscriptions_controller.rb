@@ -1,12 +1,13 @@
 # frozen_string_literal: true
 
-# Tela de cadastro de webhooks de saída (web) — só o líder tem acesso
-# (coberto por `can :manage, :all` em app/models/ability.rb, do mesmo
-# jeito que a tela de Acessos; não precisa de uma regra própria ali).
+# Tela de cadastro de webhooks de saída (web) — só o admin tem acesso,
+# nem líder chega aqui (ver app/models/ability.rb: líder tem
+# `can :manage, :all`, mas com `cannot :manage, WebhookSubscription`
+# específico pra essa exceção).
 #
-# Não é escopado por usuário: qualquer líder vê/edita/remove qualquer
-# webhook cadastrado, mesmo padrão já usado em Acessos e Demandas (líder
-# gerencia tudo, não só o que ele mesmo criou).
+# Não é escopado por usuário: qualquer admin vê/edita/remove qualquer
+# webhook cadastrado, mesmo padrão já usado em Acessos e Demandas (quem
+# gerencia, gerencia tudo, não só o que criou).
 class WebhookSubscriptionsController < ApplicationController
   before_action :authorize_manage!
   before_action :set_webhook_subscription, only: %i[edit update destroy]
@@ -19,6 +20,11 @@ class WebhookSubscriptionsController < ApplicationController
     @webhook_subscription = WebhookSubscription.new(events: [])
   end
 
+  def edit
+    # Nada além do before_action :set_webhook_subscription — a view só
+    # renderiza o form parcial reaproveitado de #new.
+  end
+
   def create
     @webhook_subscription = current_user.webhook_subscriptions.new(webhook_subscription_params)
 
@@ -28,8 +34,6 @@ class WebhookSubscriptionsController < ApplicationController
       render :new, status: :unprocessable_content
     end
   end
-
-  def edit; end
 
   def update
     if @webhook_subscription.update(webhook_subscription_params)

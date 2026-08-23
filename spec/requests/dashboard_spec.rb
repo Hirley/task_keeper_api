@@ -133,6 +133,16 @@ RSpec.describe 'Painel inicial (dashboard)', type: :request do
       expect(response.body).to include('líder(es)')
     end
 
+    it 'mostra o card Equipe para o admin também' do
+      admin = create(:user, :admin)
+      sign_in admin
+
+      get '/'
+
+      expect(response.body).to include('Equipe')
+      expect(response.body).to include('admin(s)')
+    end
+
     it 'não mostra o card Equipe para o executor' do
       sign_in executor
 

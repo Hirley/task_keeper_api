@@ -4,7 +4,7 @@
 .mb-4
   %h2.h4.mb-1.tk-dashboard-greeting= "Olá, #{current_user.name}"
   %p.text-muted.mb-0
-    - if current_user.lider?
+    - if current_user.lider_ou_admin?
       Aqui está o panorama da equipe hoje, #{Date.current.strftime('%d/%m/%Y')}.
     - else
       Aqui está o que precisa da sua atenção hoje, #{Date.current.strftime('%d/%m/%Y')}.
@@ -135,11 +135,11 @@
         - else
           %p.text-muted.mb-0 Nenhuma demanda em aberto no momento.
 
-    - if current_user.lider?
+    - if current_user.lider_ou_admin?
       .card.tk-card
         .card-header Equipe
         .card-body.pt-2.d-flex.justify-content-between.align-items-center
           %div
-            .fw-semibold= "#{@total_lideres} líder(es) · #{@total_executores} executor(es)"
-            .text-muted.small= "#{@total_lideres + @total_executores} usuários com acesso"
+            .fw-semibold= "#{@total_admins} admin(s) · #{@total_lideres} líder(es) · #{@total_executores} executor(es)"
+            .text-muted.small= "#{@total_admins + @total_lideres + @total_executores} usuários com acesso"
           = link_to "Gerenciar", users_path, class: "btn btn-sm btn-outline-secondary"

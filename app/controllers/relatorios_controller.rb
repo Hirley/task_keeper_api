@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-# Relatório semanal de demandas — só o líder tem acesso (ver
-# app/models/ability.rb: líder tem `can :manage, :all`, que já cobre o
+# Relatório semanal de demandas — líder e admin têm acesso (ver
+# app/models/ability.rb: os dois têm `can :manage, :all`, que já cobre o
 # símbolo :relatorio usado em #authorize_relatorio!; executor não tem
 # nenhuma permissão concedida sobre isso, então fica bloqueado por
-# padrão). Geração é sob demanda (o líder decide quando gerar/baixar/
+# padrão). Geração é sob demanda (quem acessa decide quando gerar/baixar/
 # enviar), não há envio automático agendado — ver README, seção
 # "Relatório semanal".
 class RelatoriosController < ApplicationController

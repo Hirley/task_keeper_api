@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-# Controller web (HAML) para a tela de demandas. Ambos os papéis podem
-# criar demandas; apenas o líder pode editar ou excluir uma demanda já
-# existente (ver app/models/ability.rb). As ações de editar/excluir só
+# Controller web (HAML) para a tela de demandas. Todos os papéis podem
+# criar demandas; apenas líder e admin podem editar ou excluir uma demanda
+# já existente (ver app/models/ability.rb). As ações de editar/excluir só
 # aparecem na tela para quem tem permissão (ver app/views/demandas/index.html.haml).
 class DemandasController < ApplicationController
   before_action :set_demanda, only: %i[edit update destroy]

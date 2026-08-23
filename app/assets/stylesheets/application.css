@@ -350,6 +350,11 @@ input:focus-visible {
   color: #495057;
 }
 
+.tk-badge-admin {
+  background-color: rgba(111, 66, 193, 0.16);
+  color: #5a32a3;
+}
+
 /* ---------- Filtros / busca ---------- */
 
 .tk-filter-label {

@@ -65,7 +65,7 @@
             .d-flex.align-items-center.gap-2.mt-3.mt-lg-0.flex-shrink-0
               %span.text-light.tk-user-chip.text-nowrap
                 = current_user.name
-                = " (#{current_user.lider? ? 'líder' : 'executor'})"
+                = " (#{current_user.role_label})"
               = button_to "Sair", destroy_user_session_path, method: :delete, class: "btn btn-outline-light btn-sm text-nowrap"
 
     .container.mt-4.mb-5

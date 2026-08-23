@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Painel inicial (home) da aplicação — visão geral das demandas para
-# qualquer usuário autenticado (líder ou executor). Não há ações de
+# qualquer usuário autenticado (executor, líder ou admin). Não há ações de
 # escrita aqui, só leitura, então não precisa de `authorize!`: as
 # consultas já são todas escopadas por `current_ability`, igual à
 # listagem de demandas (ver DemandasController#index).
@@ -28,10 +28,11 @@ class DashboardController < ApplicationController
 
     @carga_por_responsavel = carga_por_responsavel(abertas)
 
-    return unless current_user.lider?
+    return unless current_user.lider_ou_admin?
 
     @total_lideres = User.lider.count
     @total_executores = User.executor.count
+    @total_admins = User.admin.count
   end
 
   private

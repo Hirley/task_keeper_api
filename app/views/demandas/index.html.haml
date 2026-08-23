@@ -3,10 +3,10 @@
 
 .d-flex.justify-content-between.align-items-center.flex-wrap.gap-2.mb-3
   %p.text-muted.mb-0
-    - if current_user.lider?
-      Como líder, você pode criar, editar e excluir qualquer demanda.
+    - if current_user.lider_ou_admin?
+      Como #{current_user.role_label}, você pode criar, editar e excluir qualquer demanda.
     - else
-      Como executor, você pode criar demandas e visualizar todas, mas apenas o líder edita ou exclui.
+      Como executor, você pode criar demandas e visualizar todas, mas apenas líder/admin edita ou exclui.
   - if can? :create, Demanda
     = link_to "Nova demanda", new_demanda_path, class: "btn btn-tk-primary text-nowrap"
 

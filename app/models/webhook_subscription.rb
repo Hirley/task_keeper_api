@@ -60,16 +60,20 @@ class WebhookSubscription < ApplicationRecord
     enderecos = Resolv.getaddresses(uri.host).map { |ip| IPAddr.new(ip) }
     return errors.add(:url, 'host não pôde ser resolvido') if enderecos.empty?
 
-    # IPAddr#include? levanta IPAddr::AddressFamilyError ao comparar IPv4
-    # com IPv6 (ex.: testar um endereço ::1 contra a faixa 127.0.0.0/8) —
-    # por isso o "family == family" antes do include?, já que o host pode
-    # ter registro A e AAAA ao mesmo tempo.
-    if enderecos.any? { |ip| BLOCKED_IP_RANGES.any? { |bloqueada| bloqueada.family == ip.family && bloqueada.include?(ip) } }
+    if enderecos.any? { |ip| endereco_bloqueado?(ip) }
       errors.add(:url, 'não pode apontar pra um endereço de rede privado/local')
     end
   rescue URI::InvalidURIError
     errors.add(:url, 'deve ser uma URL http:// ou https:// válida')
   rescue Resolv::ResolvError
     errors.add(:url, 'host não pôde ser resolvido')
+  end
+
+  # IPAddr#include? levanta IPAddr::AddressFamilyError ao comparar IPv4
+  # com IPv6 (ex.: testar um endereço ::1 contra a faixa 127.0.0.0/8) —
+  # por isso o "family == family" antes do include?, já que o host pode
+  # ter registro A e AAAA ao mesmo tempo.
+  def endereco_bloqueado?(ip)
+    BLOCKED_IP_RANGES.any? { |bloqueada| bloqueada.family == ip.family && bloqueada.include?(ip) }
   end
 end

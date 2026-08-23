@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-# Uma demanda pode ser criada por qualquer usuário (líder ou executor),
-# mas apenas um líder pode editá-la ou excluí-la (ver app/models/ability.rb) —
-# isso vale também para o campo "data": como só o líder tem permissão para
-# atualizar uma demanda já existente, só ele consegue alterar a data depois
-# que ela foi cadastrada.
+# Uma demanda pode ser criada por qualquer usuário (executor, líder ou
+# admin), mas só líder e admin podem editá-la ou excluí-la (ver
+# app/models/ability.rb) — isso vale também para o campo "data": como só
+# líder e admin têm permissão para atualizar uma demanda já existente, só
+# eles conseguem alterar a data depois que ela foi cadastrada.
 class Demanda < ApplicationRecord
   belongs_to :user
 
