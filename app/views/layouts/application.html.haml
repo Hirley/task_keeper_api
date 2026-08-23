@@ -48,11 +48,22 @@
               - if can? :read, :relatorio
                 %li.nav-item
                   = link_to "Relatórios", relatorios_path, class: "nav-link#{' active' if current_page?(relatorios_path)}"
-            .d-flex.align-items-center.gap-2.mt-3.mt-lg-0
-              %span.text-light.tk-user-chip
+
+            = form_tag busca_path, method: :get, role: "search", class: "tk-search-form mt-3 mt-lg-0" do
+              .tk-search-input-wrap
+                = text_field_tag :q, params[:q], id: "tk-search-input", class: "form-control form-control-sm",
+                  placeholder: "O que você precisa?", autocomplete: "off", role: "combobox",
+                  "aria-label" => "Buscar demandas ou acessos", "aria-expanded" => "false",
+                  "aria-controls" => "tk-search-results", "aria-autocomplete" => "list"
+                %button#tk-search-mic.tk-search-mic-btn{ type: "button", "aria-label" => "Buscar por voz", title: "Buscar por voz", hidden: true }
+                  🎤
+                #tk-search-results.tk-search-dropdown{ role: "listbox", hidden: true }
+
+            .d-flex.align-items-center.gap-2.mt-3.mt-lg-0.flex-shrink-0
+              %span.text-light.tk-user-chip.text-nowrap
                 = current_user.name
                 = " (#{current_user.lider? ? 'líder' : 'executor'})"
-              = button_to "Sair", destroy_user_session_path, method: :delete, class: "btn btn-outline-light btn-sm"
+              = button_to "Sair", destroy_user_session_path, method: :delete, class: "btn btn-outline-light btn-sm text-nowrap"
 
     .container.mt-4.mb-5
       - flash.each do |type, message|

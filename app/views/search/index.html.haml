@@ -1,0 +1,31 @@
+- content_for :page_title, "Busca"
+%h1.visually-hidden Busca
+
+.d-flex.justify-content-between.align-items-center.flex-wrap.gap-2.mb-3
+  %p.text-muted.mb-0
+    - if @q.present?
+      Resultados para "#{@q}".
+    - else
+      Digite algo na busca para encontrar demandas ou usuários.
+
+- if @q.present?
+  - if @demandas.empty? && @users.empty?
+    .card.tk-card
+      .card-body
+        %p.text-muted.mb-0 Nada encontrado para "#{@q}".
+  - else
+    - if @demandas.any?
+      %h2.h6.text-uppercase.text-muted.mb-2 Demandas
+      .list-group.mb-4
+        - @demandas.each do |demanda|
+          = link_to demandas_path(q: demanda.title), class: "list-group-item list-group-item-action" do
+            = demanda.title
+            %span{ class: "badge tk-badge-status-#{demanda.status} ms-2" }= demanda.status.humanize
+
+    - if @users.any?
+      %h2.h6.text-uppercase.text-muted.mb-2 Acessos
+      .list-group.mb-4
+        - @users.each do |user|
+          = link_to users_path(q: user.name), class: "list-group-item list-group-item-action" do
+            = user.name
+            %span.text-muted.ms-2= user.email
