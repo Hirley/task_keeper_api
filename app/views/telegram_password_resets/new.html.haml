@@ -1,0 +1,20 @@
+- content_for :page_title, "Redefinir senha por Telegram"
+.row.justify-content-center.mt-4
+  .col-md-5
+    .card.tk-login-card
+      .tk-login-header
+        %h1 Redefinir por Telegram
+        %p.mb-0.opacity-75 Informe seu e-mail cadastrado. Se você tiver um Chat ID do Telegram configurado, enviamos o link de redefinição por lá.
+
+      .card-body.p-4
+        = form_with url: telegram_password_resets_path, method: :post, local: true do |f|
+          .mb-3
+            = f.label :email, "E-mail", class: "form-label"
+            = f.email_field :email, autofocus: true, autocomplete: "email", class: "form-control", required: true
+
+          .d-grid
+            = f.submit "Enviar por Telegram", class: "btn btn-tk-primary"
+
+        %p.text-muted.mt-3.mb-0
+          Prefere por e-mail?
+          = link_to "Esqueci minha senha por e-mail", new_user_password_path

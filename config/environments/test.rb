@@ -43,6 +43,11 @@ Rails.application.configure do
 
   config.action_mailer.perform_caching = false
   config.action_mailer.delivery_method = :test
+  # Necessário pra gerar URLs fora de uma requisição (o e-mail de
+  # redefinição de senha do Devise e Users::SendPasswordResetViaTelegram,
+  # que roda fora de um controller) — sem isso, edit_user_password_url
+  # levanta "Missing host to link to!".
+  config.action_mailer.default_url_options = { host: 'localhost', port: 3000 }
 
   config.active_support.deprecation = :stderr
 

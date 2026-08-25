@@ -36,6 +36,39 @@ RSpec.describe User, type: :model do
     end
   end
 
+  describe '#must_change_password' do
+    it 'é true por padrão (senha provisória cadastrada pelo líder/admin, ver a migration)' do
+      expect(described_class.new.must_change_password?).to be true
+    end
+  end
+
+  describe '#reset_password' do
+    it 'marca must_change_password como false ao redefinir a senha' do
+      user = create(:user, :primeiro_acesso)
+
+      user.reset_password('novaSenha123', 'novaSenha123')
+
+      expect(user.reload.must_change_password?).to be false
+    end
+
+    it 'continua trocando a senha normalmente (comportamento original do Devise)' do
+      user = create(:user, :primeiro_acesso)
+
+      user.reset_password('novaSenha123', 'novaSenha123')
+
+      expect(user.reload.valid_password?('novaSenha123')).to be true
+    end
+
+    it 'não salva quando a confirmação não bate, e mantém must_change_password como estava' do
+      user = create(:user, :primeiro_acesso)
+
+      result = user.reset_password('novaSenha123', 'outraSenha')
+
+      expect(result).to be false
+      expect(user.reload.must_change_password?).to be true
+    end
+  end
+
   describe '#lider?, #executor? e #admin?' do
     it 'identifica um usuário líder' do
       lider = build(:user, :lider)

@@ -1,0 +1,28 @@
+- content_for :page_title, "Redefinir senha"
+.row.justify-content-center.mt-4
+  .col-md-5
+    .card.tk-login-card
+      .tk-login-header
+        %h1 Redefinir senha
+        %p.mb-0.opacity-75 Cadastre sua nova senha.
+
+      .card-body.p-4
+        = form_for(resource, as: resource_name, url: password_path(resource_name), html: { method: :put }) do |f|
+          - if resource.errors.any?
+            .alert.alert-danger
+              %ul.mb-0
+                - resource.errors.full_messages.each do |message|
+                  %li= message
+
+          = f.hidden_field :reset_password_token
+
+          .mb-3
+            = f.label :password, "Nova senha", class: "form-label"
+            = f.password_field :password, autofocus: true, autocomplete: "new-password", class: "form-control"
+
+          .mb-3
+            = f.label :password_confirmation, "Confirmação da nova senha", class: "form-label"
+            = f.password_field :password_confirmation, autocomplete: "new-password", class: "form-control"
+
+          .d-grid
+            = f.submit "Redefinir minha senha", class: "btn btn-tk-primary"

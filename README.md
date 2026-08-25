@@ -22,6 +22,7 @@ Três papéis com permissões diferentes (executor/líder/admin), autenticação
 - O cadastro de demanda traz a data atual por padrão, mas permite escolher outra; após criada, só líder/admin pode alterar essa data.
 - Líder e admin podem cadastrar, alterar a permissão (papel) e excluir usuários (não há autocadastro).
 - Um usuário com permissão de gerenciar acessos não pode excluir a própria conta, nem excluir um usuário que já tenha demandas cadastradas.
+- No primeiro acesso, o usuário entra com a senha provisória cadastrada pelo líder/admin, mas é obrigado a cadastrar sua própria senha antes de usar qualquer outra tela. Esqueceu a senha depois disso? Pode redefinir por e-mail ou por Telegram (ver seção "Primeiro acesso e redefinição de senha").
 - **Admin é o único papel** que cadastra o **Chat ID do Telegram** de um usuário e que cadastra/gerencia **Webhooks de saída** — nem o líder tem esses dois privilégios, mesmo tendo `can :manage, :all` para o resto (ver `app/models/ability.rb`).
 
 ## Setup local
@@ -36,7 +37,7 @@ bin/rails db:seed   # cria um usuário admin, um líder e um executor de exemplo
 bin/rails server
 ```
 
-Se você já tinha o banco criado localmente antes de alguma migration nova (ex.: campo **Data** em demandas, **Chat ID do Telegram**), rode `bin/rails db:migrate` para aplicar o que estiver pendente. Depois de puxar mudanças no `Gemfile`, rode `bundle install` de novo para atualizar o `Gemfile.lock`.
+Se você já tinha o banco criado localmente antes de alguma migration nova (ex.: campo **Data** em demandas, **Chat ID do Telegram**, coluna `must_change_password`), rode `bin/rails db:migrate` para aplicar o que estiver pendente. Depois de puxar mudanças no `Gemfile`, rode `bundle install` de novo para atualizar o `Gemfile.lock`.
 
 Rodar a suíte de testes:
 
@@ -113,13 +114,14 @@ O build é validado automaticamente a cada push/PR pelo CI (ver seção "Integra
 
 A suíte RSpec cobre:
 
-- **Models**: `User` e `Demanda` (`spec/models`), incluindo a validação do `telegram_chat_id` e o reset de `atraso_notificado_em`;
+- **Models**: `User` e `Demanda` (`spec/models`), incluindo a validação do `telegram_chat_id`, o reset de `atraso_notificado_em`, o default de `must_change_password` e o `#reset_password` sobrescrito;
 - **Política de autorização**: `Ability` (`spec/models/ability_spec.rb`), validando cada combinação de papel (executor/líder/admin) × ação para `Demanda`, `User` e `WebhookSubscription`;
-- **Serviços** (`spec/services`): `TelegramNotifier` — mensagem, envio (incluindo `#enviar_documento`, usado pelo relatório semanal) e os casos de "não enviar" (sem token, sem chat_id, erro de rede), usando um dublê de transporte HTTP injetado no serviço (sem depender de gem de mock de rede); `WebhookDelivery`/`WebhookDispatcher` — montagem do payload, entrega (com o mesmo padrão de dublê de transporte), e quais assinaturas são notificadas por evento; `Users::Destroy` — a regra de exclusão de usuário (exclusão da própria conta/demandas vinculadas), testada uma única vez e reaproveitada pela tela web e pela API; `Relatorios::Semanal` — período considerado, filtro por período/status das demandas criadas/concluídas, contagens e carga por responsável;
+- **Serviços** (`spec/services`): `TelegramNotifier` — mensagem, envio (incluindo `#enviar_documento`, usado pelo relatório semanal, e `#enviar_redefinicao_senha`, usado pela redefinição de senha por Telegram) e os casos de "não enviar" (sem token, sem chat_id, erro de rede), usando um dublê de transporte HTTP injetado no serviço (sem depender de gem de mock de rede); `WebhookDelivery`/`WebhookDispatcher` — montagem do payload, entrega (com o mesmo padrão de dublê de transporte), e quais assinaturas são notificadas por evento; `Users::Destroy` — a regra de exclusão de usuário (exclusão da própria conta/demandas vinculadas), testada uma única vez e reaproveitada pela tela web e pela API; `Users::SendPasswordResetViaTelegram` — geração do token de redefinição e montagem do link, validando que o Devise reconhece o token gerado; `Relatorios::Semanal` — período considerado, filtro por período/status das demandas criadas/concluídas, contagens e carga por responsável;
 - **Job** (`spec/jobs`): `WebhookDeliveryJob` — busca a assinatura e delega a entrega, sem quebrar se ela já não existir mais;
 - **Tarefa agendada**: a rake task `demandas:notificar_atrasos` (`spec/tasks`) — idempotência, filtro por status/data/chat_id cadastrado;
 - **API** (`spec/requests/api/v1`): `demandas` e `users`;
 - **Telas web** (`spec/requests`): `demandas` (menu Demandas, incluindo filtro por múltiplos status/termos), `users` (menu Acessos, incluindo filtro múltiplo, ordenação por todas as colunas, e a restrição de `telegram_chat_id` a admin), `webhooks` (menu Webhooks — acesso restrito ao admin, cadastro/edição/exclusão, bloqueio de URL privada/local), `dashboard` (painel inicial/Início), `relatorios` (menu Relatórios — acesso restrito a líder/admin, download do PDF, envio por Telegram) e a página pública `/acessibilidade`;
+- **Primeiro acesso e redefinição de senha** (`spec/requests`): `definir_senha_spec.rb` — redirecionamento obrigatório enquanto `must_change_password` for `true`, formulário, sucesso/falha de validação, e que o logout continua funcionando nesse estado; `telegram_password_resets_spec.rb` — aciona (ou não) `Users::SendPasswordResetViaTelegram` conforme o e-mail/Chat ID cadastrados, sempre com a mesma mensagem genérica; `esqueci_minha_senha_spec.rb` — links na tela de login e o e-mail de redefinição do Devise sendo efetivamente enviado, com um link válido;
 - **Traduções pt-BR** (`spec/requests/devise_i18n_spec.rb`): regressão para a mensagem `Translation missing` do Devise (ver seção "Mensagens em pt-BR").
 - **Compatibilidade do Devise com Turbo Drive** (`spec/requests/devise_turbo_spec.rb`): regressão para um login inválido responder `200` em vez de `422` (ver "Devise + Turbo Drive" abaixo).
 
@@ -228,10 +230,21 @@ Há também uma tela em `/users` (menu "Acessos" no topo, visível a líder e ad
 
 - só líder e admin veem o menu "Acessos" e conseguem acessar `/users`; um executor que tentar acessar diretamente é redirecionado com aviso de permissão negada;
 - o cadastro de um novo usuário exige nome, e-mail, senha e a permissão (executor, líder ou admin) — não há autocadastro;
-- a edição permite alterar nome, e-mail e a permissão de um usuário existente (a troca de senha continua pelo fluxo de "esqueci minha senha" do Devise);
+- a edição permite alterar nome, e-mail e a permissão de um usuário existente — a troca de senha em si não é feita por aqui (ver seção "Primeiro acesso e redefinição de senha");
 - **o campo Chat ID do Telegram só aparece pra quem está logado como admin** — nem no formulário, nem na edição, um líder vê ou consegue alterar esse campo de outro usuário (reforçado também do lado do servidor, não só escondido na tela);
 - líder e admin também podem **excluir** outros usuários (com confirmação via Turbo). Duas travas de segurança: não dá pra excluir a própria conta, nem excluir um usuário que já tenha demandas cadastradas (é preciso reatribuir ou excluir as demandas dele antes);
 - um formulário de busca (com autocomplete por nome/e-mail já cadastrados + filtro por permissão) e paginação (10 por página).
+
+## Primeiro acesso e redefinição de senha
+
+Como não há autocadastro, todo usuário novo entra pela primeira vez com a senha provisória que o líder/admin cadastrou em `/users` (campo **Senha** do formulário — ver seção "Tela web de Acessos"). Logo após esse primeiro login, o app pede — e obriga — que o usuário cadastre uma senha só dele antes de usar qualquer outra tela:
+
+- a coluna `must_change_password` (`users`, default `true`) marca esse estado; `ApplicationController#exigir_troca_de_senha!` redireciona qualquer tela pra `/definir-senha` (`DefinirSenhaController`) enquanto ela for `true` — só as próprias telas do Devise (ex.: logout) escapam dessa trava, senão quem está preso nesse estado não conseguiria nem sair;
+- `/definir-senha` não pede a senha atual (o usuário acabou de autenticar com ela), só a nova senha + confirmação; ao salvar, `must_change_password` vira `false` e o usuário segue navegando normalmente;
+- esqueceu a senha depois disso? Duas opções, ambas sem exigir login e sem revelar se o e-mail informado existe (mensagem sempre genérica — mesma postura do Devise, `send_paranoid_instructions`):
+  - **por e-mail** — `/users/password`, fluxo padrão do Devise (`:recoverable`), com views próprias em `app/views/devise/passwords/` no mesmo estilo visual da tela de login;
+  - **por Telegram** — `/senha/telegram` (`TelegramPasswordResetsController`), pra quem já tem o **Chat ID do Telegram** cadastrado (ver seção "Notificação de atraso via Telegram"): `Users::SendPasswordResetViaTelegram` gera o mesmo token de redefinição do Devise e `TelegramNotifier#enviar_redefinicao_senha` entrega o link por lá em vez de e-mail; sem Chat ID cadastrado, nada é enviado (mesmo padrão de "silenciosamente pula" já usado no lembrete de atraso);
+  - os dois fluxos terminam na mesma tela (`/users/password/edit?reset_password_token=...`) e, ao definir a nova senha, `User#reset_password` (sobrescrito) também marca `must_change_password` como `false`.
 
 ## Identidade visual e busca/paginação
 

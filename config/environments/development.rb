@@ -12,6 +12,8 @@ Rails.application.configure do
 
   config.action_mailer.raise_delivery_errors = false
   config.action_mailer.perform_caching = false
+  # Ver comentário equivalente em config/environments/test.rb.
+  config.action_mailer.default_url_options = { host: ENV.fetch('APP_HOST', 'localhost'), port: 3000 }
 
   config.active_support.deprecation = :log
   config.active_support.disallowed_deprecation = :raise
