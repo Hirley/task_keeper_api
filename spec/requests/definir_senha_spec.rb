@@ -59,6 +59,17 @@ RSpec.describe 'Definir senha no primeiro acesso', type: :request do
       expect(novo_usuario.valid_password?('minhaSenhaPropria1')).to be true
     end
 
+    it 'mostra no flash um link pra iniciar o tour guiado direto (sem depender do autostart)' do
+      sign_in novo_usuario
+
+      patch definir_senha_path,
+            params: { user: { password: 'minhaSenhaPropria1', password_confirmation: 'minhaSenhaPropria1' } }
+      follow_redirect!
+
+      expect(response.body).to include('Fazer o tour guiado agora')
+      expect(response.body).to include('TkGuideTour.start()')
+    end
+
     it 'permite continuar navegando normalmente depois de definir a senha' do
       sign_in novo_usuario
       patch definir_senha_path,

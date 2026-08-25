@@ -15,6 +15,11 @@ Rails.application.routes.draw do
   get 'senha/telegram', to: 'telegram_password_resets#new', as: :new_telegram_password_reset
   post 'senha/telegram', to: 'telegram_password_resets#create', as: :telegram_password_resets
 
+  # Guia interativo (tour) do dashboard — ver app/javascript/application.js
+  # (TkGuideTour) e TourController. Só marca que o usuário já viu, pra não
+  # disparar sozinho de novo (o botão 🧭 na navbar sempre deixa rever).
+  patch 'tour/concluir', to: 'tour#concluir', as: :concluir_tour
+
   namespace :api do
     namespace :v1 do
       resources :demandas

@@ -21,7 +21,12 @@ class DefinirSenhaController < ApplicationController
       # salt, sem precisar pedir a senha de novo (ver
       # Devise::Controllers::SignInOut).
       bypass_sign_in(@user)
-      redirect_to root_path, notice: 'Senha definida com sucesso.'
+      # tour_pronto: além do #tk-tour-autostart disparar sozinho (ver
+      # app/views/dashboard/index.html.haml), deixa um link explícito no
+      # próprio flash — chama TkGuideTour.start() direto (ver
+      # app/javascript/application.js), sem depender de "turbo:load"
+      # disparar depois desse redirect.
+      redirect_to root_path, notice: 'Senha definida com sucesso.', flash: { tour_pronto: true }
     else
       render :edit, status: :unprocessable_content
     end

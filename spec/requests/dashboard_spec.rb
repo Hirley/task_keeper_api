@@ -238,5 +238,32 @@ RSpec.describe 'Painel inicial (dashboard)', type: :request do
       expect(response.body).not_to include('>Início</a>')
       expect(response.body).to include('<a class="navbar-brand tk-brand" href="/">')
     end
+
+    describe 'disparo automático do tour guiado (ver app/javascript/application.js TkGuideTour)' do
+      it 'sinaliza autostart pra quem ainda não viu o tour' do
+        sign_in create(:user, :executor, tour_completed_at: nil)
+
+        get '/'
+
+        expect(response.body).to include('id="tk-tour-autostart"')
+        expect(response.body).to include('data-autostart="true"')
+      end
+
+      it 'não sinaliza autostart pra quem já viu' do
+        sign_in create(:user, :executor, tour_completed_at: 1.day.ago)
+
+        get '/'
+
+        expect(response.body).to include('data-autostart="false"')
+      end
+
+      it 'sinaliza autostart de novo quando vem do botão 🧭 (?tour=1), mesmo já tendo visto antes' do
+        sign_in create(:user, :executor, tour_completed_at: 1.day.ago)
+
+        get '/', params: { tour: '1' }
+
+        expect(response.body).to include('data-autostart="true"')
+      end
+    end
   end
 end
