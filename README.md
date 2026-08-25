@@ -8,7 +8,6 @@ Três papéis com permissões diferentes (executor/líder/admin), autenticação
 
 ## Stack
 
-- Ruby 4.0.6 · Ruby on Rails 8.1 · PostgreSQL
 - Devise (autenticação) + CanCanCan (autorização, papéis executor/líder/admin)
 - HAML + Bootstrap (interface web) + Ransack (filtro/ordenação — ver "Identidade visual e busca/paginação")
 - Prawn + prawn-table (PDF do relatório semanal — ver "Relatório semanal")
