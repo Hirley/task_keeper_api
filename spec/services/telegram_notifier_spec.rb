@@ -86,6 +86,51 @@ RSpec.describe TelegramNotifier do
     end
   end
 
+  describe '#enviar_redefinicao_senha' do
+    let(:usuario_com_telegram) { build_stubbed(:user, name: 'Carla Nunes', telegram_chat_id: '777888999') }
+    let(:reset_url) { 'https://task-keeper.local/users/password/edit?reset_password_token=abc123' }
+
+    it 'envia o link de redefinição pro chat_id do usuário' do
+      notifier.enviar_redefinicao_senha(usuario_com_telegram, reset_url)
+
+      expect(chamadas.size).to eq(1)
+      expect(chamadas.first[:body]).to include('"chat_id":"777888999"')
+    end
+
+    it 'monta uma mensagem citando o nome do usuário e o link de redefinição' do
+      notifier.enviar_redefinicao_senha(usuario_com_telegram, reset_url)
+
+      texto = JSON.parse(chamadas.first[:body])['text']
+      expect(texto).to include('Carla Nunes')
+      expect(texto).to include(reset_url)
+    end
+
+    it 'retorna true quando o Telegram responde com sucesso' do
+      expect(notifier.enviar_redefinicao_senha(usuario_com_telegram, reset_url)).to be true
+    end
+
+    it 'não envia nada e retorna false quando não há TELEGRAM_BOT_TOKEN configurado' do
+      notifier_sem_token = described_class.new(bot_token: nil, transport: transport)
+
+      expect(notifier_sem_token.enviar_redefinicao_senha(usuario_com_telegram, reset_url)).to be false
+      expect(chamadas).to be_empty
+    end
+
+    it 'não envia nada e retorna false quando o usuário não tem telegram_chat_id' do
+      usuario_sem_chat_id = build_stubbed(:user, telegram_chat_id: nil)
+
+      expect(notifier.enviar_redefinicao_senha(usuario_sem_chat_id, reset_url)).to be false
+      expect(chamadas).to be_empty
+    end
+
+    it 'não propaga exceção se o transporte falhar e retorna false' do
+      transport_com_erro = ->(_uri, _body) { raise SocketError, 'falha de rede' }
+      notifier_com_erro = described_class.new(bot_token: 'token-de-teste', transport: transport_com_erro)
+
+      expect(notifier_com_erro.enviar_redefinicao_senha(usuario_com_telegram, reset_url)).to be false
+    end
+  end
+
   describe '.notify_atraso' do
     it 'delega para uma instância nova, usando ENV["TELEGRAM_BOT_TOKEN"] por padrão' do
       original_token = ENV.fetch('TELEGRAM_BOT_TOKEN', nil)

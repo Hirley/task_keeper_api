@@ -31,6 +31,26 @@ class User < ApplicationRecord
             format: { with: /\A-?\d+\z/, message: 'deve conter só números (o chat_id do Telegram)' },
             allow_blank: true
 
+  # Sobrescreve o #reset_password do Devise (:recoverable) só pra também
+  # marcar que o usuário já definiu a própria senha — usado tanto por
+  # "esqueci minha senha" (e-mail, via Devise::PasswordsController#update,
+  # e Telegram, via Users::SendPasswordResetViaTelegram) quanto, no fundo,
+  # pelo mesmo mecanismo de token que dá base ao primeiro acesso (ver
+  # #must_change_password e ApplicationController#exigir_troca_de_senha!).
+  def reset_password(new_password, new_password_confirmation)
+    self.must_change_password = false
+    super
+  end
+
+  # Devise deixa #set_reset_password_token como protected (pensado só pro
+  # uso interno de #send_reset_password_instructions, que já dispara o
+  # e-mail junto). Esse wrapper público expõe só a geração do token, sem
+  # enviar e-mail — usado por Users::SendPasswordResetViaTelegram pra
+  # entregar o mesmo token por Telegram em vez de e-mail.
+  def generate_reset_password_token
+    set_reset_password_token
+  end
+
   def lider?
     role == 'lider'
   end

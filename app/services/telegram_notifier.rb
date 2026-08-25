@@ -71,6 +71,20 @@ class TelegramNotifier
     false
   end
 
+  # Alternativa ao e-mail de redefinição de senha do Devise (:recoverable)
+  # pra quem tem Chat ID do Telegram cadastrado — ver
+  # Users::SendPasswordResetViaTelegram, que gera +reset_url+ com o mesmo
+  # token que o link por e-mail usaria. Mesma filosofia de #notify_atraso:
+  # sem token/chat_id configurado, não é erro — só não envia.
+  def enviar_redefinicao_senha(usuario, reset_url)
+    return false if @bot_token.blank? || usuario&.telegram_chat_id.blank?
+
+    enviar(usuario.telegram_chat_id, mensagem_redefinicao_senha(usuario, reset_url))
+  rescue StandardError => e
+    Rails.logger.error("[TelegramNotifier] falha ao enviar redefinição de senha pro usuário ##{usuario&.id}: #{e.message}")
+    false
+  end
+
   # Envia um arquivo (ex.: o PDF do relatório semanal — ver
   # Relatorios::SemanalPdf) como documento pro chat_id de +usuario+. Mesma
   # filosofia de #notify_atraso: sem token configurado, ou sem chat_id
@@ -106,6 +120,18 @@ class TelegramNotifier
       Passando para lembrar com carinho: a demanda "#{demanda.title}" está #{dias == 1 ? 'há 1 dia' : "há #{dias} dias"} com o prazo vencido (era #{prazo}).
 
       Sem cobrança — só um lembrete objetivo. Se estiver precisando de mais tempo ou de uma mão, vale alinhar com o seu líder. Se já está resolvida, é só atualizar o status em Demandas.
+    MSG
+  end
+
+  def mensagem_redefinicao_senha(usuario, reset_url)
+    <<~MSG.strip
+      Oi, #{usuario.name}! 👋
+
+      Alguém solicitou a redefinição da sua senha do Task Keeper API. Se foi você, acesse o link abaixo para cadastrar uma nova senha:
+
+      #{reset_url}
+
+      Se você não pediu isso, pode ignorar esta mensagem — sua senha não muda até você acessar o link acima.
     MSG
   end
 

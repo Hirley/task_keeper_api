@@ -3,6 +3,18 @@
 Rails.application.routes.draw do
   devise_for :users
 
+  # Primeiro acesso: troca obrigatória da senha provisória cadastrada
+  # pelo líder/admin (ver ApplicationController#exigir_troca_de_senha! e
+  # DefinirSenhaController).
+  get 'definir-senha', to: 'definir_senha#edit', as: :edit_definir_senha
+  patch 'definir-senha', to: 'definir_senha#update', as: :definir_senha
+
+  # Alternativa ao "esqueci minha senha" por e-mail (devise_for acima já
+  # cobre /users/password) pra quem tem Chat ID do Telegram cadastrado
+  # (ver TelegramPasswordResetsController).
+  get 'senha/telegram', to: 'telegram_password_resets#new', as: :new_telegram_password_reset
+  post 'senha/telegram', to: 'telegram_password_resets#create', as: :telegram_password_resets
+
   namespace :api do
     namespace :v1 do
       resources :demandas
