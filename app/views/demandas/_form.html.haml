@@ -19,13 +19,13 @@
 
   .mb-3
     = f.label :data, "Data", class: "form-label"
-    - if demanda.new_record? || current_user.lider?
+    - if demanda.new_record? || current_user.lider_ou_admin?
       = f.date_field :data, class: "form-control"
       %div.form-text Vem preenchida com a data de hoje, mas pode ser alterada.
     - else
       = f.date_field :data, class: "form-control", disabled: true
       = f.hidden_field :data
-      %div.form-text Só o líder pode alterar a data de uma demanda já cadastrada.
+      %div.form-text Só líder/admin pode alterar a data de uma demanda já cadastrada.
 
   .mb-3
     = f.label :status, "Status", class: "form-label"

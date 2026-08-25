@@ -3,6 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Api::V1::Users', type: :request do
+  let(:admin) { create(:user, :admin) }
   let(:lider) { create(:user, :lider) }
   let(:executor) { create(:user, :executor) }
 
@@ -47,6 +48,24 @@ RSpec.describe 'Api::V1::Users', type: :request do
         post '/api/v1/users', params: novo_usuario_params, as: :json
       end.to change(User, :count).by(1)
       expect(response).to have_http_status(:created)
+    end
+
+    it 'salva o telegram_chat_id quando quem cadastra é admin' do
+      sign_in admin
+      params = novo_usuario_params.deep_merge(user: { telegram_chat_id: '999888777' })
+
+      post '/api/v1/users', params: params, as: :json
+
+      expect(User.last.telegram_chat_id).to eq('999888777')
+    end
+
+    it 'ignora o telegram_chat_id quando quem cadastra é líder (não admin)' do
+      sign_in lider
+      params = novo_usuario_params.deep_merge(user: { telegram_chat_id: '999888777' })
+
+      post '/api/v1/users', params: params, as: :json
+
+      expect(User.last.telegram_chat_id).to be_nil
     end
   end
 

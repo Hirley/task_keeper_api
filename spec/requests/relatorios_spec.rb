@@ -37,6 +37,15 @@ RSpec.describe 'Relatório semanal (tela web)', type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.body).to include('Relatório semanal')
     end
+
+    it 'não dispara o webhook "relatorio_gerado" só de visitar a pré-visualização' do
+      sign_in lider
+      allow(WebhookDispatcher).to receive(:dispatch)
+
+      get '/relatorios'
+
+      expect(WebhookDispatcher).not_to have_received(:dispatch)
+    end
   end
 
   describe 'GET /relatorios/semanal.pdf' do
@@ -55,6 +64,17 @@ RSpec.describe 'Relatório semanal (tela web)', type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.content_type).to eq('application/pdf')
       expect(response.body).to start_with('%PDF')
+    end
+
+    it 'dispara o webhook "relatorio_gerado" quando o PDF é efetivamente baixado' do
+      create(:demanda, user: lider)
+      sign_in lider
+      allow(WebhookDispatcher).to receive(:dispatch)
+
+      get '/relatorios/semanal.pdf'
+
+      expect(WebhookDispatcher).to have_received(:dispatch)
+        .with('relatorio_gerado', hash_including(:periodo_inicio, :periodo_fim))
     end
   end
 

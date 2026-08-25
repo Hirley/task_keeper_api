@@ -31,6 +31,48 @@ RSpec.describe 'Painel inicial (dashboard)', type: :request do
       expect(response.body).to include('<div class="stat-value">1</div>')
     end
 
+    it 'os KPIs de status são links de drilldown pra Demandas já filtrada' do
+      create(:demanda, status: :pendente, user: lider)
+      sign_in lider
+
+      get '/'
+
+      expect(response.body).to include('href="/demandas"')
+      expect(response.body).to include('href="/demandas?status%5B%5D=pendente"')
+      expect(response.body).to include('href="/demandas?status%5B%5D=em_andamento"')
+      expect(response.body).to include('href="/demandas?status%5B%5D=concluida"')
+    end
+
+    it 'os prazos (Atrasadas/Vencem hoje/Vencem em breve) são links de drilldown' do
+      sign_in lider
+
+      get '/'
+
+      expect(response.body).to include('href="/demandas?prazo=atrasada"')
+      expect(response.body).to include('href="/demandas?prazo=hoje"')
+      expect(response.body).to include('href="/demandas?prazo=breve"')
+    end
+
+    it 'a carga por responsável é um link de drilldown pra Demandas filtrada por responsável' do
+      demanda = create(:demanda, status: :pendente, user: lider)
+      sign_in lider
+
+      get '/'
+
+      expect(response.body).to include("href=\"/demandas?responsavel_id=#{demanda.user_id}\"")
+    end
+
+    it 'o card Equipe tem um link de drilldown por papel, pra Acessos' do
+      admin = create(:user, :admin)
+      sign_in admin
+
+      get '/'
+
+      expect(response.body).to include('href="/users?role%5B%5D=admin"')
+      expect(response.body).to include('href="/users?role%5B%5D=lider"')
+      expect(response.body).to include('href="/users?role%5B%5D=executor"')
+    end
+
     it 'mostra estado vazio quando não há nenhuma demanda' do
       sign_in lider
 
@@ -51,6 +93,41 @@ RSpec.describe 'Painel inicial (dashboard)', type: :request do
       table = minhas_demandas_table(response)
       expect(table).to include('Demanda do líder')
       expect(table).not_to include('Demanda do executor')
+    end
+
+    it 'não tem mais o link de texto "Ver todas" — o cabeçalho do card inteiro já é o link' do
+      sign_in lider
+
+      get '/'
+
+      expect(response.body).not_to include('Ver todas')
+      expect(response.body).to include(%(class="card-drilldown" href="/demandas?responsavel_id=#{lider.id}"))
+    end
+
+    it '"Atividade recente" tem o cabeçalho como link pra listagem completa' do
+      sign_in lider
+
+      get '/'
+
+      expect(response.body).to include('class="card-drilldown" href="/demandas"')
+    end
+
+    it 'um item de "Atividade recente" abre a edição direto quando quem vê pode editar (líder/admin)' do
+      demanda = create(:demanda, title: 'Revisar contrato', user: executor)
+      sign_in lider
+
+      get '/'
+
+      expect(response.body).to include(%(class="activity-item-link" href="/demandas/#{demanda.id}/edit"))
+    end
+
+    it 'um item de "Atividade recente" abre a listagem filtrada por título quando quem vê não pode editar (executor)' do
+      create(:demanda, title: 'Revisar contrato', user: lider)
+      sign_in executor
+
+      get '/'
+
+      expect(response.body).to include('class="activity-item-link" href="/demandas?q=Revisar+contrato"')
     end
 
     it 'sinaliza uma demanda atrasada com o badge de urgência' do
@@ -133,6 +210,16 @@ RSpec.describe 'Painel inicial (dashboard)', type: :request do
       expect(response.body).to include('líder(es)')
     end
 
+    it 'mostra o card Equipe para o admin também' do
+      admin = create(:user, :admin)
+      sign_in admin
+
+      get '/'
+
+      expect(response.body).to include('Equipe')
+      expect(response.body).to include('admin(s)')
+    end
+
     it 'não mostra o card Equipe para o executor' do
       sign_in executor
 
@@ -141,14 +228,15 @@ RSpec.describe 'Painel inicial (dashboard)', type: :request do
       expect(response.body).not_to include('líder(es)')
     end
 
-    it "traz o item 'Início' no menu, ativo, e não repete o título como heading visível" do
+    it 'não repete o título como heading visível; a marca leva pra home, sem item "Início" no menu' do
       sign_in executor
 
       get '/'
 
       expect(response.body).to include('<title>Início · Task Keeper API</title>')
       expect(response.body).to include('visually-hidden')
-      expect(response.body).to include('>Início<')
+      expect(response.body).not_to include('>Início</a>')
+      expect(response.body).to include('<a class="navbar-brand tk-brand" href="/">')
     end
   end
 end

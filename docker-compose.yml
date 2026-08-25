@@ -45,7 +45,7 @@ services:
       DB_NAME: ${DB_NAME:-task_keeper_api_production}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       RAILS_MAX_THREADS: ${RAILS_MAX_THREADS:-5}
-      APP_HOST: ${APP_HOST:-}
+      APP_HOST: ${APP_HOST:-localhost}
     volumes:
       - tk_log:/rails/log
     depends_on:

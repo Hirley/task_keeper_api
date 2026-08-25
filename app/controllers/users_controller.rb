@@ -1,10 +1,11 @@
 # frozen_string_literal: true
 
-# Tela de Acessos (web): apenas o líder pode cadastrar novos usuários,
-# alterar as permissões (papel líder/executor) e excluir usuários já
-# existentes. Não há autocadastro — só o líder chega a esta tela (ver
-# menu "Acessos" em app/views/layouts/application.html.haml e
-# app/models/ability.rb).
+# Tela de Acessos (web): líder e admin podem cadastrar novos usuários,
+# alterar as permissões (papel executor/líder/admin) e excluir usuários já
+# existentes — mas só admin altera o telegram_chat_id (ver
+# #user_params/#permission_params abaixo). Não há autocadastro — só líder
+# e admin chegam a esta tela (ver menu "Acessos" em
+# app/views/layouts/application.html.haml e app/models/ability.rb).
 class UsersController < ApplicationController
   before_action :authorize_manage_users!
   before_action :set_user, only: %i[edit update destroy]
@@ -22,7 +23,8 @@ class UsersController < ApplicationController
     scope = User.all
 
     @q = params[:q]
-    @role_filter = normalized_role_filter
+    @role_filter_keys = normalized_role_filter_keys
+    @role_filter = @role_filter_keys.map { |role| User.roles[role] }
     @sort = SORTABLE_COLUMNS.key?(params[:sort]) ? params[:sort] : 'name'
     # Default "asc" (não "desc" como em Demandas) pra preservar o
     # comportamento antigo, que era sempre `.order(:name)` ascendente.
@@ -77,14 +79,26 @@ class UsersController < ApplicationController
   end
 
   def user_params
-    params.require(:user).permit(:name, :email, :password, :password_confirmation, :role, :telegram_chat_id)
+    params.require(:user).permit(:name, :email, :password, :password_confirmation, :role, *telegram_chat_id_param)
   end
 
   # Na edição não alteramos a senha por aqui (fluxo de "esqueci minha senha"
-  # do Devise cobre isso); apenas dados cadastrais, a permissão (papel) e o
-  # chat_id do Telegram usado para lembretes de atraso.
+  # do Devise cobre isso); apenas dados cadastrais, a permissão (papel) e —
+  # só pra admin — o chat_id do Telegram usado para lembretes de atraso.
   def permission_params
-    params.require(:user).permit(:name, :email, :role, :telegram_chat_id)
+    params.require(:user).permit(:name, :email, :role, *telegram_chat_id_param)
+  end
+
+  # Restrição de atributo (só admin edita telegram_chat_id) — não dá pra
+  # expressar isso com CanCan (que autoriza por model/ação, não por
+  # campo), então é feito aqui: se quem está mandando o request não é
+  # admin, o parâmetro nem é permitido, e #update/#save nem chegam a ver
+  # esse valor (o formulário também já esconde o campo pra líder — ver
+  # app/views/users/_form.html.haml — isso aqui é a garantia do lado do
+  # servidor, pra alguém não conseguir contornar escrevendo o parâmetro na
+  # mão).
+  def telegram_chat_id_param
+    current_user.admin? ? [:telegram_chat_id] : []
   end
 
   # Filtro usado na busca da tela de Acessos (campo com autocomplete por
@@ -105,14 +119,15 @@ class UsersController < ApplicationController
 
   # Mesma validação de antes: só deixa passar chaves válidas do enum.
   # Aceita um valor único (role=x, formato antigo) ou vários
-  # (role[]=x&role[]=y, do <select multiple> da tela) — ver
-  # DemandasController#normalized_status_filter pro mesmo padrão —
-  # inclusive o motivo do .map traduzindo pro inteiro do enum (Ransack
-  # não conhece o enum do Rails e comparava direto com a string).
-  def normalized_role_filter
-    Array(params[:role])
-      .select { |role| User.roles.key?(role) }
-      .map { |role| User.roles[role] }
+  # (role[]=x&role[]=y, dos checkboxes da tela) — ver
+  # DemandasController#normalized_status_filter_keys pro mesmo padrão.
+  #
+  # Devolve as chaves do enum (strings, ex.: "lider") — @role_filter
+  # (acima, em #index) traduz pro valor inteiro que o Ransack precisa; as
+  # chaves em si são o que a view usa pra marcar quais checkboxes ficam
+  # pré-selecionados.
+  def normalized_role_filter_keys
+    Array(params[:role]).select { |role| User.roles.key?(role) }
   end
 
   # Mesma ideia de DemandasController#title_terms: divide a busca por

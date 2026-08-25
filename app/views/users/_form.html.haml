@@ -22,20 +22,22 @@
       = f.label :password_confirmation, "Confirmação da senha", class: "form-label"
       = f.password_field :password_confirmation, class: "form-control", required: true, autocomplete: "new-password"
 
-  .mb-3
-    .d-flex.align-items-center.gap-1.mb-1
-      = f.label :telegram_chat_id, "Chat ID do Telegram (opcional)", class: "form-label mb-0"
-      - telegram_chat_id_help = "Passo a passo pelo celular ou computador:<br>• Abra a barra de pesquisa do Telegram.<br>• Digite <strong>@userinfobot</strong> no campo de busca.<br>• Selecione o bot oficial nos resultados da pesquisa.<br>• Toque no botão Começar (ou envie o comando /start).<br>• Copie o número exibido no campo Id."
-      %button.tk-info-icon{ type: "button", tabindex: "0", "data-bs-toggle" => "tooltip", "data-bs-html" => "true", "data-bs-placement" => "right", title: telegram_chat_id_help, "aria-label" => "Como pegar o Chat ID do Telegram" }
-        ⓘ
-    = f.text_field :telegram_chat_id, class: "form-control", autocomplete: "off", inputmode: "numeric", placeholder: "Ex.: 123456789"
-    %div.form-text Para receber lembretes de demandas atrasadas pelo Telegram (veja o ⓘ acima como descobrir o número).
+  - if current_user.admin?
+    .mb-3
+      .d-flex.align-items-center.gap-1.mb-1
+        = f.label :telegram_chat_id, "Chat ID do Telegram (opcional)", class: "form-label mb-0"
+        - telegram_chat_id_help = "Passo a passo pelo celular ou computador:<br>• Abra a barra de pesquisa do Telegram.<br>• Digite <strong>@userinfobot</strong> no campo de busca.<br>• Selecione o bot oficial nos resultados da pesquisa.<br>• Toque no botão Começar (ou envie o comando /start).<br>• Copie o número exibido no campo Id."
+        %button.tk-info-icon{ type: "button", tabindex: "0", "data-bs-toggle" => "tooltip", "data-bs-html" => "true", "data-bs-placement" => "right", title: telegram_chat_id_help, "aria-label" => "Como pegar o Chat ID do Telegram" }
+          ⓘ
+      = f.text_field :telegram_chat_id, class: "form-control", autocomplete: "off", inputmode: "numeric", placeholder: "Ex.: 123456789"
+      %div.form-text Para receber lembretes de demandas atrasadas pelo Telegram (veja o ⓘ acima como descobrir o número).
 
   .mb-3
     = f.label :role, "Permissão", class: "form-label"
     = f.select :role, User.roles.keys.map { |role| [role.humanize, role] }, {}, class: "form-select"
     %div.form-text
-      Líder pode gerenciar demandas de qualquer usuário e cadastrar/alterar acessos.
+      Líder gerencia demandas de qualquer usuário e cadastra/altera acessos.
+      Admin faz o mesmo, e é o único que configura Chat ID do Telegram e Webhooks.
       Executor só cadastra e visualiza demandas.
 
   .d-flex.gap-2

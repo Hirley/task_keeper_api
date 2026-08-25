@@ -2,7 +2,8 @@
 
 module Api
   module V1
-    # Apenas o líder pode listar/cadastrar/excluir usuários. Não há autocadastro.
+    # Líder e admin podem listar/cadastrar/excluir usuários — mas só admin
+    # define telegram_chat_id (ver #user_params). Não há autocadastro.
     class UsersController < BaseController
       before_action :authorize_manage_users!
       before_action :set_user, only: %i[show destroy]
@@ -51,7 +52,8 @@ module Api
       end
 
       def user_params
-        params.require(:user).permit(:name, :email, :password, :password_confirmation, :role, :telegram_chat_id)
+        telegram_chat_id_param = current_user.admin? ? [:telegram_chat_id] : []
+        params.require(:user).permit(:name, :email, :password, :password_confirmation, :role, *telegram_chat_id_param)
       end
     end
   end

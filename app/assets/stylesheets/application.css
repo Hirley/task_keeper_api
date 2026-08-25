@@ -128,6 +128,103 @@ input:focus-visible {
   border-radius: 999px;
 }
 
+/* ---------- Busca global (navbar) ---------- */
+
+.tk-search-form {
+  position: relative;
+  width: 100%;
+  max-width: 16rem;
+  min-width: 8rem;
+  flex: 1 1 auto;
+}
+
+.tk-search-input-wrap {
+  position: relative;
+}
+
+.tk-search-input-wrap .form-control {
+  border-radius: 999px;
+  border: none;
+  padding-right: 2.25rem;
+  background-color: rgba(255, 255, 255, 0.92);
+}
+
+.tk-search-mic-btn {
+  position: absolute;
+  top: 50%;
+  right: 0.3rem;
+  transform: translateY(-50%);
+  width: 1.8rem;
+  height: 1.8rem;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  line-height: 1;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.tk-search-mic-btn:hover,
+.tk-search-mic-btn:focus-visible {
+  background-color: rgba(0, 127, 109, 0.12);
+}
+
+.tk-search-mic-listening {
+  background-color: rgba(220, 53, 69, 0.16);
+}
+
+.tk-search-dropdown {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  right: 0;
+  z-index: 1050;
+  max-height: 20rem;
+  overflow-y: auto;
+  background-color: #fff;
+  border-radius: var(--tk-radius-sm);
+  box-shadow: var(--tk-shadow);
+}
+
+.tk-search-result {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.55rem 0.85rem;
+  color: var(--tk-text);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.tk-search-result:hover,
+.tk-search-result-active {
+  background-color: rgba(0, 127, 109, 0.08);
+}
+
+.tk-search-result-kind {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-weight: 600;
+  color: var(--tk-teal);
+}
+
+.tk-search-result-title {
+  font-weight: 500;
+}
+
+.tk-search-result-subtitle {
+  font-size: 0.8rem;
+  color: #6c757d;
+}
+
+.tk-search-empty {
+  margin: 0;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+
 /* ---------- Botões ---------- */
 
 .btn {
@@ -251,6 +348,11 @@ input:focus-visible {
 .tk-badge-executor {
   background-color: #e9ecef;
   color: #495057;
+}
+
+.tk-badge-admin {
+  background-color: rgba(111, 66, 193, 0.16);
+  color: #5a32a3;
 }
 
 /* ---------- Filtros / busca ---------- */
@@ -389,6 +491,60 @@ input:focus-visible {
   min-height: 1.1em;
 }
 
+/* Drilldown: os KPIs do topo, a legenda de status, os prazos e a carga
+   por responsável levam pra listagem de Demandas já filtrada (ver
+   app/views/dashboard/index.html.haml e DemandasController#index) — o
+   painel funciona como ponto de entrada pra investigar o que os números
+   mostram, não só pra exibi-los. */
+
+.stat-tile-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.stat-tile-link .stat-tile {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.stat-tile-link:hover .stat-tile,
+.stat-tile-link:focus-visible .stat-tile {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 40, 34, 0.14);
+}
+
+/* Cabeçalho de card inteiro como link (ex.: "Minhas demandas" → lista
+   filtrada por mim, mesmo drilldown de responsável usado em "Carga por
+   responsável") — a seta faz o papel visual que "Ver todas →" fazia
+   antes, sem precisar do texto: o cabeçalho inteiro já é clicável. */
+
+.card-drilldown {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.card-drilldown .card-header {
+  transition: background-color 0.15s ease;
+}
+
+.card-drilldown:hover .card-header,
+.card-drilldown:focus-visible .card-header {
+  background-color: rgba(0, 127, 109, 0.08);
+}
+
+.card-drilldown-chevron {
+  color: var(--tk-teal);
+  font-size: 1.2rem;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+
+.card-drilldown:hover .card-drilldown-chevron,
+.card-drilldown:focus-visible .card-drilldown-chevron {
+  transform: translateX(3px);
+}
+
 /* Badge de urgência de prazo — canal separado do badge de status
    (tk-badge-status-*): esse mostra "está no prazo?", não "em que fase". */
 
@@ -426,6 +582,19 @@ input:focus-visible {
   font-size: 0.82rem;
 }
 
+.status-legend-item {
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+  text-decoration: none;
+}
+
+.status-legend-item:hover,
+.status-legend-item:focus-visible {
+  color: var(--tk-teal);
+  text-decoration: underline;
+}
+
 .status-dot {
   width: 10px;
   height: 10px;
@@ -450,6 +619,21 @@ input:focus-visible {
 
 .prazo-row:last-child { border-bottom: none; }
 
+.prazo-row-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.prazo-row-link:hover .prazo-row,
+.prazo-row-link:focus-visible .prazo-row {
+  background-color: rgba(0, 127, 109, 0.05);
+  margin: 0 -0.5rem;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  border-radius: var(--tk-radius-sm);
+}
+
 .prazo-count {
   font-family: "Kanit", sans-serif;
   font-weight: 600;
@@ -470,6 +654,23 @@ input:focus-visible {
 }
 
 .load-row:last-child { margin-bottom: 0; }
+
+.load-row-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  border-radius: var(--tk-radius-sm);
+}
+
+.load-row-link:hover,
+.load-row-link:focus-visible {
+  background-color: rgba(0, 127, 109, 0.05);
+}
+
+.load-row-link:hover .load-name,
+.load-row-link:focus-visible .load-name {
+  color: var(--tk-teal);
+}
 
 .load-name {
   width: 40%;
@@ -526,6 +727,39 @@ input:focus-visible {
 .activity-time {
   font-size: 0.76rem;
   color: #667077;
+}
+
+.activity-item-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  border-radius: var(--tk-radius-sm);
+}
+
+.activity-item-link:hover,
+.activity-item-link:focus-visible {
+  background-color: rgba(0, 127, 109, 0.05);
+}
+
+.activity-item-link:hover .activity-item,
+.activity-item-link:focus-visible .activity-item {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  margin: 0 -0.5rem;
+}
+
+/* Card "Equipe" — cada contagem (admin/líder/executor) é um link de
+   drilldown pra Acessos já filtrada por permissão. */
+
+.team-count-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.team-count-link:hover,
+.team-count-link:focus-visible {
+  color: var(--tk-teal);
+  text-decoration: underline;
 }
 
 /* ---------- Barra de acessibilidade ---------- */
@@ -654,6 +888,24 @@ html.tk-high-contrast {
 .tk-high-contrast .btn-tk-outline:focus {
   background-color: #ffd400;
   color: #000;
+}
+
+.tk-high-contrast .tk-search-dropdown {
+  background-color: #111;
+  border: 1px solid #ffd400;
+}
+
+.tk-high-contrast .tk-search-result {
+  color: #fff;
+}
+
+.tk-high-contrast .tk-search-result:hover,
+.tk-high-contrast .tk-search-result-active {
+  background-color: #1a1a1a;
+}
+
+.tk-high-contrast .tk-search-result-kind {
+  color: #ffd400;
 }
 
 .tk-high-contrast .badge {
