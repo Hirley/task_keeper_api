@@ -4,7 +4,7 @@ Melhorias propostas mas ainda não implementadas. Cada item documenta o problema
 
 ## Dashboard: reduzir redundância entre KPIs e "Distribuição por status"
 
-**Status:** v1 implementada (card escondido abaixo de `lg`, ver `app/views/dashboard/index.html.haml`). A iteração futura descrita abaixo continua em aberto.
+**Status:** v1 implementada (card escondido abaixo de `lg`) e v2 implementada (legenda do card virou texto estático, sem link — os links de drilldown por status já vivem nos KPIs do topo, então a legenda também linkada duplicava a mesma ação duas vezes na tela; ver `app/views/dashboard/index.html.haml`). A iteração futura descrita abaixo continua em aberto.
 
 **Problema:** no painel inicial (`app/views/dashboard/index.html.haml`), a mesma contagem por status aparece três vezes:
 
