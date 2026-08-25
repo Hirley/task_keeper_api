@@ -228,6 +228,15 @@ RSpec.describe 'Painel inicial (dashboard)', type: :request do
       expect(response.body).not_to include('líder(es)')
     end
 
+    it 'esconde o card "Distribuição por status" em telas menores que lg (ver ROADMAP.md — redundante com os KPIs do topo)' do
+      sign_in lider
+
+      get '/'
+
+      expect(response.body).to include('Distribuição por status')
+      expect(response.body).to include('class="card tk-card mb-3 d-none d-lg-block"')
+    end
+
     it 'não repete o título como heading visível; a marca leva pra home, sem item "Início" no menu' do
       sign_in executor
 

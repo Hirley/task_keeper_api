@@ -819,7 +819,7 @@ input:focus-visible {
 .tk-tour-spotlight {
   position: fixed;
   border-radius: var(--tk-radius-sm);
-  box-shadow: 0 0 0 9999px rgba(0, 20, 17, 0.6);
+  box-shadow: 0 0 0 9999px rgba(0, 15, 12, 0.78);
   transition: top 0.2s ease, left 0.2s ease, width 0.2s ease, height 0.2s ease;
   pointer-events: none;
 }
@@ -840,7 +840,10 @@ input:focus-visible {
   width: min(22rem, calc(100vw - 2rem));
   background-color: #fff;
   border-radius: var(--tk-radius);
-  box-shadow: var(--tk-shadow);
+  /* Sombra bem mais forte que o --tk-shadow padrão dos cards — aqui o
+     balão precisa "flutuar" visualmente sobre o overlay escurecido, não
+     se misturar com o resto da interface. */
+  box-shadow: 0 20px 45px rgba(0, 15, 12, 0.35), 0 4px 12px rgba(0, 15, 12, 0.18);
   padding: 1.1rem 1.25rem;
 }
 
