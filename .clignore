@@ -1,0 +1,29 @@
+﻿# --- Logs e Temporários do Rails ---
+log/
+tmp/
+storage/
+public/assets/
+public/packs/
+public/vite/
+.byebug_history
+
+# --- Dependências e Bundler ---
+.bundle/
+vendor/bundle/
+node_modules/
+
+# --- Banco de Dados Local ---
+db/*.sqlite3
+db/*.sqlite3-journal
+db/*.sqlite3-wal
+
+# --- Docker & CI/CD ---
+.git/
+.github/
+docker/volumes/
+
+# --- Arquivos do Sistema e IDEs ---
+.DS_Store
+.idea/
+.vscode/
+*.swp
