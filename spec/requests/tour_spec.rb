@@ -27,7 +27,7 @@ RSpec.describe 'Tour guiado', type: :request do
       usuario = create(:user, :executor, tour_completed_at: 1.day.ago)
       sign_in usuario
 
-      expect { patch concluir_tour_path }.to change { usuario.reload.tour_completed_at }
+      expect { patch concluir_tour_path }.to(change { usuario.reload.tour_completed_at })
 
       expect(response).to have_http_status(:no_content)
     end

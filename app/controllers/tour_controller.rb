@@ -7,7 +7,7 @@
 # current_user, igual DefinirSenhaController.
 class TourController < ApplicationController
   def concluir
-    current_user.update_column(:tour_completed_at, Time.current)
+    current_user.update!(tour_completed_at: Time.current)
     head :no_content
   end
 end
