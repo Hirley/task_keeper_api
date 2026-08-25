@@ -237,6 +237,19 @@ RSpec.describe 'Painel inicial (dashboard)', type: :request do
       expect(response.body).to include('class="card tk-card mb-3 d-none d-lg-block"')
     end
 
+    it 'a legenda de "Distribuição por status" não tem link — os KPIs do topo já cobrem o drilldown por status' do
+      create(:demanda, status: :pendente, user: lider)
+      sign_in lider
+
+      get '/'
+
+      legend_start = response.body.index('class="status-legend"')
+      legend_end = response.body.index('</div>', legend_start)
+      legenda = response.body[legend_start...legend_end]
+      expect(legenda).to include('Pendente — 1')
+      expect(legenda).not_to include('<a ')
+    end
+
     it 'não repete o título como heading visível; a marca leva pra home, sem item "Início" no menu' do
       sign_in executor
 

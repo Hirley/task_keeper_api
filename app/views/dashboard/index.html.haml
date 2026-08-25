@@ -113,14 +113,17 @@
             .status-bar-seg.status-bar-pendente{ style: "width: #{(@status_counts['pendente'].to_f / @total * 100).round(1)}%" }
             .status-bar-seg.status-bar-andamento{ style: "width: #{(@status_counts['em_andamento'].to_f / @total * 100).round(1)}%" }
             .status-bar-seg.status-bar-concluida{ style: "width: #{(@status_counts['concluida'].to_f / @total * 100).round(1)}%" }
+          / Legenda é só leitura (sem link): os mesmos 3 status já são
+          / links de drilldown nos KPIs do topo — repetir o link aqui
+          / duplicava a mesma ação em dois lugares da mesma tela.
           .status-legend
-            = link_to demandas_path(status: ["pendente"]), class: "status-legend-item" do
+            %span.status-legend-item
               %span.status-dot.status-dot-pendente
               = "Pendente — #{@status_counts['pendente']}"
-            = link_to demandas_path(status: ["em_andamento"]), class: "status-legend-item" do
+            %span.status-legend-item
               %span.status-dot.status-dot-andamento
               = "Em andamento — #{@status_counts['em_andamento']}"
-            = link_to demandas_path(status: ["concluida"]), class: "status-legend-item" do
+            %span.status-legend-item
               %span.status-dot.status-dot-concluida
               = "Concluída — #{@status_counts['concluida']}"
         - else
