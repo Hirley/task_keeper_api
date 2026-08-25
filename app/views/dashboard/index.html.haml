@@ -101,34 +101,10 @@
           %p.text-muted.mb-0 Nenhuma atividade ainda.
 
   .col-lg-4
-    / Some abaixo de "lg": nesses tamanhos os KPIs do topo já mostram
-    / valor e percentual por status (ver .row#stats acima), então a barra
-    / só duplicava a mesma informação e empurrava "Prazos"/"Carga por
-    / responsável" pra baixo na rolagem (ver ROADMAP.md).
-    .card.tk-card.mb-3.d-none.d-lg-block
-      .card-header Distribuição por status
-      .card-body.pt-2
-        - if @total.positive?
-          .status-bar{ role: "img", "aria-label" => "#{@status_counts['pendente']} pendentes, #{@status_counts['em_andamento']} em andamento, #{@status_counts['concluida']} concluídas, de um total de #{@total}" }
-            .status-bar-seg.status-bar-pendente{ style: "width: #{(@status_counts['pendente'].to_f / @total * 100).round(1)}%" }
-            .status-bar-seg.status-bar-andamento{ style: "width: #{(@status_counts['em_andamento'].to_f / @total * 100).round(1)}%" }
-            .status-bar-seg.status-bar-concluida{ style: "width: #{(@status_counts['concluida'].to_f / @total * 100).round(1)}%" }
-          / Legenda é só leitura (sem link): os mesmos 3 status já são
-          / links de drilldown nos KPIs do topo — repetir o link aqui
-          / duplicava a mesma ação em dois lugares da mesma tela.
-          .status-legend
-            %span.status-legend-item
-              %span.status-dot.status-dot-pendente
-              = "Pendente — #{@status_counts['pendente']}"
-            %span.status-legend-item
-              %span.status-dot.status-dot-andamento
-              = "Em andamento — #{@status_counts['em_andamento']}"
-            %span.status-legend-item
-              %span.status-dot.status-dot-concluida
-              = "Concluída — #{@status_counts['concluida']}"
-        - else
-          %p.text-muted.mb-0 Nenhuma demanda cadastrada ainda.
-
+    / O card com a barra empilhada + legenda por status foi removido:
+    / os mesmos 3 valores já aparecem nos KPIs do topo (ver .row#stats
+    / acima), com valor absoluto e percentual — era 100% redundante,
+    / não só em telas pequenas (ver ROADMAP.md).
     .card.tk-card.mb-3
       .card-header Prazos
       .card-body.pt-2

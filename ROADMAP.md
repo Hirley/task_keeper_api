@@ -4,24 +4,13 @@ Melhorias propostas mas ainda não implementadas. Cada item documenta o problema
 
 ## Dashboard: reduzir redundância entre KPIs e "Distribuição por status"
 
-**Status:** v1 implementada (card escondido abaixo de `lg`) e v2 implementada (legenda do card virou texto estático, sem link — os links de drilldown por status já vivem nos KPIs do topo, então a legenda também linkada duplicava a mesma ação duas vezes na tela; ver `app/views/dashboard/index.html.haml`). A iteração futura descrita abaixo continua em aberto.
+**Status:** resolvido — o card "Distribuição por status" (barra empilhada + legenda) foi removido do painel inicial, em todos os tamanhos de tela. A iteração futura descrita abaixo continua em aberto.
 
-**Problema:** no painel inicial (`app/views/dashboard/index.html.haml`), a mesma contagem por status aparece três vezes:
+**Problema (histórico):** no painel inicial (`app/views/dashboard/index.html.haml`), a mesma contagem por status aparecia duas vezes: nos 4 cards de KPI no topo (`Pendentes: 1`, `Em andamento: 1`, `Concluídas: 0`, cada um já com valor absoluto **e** percentual do total) e na barra empilhada + legenda do card "Distribuição por status" (mesmos 3 valores, mesmas 3 cores, com os mesmos links de drilldown pra Demandas filtrada). O card não trazia nenhuma informação que os KPIs já não cobrissem, então foi removido por completo em vez de só escondido em telas pequenas.
 
-1. Os 4 cards de KPI no topo (`Pendentes: 1`, `Em andamento: 1`, `Concluídas: 0`) — cada um já com o valor absoluto **e** o percentual do total;
-2. A barra empilhada + legenda do card "Distribuição por status" (mesmos 3 valores, mesmas 3 cores);
-
-Em telas menores (`< lg`, ver `.col-lg-4` em `app/views/dashboard/index.html.haml:103`), a coluna direita empilha embaixo de "Minhas demandas"/"Atividade recente", então esse card repetido custa uma rolagem inteira de tela só pra chegar em "Prazos" e "Carga por responsável", que trazem informação nova.
-
-**Proposta:**
-
-1. Esconder o card "Distribuição por status" abaixo do breakpoint `lg` (`d-none d-lg-block` ou equivalente no card, `app/views/dashboard/index.html.haml:104`) — os KPIs do topo já cobrem a mesma informação nesses tamanhos de tela, e o card fica só nos tamanhos maiores, onde a coluna lateral tem espaço de sobra e a barra funciona como um resumo visual rápido sem precisar re-ler o topo.
-2. Como consequência direta (sem precisar reordenar nada), em telas pequenas/médias "Prazos" e "Carga por responsável" sobem uma posição na coluna, reduzindo a rolagem até informação que não está duplicada em outro lugar da tela.
-
-**Iteração futura (escopo maior, item separado):** usar o espaço liberado ativamente, não só reduzir rolagem — por exemplo, listar as 2-3 demandas mais urgentes por nome dentro do card "Prazos" (hoje só mostra contagem), ou aumentar o limite de "Atividade recente" (`DashboardController#index`, hoje `.limit(5)`) quando a barra não estiver visível. Vale medir se a v1 (esconder a barra) já resolve a percepção de redundância antes de investir nisso.
+**Iteração futura (escopo maior, item separado):** usar o espaço liberado ativamente na coluna lateral (`.col-lg-4`) — por exemplo, listar as 2-3 demandas mais urgentes por nome dentro do card "Prazos" (hoje só mostra contagem), ou aumentar o limite de "Atividade recente" (`DashboardController#index`, hoje `.limit(5)`).
 
 **Critério de aceite:**
 
-- Abaixo do breakpoint `lg`, o card "Distribuição por status" não aparece.
-- A partir de `lg`, comportamento igual ao atual.
-- Specs de `spec/requests/dashboard_spec.rb` continuam passando; adicionar um teste que confirme a classe responsiva no card (ou a ausência do texto renderizado, se o teste simular viewport pequeno via CSS não é o caso — testar a presença da classe é mais direto num request spec).
+- O card "Distribuição por status" não aparece em nenhum tamanho de tela.
+- Specs de `spec/requests/dashboard_spec.rb` continuam passando.

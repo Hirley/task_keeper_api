@@ -80,7 +80,8 @@ RSpec.describe 'Painel inicial (dashboard)', type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include('<div class="stat-value">0</div>')
-      expect(response.body).to include('Nenhuma demanda cadastrada ainda.')
+      expect(response.body).to include('Você ainda não tem nenhuma demanda atribuída.')
+      expect(response.body).to include('Nenhuma atividade ainda.')
     end
 
     it "em 'Minhas demandas' mostra só as demandas do usuário logado" do
@@ -228,26 +229,12 @@ RSpec.describe 'Painel inicial (dashboard)', type: :request do
       expect(response.body).not_to include('líder(es)')
     end
 
-    it 'esconde o card "Distribuição por status" em telas menores que lg (ver ROADMAP.md — redundante com os KPIs do topo)' do
+    it 'não mostra o card "Distribuição por status" — redundante com os KPIs do topo (ver ROADMAP.md)' do
       sign_in lider
 
       get '/'
 
-      expect(response.body).to include('Distribuição por status')
-      expect(response.body).to include('class="card tk-card mb-3 d-none d-lg-block"')
-    end
-
-    it 'a legenda de "Distribuição por status" não tem link — os KPIs do topo já cobrem o drilldown por status' do
-      create(:demanda, status: :pendente, user: lider)
-      sign_in lider
-
-      get '/'
-
-      legend_start = response.body.index('class="status-legend"')
-      legend_end = response.body.index('</div>', legend_start)
-      legenda = response.body[legend_start...legend_end]
-      expect(legenda).to include('Pendente — 1')
-      expect(legenda).not_to include('<a ')
+      expect(response.body).not_to include('Distribuição por status')
     end
 
     it 'não repete o título como heading visível; a marca leva pra home, sem item "Início" no menu' do
