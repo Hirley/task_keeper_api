@@ -101,7 +101,11 @@
           %p.text-muted.mb-0 Nenhuma atividade ainda.
 
   .col-lg-4
-    .card.tk-card.mb-3
+    / Some abaixo de "lg": nesses tamanhos os KPIs do topo já mostram
+    / valor e percentual por status (ver .row#stats acima), então a barra
+    / só duplicava a mesma informação e empurrava "Prazos"/"Carga por
+    / responsável" pra baixo na rolagem (ver ROADMAP.md).
+    .card.tk-card.mb-3.d-none.d-lg-block
       .card-header Distribuição por status
       .card-body.pt-2
         - if @total.positive?
