@@ -700,20 +700,6 @@ input:focus-visible {
   margin: 0 -0.5rem;
 }
 
-/* Card "Equipe" — cada contagem (admin/líder/executor) é um link de
-   drilldown pra Acessos já filtrada por permissão. */
-
-.team-count-link {
-  color: inherit;
-  text-decoration: none;
-}
-
-.team-count-link:hover,
-.team-count-link:focus-visible {
-  color: var(--tk-teal);
-  text-decoration: underline;
-}
-
 /* ---------- Barra de acessibilidade ---------- */
 /* Mesmo padrão dos portais gov.br (inclusive o da CGE-CE que inspirou a
    identidade visual): uma faixa fina acima do cabeçalho, disponível em

@@ -62,17 +62,6 @@ RSpec.describe 'Painel inicial (dashboard)', type: :request do
       expect(response.body).to include("href=\"/demandas?responsavel_id=#{demanda.user_id}\"")
     end
 
-    it 'o card Equipe tem um link de drilldown por papel, pra Acessos' do
-      admin = create(:user, :admin)
-      sign_in admin
-
-      get '/'
-
-      expect(response.body).to include('href="/users?role%5B%5D=admin"')
-      expect(response.body).to include('href="/users?role%5B%5D=lider"')
-      expect(response.body).to include('href="/users?role%5B%5D=executor"')
-    end
-
     it 'mostra estado vazio quando não há nenhuma demanda' do
       sign_in lider
 
@@ -202,31 +191,14 @@ RSpec.describe 'Painel inicial (dashboard)', type: :request do
       expect(carga_section).to include('<span class="load-count">1</span>')
     end
 
-    it 'mostra o card Equipe para o líder' do
+    it 'não mostra mais o card Equipe — redundante com a listagem de Acessos (ver ROADMAP.md)' do
       sign_in lider
 
       get '/'
 
-      expect(response.body).to include('Equipe')
-      expect(response.body).to include('líder(es)')
-    end
-
-    it 'mostra o card Equipe para o admin também' do
-      admin = create(:user, :admin)
-      sign_in admin
-
-      get '/'
-
-      expect(response.body).to include('Equipe')
-      expect(response.body).to include('admin(s)')
-    end
-
-    it 'não mostra o card Equipe para o executor' do
-      sign_in executor
-
-      get '/'
-
       expect(response.body).not_to include('líder(es)')
+      expect(response.body).not_to include('admin(s)')
+      expect(response.body).not_to include('executor(es)')
     end
 
     it 'não mostra o card "Distribuição por status" — redundante com os KPIs do topo (ver ROADMAP.md)' do
