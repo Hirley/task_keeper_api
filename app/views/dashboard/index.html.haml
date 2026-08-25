@@ -1,6 +1,12 @@
 - content_for :page_title, "Início"
 %h1.visually-hidden Início
 
+/ Dispara o guia interativo sozinho (ver app/javascript/application.js
+/ TkGuideTour): na primeira vez que o usuário chega aqui depois do
+/ primeiro acesso (tour_completed_at ainda nil) ou quando vem do botão 🧭
+/ da navbar (?tour=1 — ver app/views/layouts/application.html.haml).
+#tk-tour-autostart{ hidden: true, data: { autostart: (params[:tour] == "1" || current_user.tour_completed_at.nil?).to_s } }
+
 .mb-4
   %h2.h4.mb-1.tk-dashboard-greeting= "Olá, #{current_user.name}"
   %p.text-muted.mb-0
@@ -9,7 +15,7 @@
     - else
       Aqui está o que precisa da sua atenção hoje, #{Date.current.strftime('%d/%m/%Y')}.
 
-.row.g-3.mb-4
+.row.g-3.mb-4{ data: { tour: "stats" } }
   .col-6.col-lg-3
     = link_to demandas_path, class: "stat-tile-link" do
       .stat-tile
@@ -43,7 +49,7 @@
 
 .row.g-3
   .col-lg-8
-    .card.tk-card.mb-3
+    .card.tk-card.mb-3{ data: { tour: "minhas-demandas" } }
       = link_to demandas_path(responsavel_id: current_user.id), class: "card-drilldown" do
         .card-header.d-flex.align-items-center.justify-content-between
           %span Minhas demandas

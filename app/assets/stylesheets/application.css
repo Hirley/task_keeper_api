@@ -798,6 +798,115 @@ input:focus-visible {
   background-color: rgba(255, 255, 255, 0.28);
 }
 
+.tk-tour-trigger-btn {
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.3rem 0.55rem;
+}
+
+/* ---------- Guia interativo (tour) ---------- */
+/* Sem lib externa (ver TkGuideTour em app/javascript/application.js):
+   .tk-tour-spotlight usa o truque do box-shadow gigante pra escurecer a
+   tela toda menos o retângulo do elemento em destaque, que "se move" via
+   top/left/width/height calculados a cada passo. */
+
+.tk-tour-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+}
+
+.tk-tour-spotlight {
+  position: fixed;
+  border-radius: var(--tk-radius-sm);
+  box-shadow: 0 0 0 9999px rgba(0, 20, 17, 0.6);
+  transition: top 0.2s ease, left 0.2s ease, width 0.2s ease, height 0.2s ease;
+  pointer-events: none;
+}
+
+.tk-tour-spotlight-full {
+  /* Passo sem alvo (boas-vindas): sem retângulo destacado, só escurece a
+     tela inteira — cobre a viewport toda em vez de um retângulo do
+     tamanho de um elemento específico. */
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+}
+
+.tk-tour-tooltip {
+  position: fixed;
+  z-index: 2001;
+  width: min(22rem, calc(100vw - 2rem));
+  background-color: #fff;
+  border-radius: var(--tk-radius);
+  box-shadow: var(--tk-shadow);
+  padding: 1.1rem 1.25rem;
+}
+
+.tk-tour-tooltip:focus {
+  outline: none;
+}
+
+.tk-tour-progress {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--tk-teal);
+}
+
+.tk-tour-title {
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--tk-text);
+}
+
+.tk-tour-body {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  color: var(--tk-text);
+}
+
+.tk-tour-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.tk-tour-nav-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tk-tour-skip {
+  color: var(--tk-text);
+  opacity: 0.65;
+  text-decoration: none;
+  padding-left: 0;
+}
+
+.tk-tour-skip:hover,
+.tk-tour-skip:focus-visible {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.tk-tour-next-btn {
+  background: var(--tk-gradient);
+  border: none;
+  color: #fff;
+}
+
+.tk-tour-next-btn:hover,
+.tk-tour-next-btn:focus-visible {
+  background: var(--tk-gradient-soft);
+  color: #fff;
+}
+
 /* ---------- Modo de alto contraste ---------- */
 /* Acionado pelo botão ◐ da barra de acessibilidade (ver
    app/javascript/application.js). Fundo preto, texto branco, amarelo
@@ -914,4 +1023,20 @@ html.tk-high-contrast {
 
 .tk-high-contrast a {
   text-decoration: underline;
+}
+
+.tk-high-contrast .tk-tour-tooltip {
+  background-color: #111;
+  border: 1px solid #ffd400;
+  color: #fff;
+}
+
+.tk-high-contrast .tk-tour-title,
+.tk-high-contrast .tk-tour-body {
+  color: #fff;
+}
+
+.tk-high-contrast .tk-tour-next-btn {
+  background: #ffd400;
+  color: #000;
 }

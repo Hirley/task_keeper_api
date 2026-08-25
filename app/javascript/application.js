@@ -272,3 +272,274 @@ document.addEventListener("turbo:load", () => {
   initSearchDropdown()
   initVoiceSearch()
 })
+
+// Guia interativo (tour) do dashboard — sem dependência externa (mesmo
+// espírito do TkAccessibility acima). Passos fixos aqui; os que apontam
+// pra elementos que não existem na tela do usuário atual (ex.: "Acessos"
+// pra quem não é líder/admin — ver app/views/layouts/application.html.haml)
+// são descartados no #start, então não precisa montar essa lista no
+// servidor. Roda só na página inicial (onde os alvos existem de fato —
+// ver data-tour em app/views/dashboard/index.html.haml); disparado pelo
+// #tk-tour-autostart (primeiro acesso ao dashboard) ou pelo botão 🧭 da
+// navbar (data-tour="tour-trigger").
+const TK_TOUR_STEPS = [
+  {
+    title: "Bem-vindo(a) ao Task Keeper!",
+    body: "Um tour rápido pelas principais telas. Você pode sair a qualquer momento clicando em “Pular” ou na tecla Esc."
+  },
+  {
+    title: "Resumo das demandas",
+    body: "Total, pendentes, em andamento e concluídas — clique em qualquer cartão pra ver a lista já filtrada.",
+    target: '[data-tour="stats"]'
+  },
+  {
+    title: "Minhas demandas",
+    body: "As demandas atribuídas a você, ordenadas pelas mais urgentes primeiro.",
+    target: '[data-tour="minhas-demandas"]'
+  },
+  {
+    title: "Menu Demandas",
+    body: "Veja, cadastre e acompanhe todas as demandas da equipe.",
+    target: '[data-tour="nav-demandas"]'
+  },
+  {
+    title: "Acessos",
+    body: "Cadastre novos usuários e defina permissões (líder e admin).",
+    target: '[data-tour="nav-acessos"]'
+  },
+  {
+    title: "Busca rápida",
+    body: "Digite pra encontrar demandas ou pessoas na hora — ou use o microfone 🎤, se o navegador suportar.",
+    target: '[data-tour="nav-busca"]'
+  },
+  {
+    title: "Acessibilidade",
+    body: "Tamanho de fonte, alto contraste e tradução em Libras ficam aqui em cima.",
+    target: ".tk-a11y-bar"
+  },
+  {
+    title: "Reveja quando quiser",
+    body: "Esse ícone fica sempre disponível pra rever o tour a qualquer momento.",
+    target: '[data-tour="tour-trigger"]'
+  }
+]
+
+const TK_TOUR_SPOTLIGHT_PADDING = 8
+
+function tkTourCsrfToken() {
+  return document.querySelector('meta[name="csrf-token"]')?.content
+}
+
+// Marca no servidor que o usuário já viu (ou pulou) o tour, pra não
+// disparar sozinho de novo no próximo login — ver TourController. Só
+// controla o disparo automático: o botão 🧭 continua funcionando mesmo
+// depois disso.
+function tkTourMarkCompleted() {
+  const token = tkTourCsrfToken()
+  if (!token) return
+
+  fetch("/tour/concluir", {
+    method: "PATCH",
+    headers: { "X-CSRF-Token": token, Accept: "application/json" }
+  }).catch(() => {})
+}
+
+function tkTourBuildOverlay() {
+  const overlay = document.createElement("div")
+  overlay.className = "tk-tour-overlay"
+
+  const spotlight = document.createElement("div")
+  spotlight.className = "tk-tour-spotlight"
+  overlay.appendChild(spotlight)
+
+  const tooltip = document.createElement("div")
+  tooltip.className = "tk-tour-tooltip"
+  tooltip.setAttribute("role", "dialog")
+  tooltip.setAttribute("aria-modal", "true")
+  tooltip.tabIndex = -1
+  overlay.appendChild(tooltip)
+
+  document.body.appendChild(overlay)
+  return { overlay, spotlight, tooltip }
+}
+
+window.TkGuideTour = {
+  _steps: [],
+  _index: 0,
+  _els: null,
+  _reposition: null,
+
+  start() {
+    if (this._els) this._teardown()
+
+    this._steps = TK_TOUR_STEPS.filter((step) => !step.target || document.querySelector(step.target))
+    if (this._steps.length === 0) return
+
+    this._index = 0
+    this._els = tkTourBuildOverlay()
+
+    this._onKeydown = (event) => {
+      if (event.key === "Escape") this.finish()
+      else if (event.key === "ArrowRight") this.next()
+      else if (event.key === "ArrowLeft") this.prev()
+    }
+    document.addEventListener("keydown", this._onKeydown)
+
+    // Só reposiciona (sem reconstruir o conteúdo nem roubar foco de
+    // novo) — chamar _render aqui criaria um loop de scrollIntoView
+    // brigando com o usuário a cada evento de "scroll".
+    this._reposition = () => this._updatePosition(this._currentTarget())
+    window.addEventListener("resize", this._reposition)
+    window.addEventListener("scroll", this._reposition, true)
+
+    this._render()
+  },
+
+  next() {
+    if (this._index >= this._steps.length - 1) {
+      this.finish()
+      return
+    }
+    this._index += 1
+    this._render()
+  },
+
+  prev() {
+    if (this._index <= 0) return
+    this._index -= 1
+    this._render()
+  },
+
+  // "Pular" e "Concluir" levam ao mesmo lugar: marcar como visto e fechar.
+  // Não faz sentido voltar a incomodar quem já pulou uma vez.
+  finish() {
+    tkTourMarkCompleted()
+    this._teardown()
+  },
+
+  _teardown() {
+    if (this._onKeydown) document.removeEventListener("keydown", this._onKeydown)
+    if (this._reposition) {
+      window.removeEventListener("resize", this._reposition)
+      window.removeEventListener("scroll", this._reposition, true)
+    }
+    this._els?.overlay.remove()
+    this._els = null
+  },
+
+  _currentTarget() {
+    const step = this._steps[this._index]
+    return step.target ? document.querySelector(step.target) : null
+  },
+
+  // Conteúdo e uma posição inicial são renderizados na hora, sem esperar
+  // nada — importante porque requestAnimationFrame não dispara enquanto o
+  // documento está oculto (aba em segundo plano, janela minimizada etc.),
+  // e antes disso o tour dependia dele até pra mostrar o texto: se o rAF
+  // não disparasse logo (ou nunca, com a aba oculta), o overlay escurecia
+  // a tela e o tooltip ficava vazio pra sempre. Só o reposicionamento
+  // fino (depois que o scroll suave termina) fica no rAF — se ele
+  // atrasar, o tour continua visível e usável, só com a posição
+  // ligeiramente desatualizada até o frame seguinte.
+  _render() {
+    const step = this._steps[this._index]
+    const target = this._currentTarget()
+
+    if (step.target && !target) {
+      // Elemento sumiu da tela entre um passo e outro (ex.: resize
+      // colapsou a navbar) — pula pro próximo em vez de travar num
+      // spotlight apontando pro nada.
+      this.next()
+      return
+    }
+
+    this._renderStep(step, target)
+    target?.scrollIntoView({ block: "center", behavior: "smooth" })
+    requestAnimationFrame(() => requestAnimationFrame(() => this._updatePosition(target)))
+  },
+
+  _renderStep(step, target) {
+    if (!this._els) return
+    const { tooltip } = this._els
+
+    tooltip.innerHTML = this._tooltipHtml(step)
+    tooltip.querySelector('[data-tour-action="prev"]')?.addEventListener("click", () => this.prev())
+    tooltip.querySelector('[data-tour-action="next"]').addEventListener("click", () => this.next())
+    tooltip.querySelector('[data-tour-action="skip"]').addEventListener("click", () => this.finish())
+
+    this._updatePosition(target)
+    tooltip.focus()
+  },
+
+  // Só recalcula posição/tamanho (spotlight + tooltip) a partir do alvo
+  // atual — sem tocar no conteúdo nem no foco. Chamado tanto depois de
+  // trocar de passo quanto em "resize"/"scroll" (ver _reposition).
+  _updatePosition(target) {
+    if (!this._els) return
+    const { spotlight, tooltip } = this._els
+
+    spotlight.classList.toggle("tk-tour-spotlight-full", !target)
+
+    if (target) {
+      const rect = target.getBoundingClientRect()
+      spotlight.style.top = `${rect.top - TK_TOUR_SPOTLIGHT_PADDING}px`
+      spotlight.style.left = `${rect.left - TK_TOUR_SPOTLIGHT_PADDING}px`
+      spotlight.style.width = `${rect.width + TK_TOUR_SPOTLIGHT_PADDING * 2}px`
+      spotlight.style.height = `${rect.height + TK_TOUR_SPOTLIGHT_PADDING * 2}px`
+    }
+
+    this._positionTooltip(tooltip, target)
+  },
+
+  _tooltipHtml(step) {
+    const isLast = this._index === this._steps.length - 1
+    return `
+      <p class="tk-tour-progress">Passo ${this._index + 1} de ${this._steps.length}</p>
+      <h2 class="tk-tour-title">${step.title}</h2>
+      <p class="tk-tour-body">${step.body}</p>
+      <div class="tk-tour-actions">
+        <button type="button" class="btn btn-link btn-sm tk-tour-skip" data-tour-action="skip">Pular</button>
+        <div class="tk-tour-nav-buttons">
+          ${this._index > 0 ? '<button type="button" class="btn btn-outline-secondary btn-sm" data-tour-action="prev">Anterior</button>' : ""}
+          <button type="button" class="btn btn-sm tk-tour-next-btn" data-tour-action="next">${isLast ? "Concluir" : "Próximo"}</button>
+        </div>
+      </div>
+    `
+  },
+
+  // Sem alvo (passo de boas-vindas): centralizado na tela. Com alvo:
+  // abaixo dele por padrão, ou acima se não couber, sempre dentro da
+  // viewport (clamp horizontal).
+  _positionTooltip(tooltip, target) {
+    const margin = 16
+    const { innerWidth, innerHeight } = window
+
+    if (!target) {
+      tooltip.style.top = "50%"
+      tooltip.style.left = "50%"
+      tooltip.style.transform = "translate(-50%, -50%)"
+      return
+    }
+
+    tooltip.style.transform = "none"
+    const rect = target.getBoundingClientRect()
+    const tooltipRect = tooltip.getBoundingClientRect()
+
+    let top = rect.bottom + TK_TOUR_SPOTLIGHT_PADDING + margin
+    if (top + tooltipRect.height > innerHeight - margin) {
+      top = rect.top - TK_TOUR_SPOTLIGHT_PADDING - margin - tooltipRect.height
+    }
+    top = Math.max(margin, Math.min(top, innerHeight - tooltipRect.height - margin))
+
+    let left = rect.left + rect.width / 2 - tooltipRect.width / 2
+    left = Math.max(margin, Math.min(left, innerWidth - tooltipRect.width - margin))
+
+    tooltip.style.top = `${top}px`
+    tooltip.style.left = `${left}px`
+  }
+}
+
+document.addEventListener("turbo:load", () => {
+  const autostart = document.getElementById("tk-tour-autostart")
+  if (autostart?.dataset.autostart === "true") window.TkGuideTour.start()
+})
