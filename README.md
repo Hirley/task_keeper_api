@@ -162,7 +162,6 @@ A home (`/`, acessível clicando na marca "Task Keeper API" na navbar — não h
 - KPIs no topo: total de demandas e quantas estão em cada status;
 - **Minhas demandas**: as demandas do próprio usuário logado, ordenadas por urgência (atrasada primeiro, depois o que vence antes); cada uma tem um badge de prazo (`Atrasada há N dias`, `Vence hoje`, `Vence amanhã`, `Vence em N dias`) — um canal separado do badge de status, porque "em que fase está" e "está no prazo?" são informações diferentes;
 - **Atividade recente**: últimas demandas criadas por toda a equipe;
-- **Distribuição por status**: uma única barra empilhada (não faz sentido um gráfico maior para 3 fatias) com a proporção pendente/em andamento/concluída;
 - **Prazos**: quantas demandas (de toda a equipe) estão atrasadas, vencem hoje, ou vencem nos próximos `DashboardController::PRAZO_PROXIMO_DIAS` dias (3 por padrão);
 - **Carga por responsável**: quantas demandas abertas (não concluídas) cada pessoa tem, da maior carga para a menor — visível pros três papéis, já que qualquer usuário autenticado já enxerga todas as demandas na listagem;
 - **Equipe** (só pra líder e admin): contagem de admins/líderes/executores, com atalho para `/users`.

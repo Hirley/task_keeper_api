@@ -559,46 +559,6 @@ input:focus-visible {
 .badge-urg-critical { background: #fbe1de; color: #c0392b; }
 .badge-urg-warning { background: #fff0da; color: #b5750a; }
 
-/* Barra única empilhada — distribuição por status */
-
-.status-bar {
-  display: flex;
-  height: 22px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: #eef1f0;
-}
-
-.status-bar-seg + .status-bar-seg { margin-left: 2px; }
-.status-bar-pendente { background: #e0a800; }
-.status-bar-andamento { background: #1789a3; }
-.status-bar-concluida { background: var(--tk-green); }
-
-.status-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.9rem;
-  margin-top: 0.85rem;
-  font-size: 0.82rem;
-}
-
-.status-legend-item {
-  display: inline-flex;
-  align-items: center;
-}
-
-.status-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  display: inline-block;
-  margin-right: 0.35rem;
-}
-
-.status-dot-pendente { background: #e0a800; }
-.status-dot-andamento { background: #1789a3; }
-.status-dot-concluida { background: var(--tk-green); }
-
 /* Prazos (atrasadas / vencem hoje / vencem em breve) */
 
 .prazo-row {
