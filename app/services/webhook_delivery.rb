@@ -46,7 +46,11 @@ class WebhookDelivery
     # que é a proteção de SSRF; a validação do modelo é só o aviso na
     # tela. Ver PublicHttpTarget.
     alvo = PublicHttpTarget.resolve(subscription.url)
-    return recusar(subscription, event, alvo.error_code) unless alvo.success?
+
+    unless alvo.success?
+      registrar_recusa(subscription, event, alvo.error_code)
+      return false
+    end
 
     body = { event: event, occurred_at: Time.current.iso8601, data: payload }.to_json
     response = @transport.call(alvo.uri, body, alvo.ip)
@@ -58,10 +62,13 @@ class WebhookDelivery
 
   private
 
-  def recusar(subscription, event, error_code)
+  # Só registra o motivo — quem chama é que decide desistir da entrega. O
+  # `return false` fica lá em cima, visível junto do `unless`, em vez de
+  # escondido no fim de um método cujo nome não deixa claro que ele
+  # também define o valor de retorno de #entregar.
+  def registrar_recusa(subscription, event, error_code)
     Rails.logger.warn(
       "[WebhookDelivery] entrega de \"#{event}\" pra #{subscription.url} recusada na resolução: #{error_code}"
     )
-    false
   end
 end
