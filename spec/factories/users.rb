@@ -4,8 +4,8 @@ FactoryBot.define do
   factory :user do
     sequence(:email) { |n| "usuario#{n}@task-keeper.local" }
     name { 'Usuário Teste' }
-    password { 'senha123456' }
-    password_confirmation { 'senha123456' }
+    password { 'senhaSegura123' }
+    password_confirmation { 'senhaSegura123' }
     role { :executor }
     # Por padrão o usuário de teste já passou pelo primeiro acesso (já
     # definiu a própria senha) — é o que a maioria dos specs precisa pra

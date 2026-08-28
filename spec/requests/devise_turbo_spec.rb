@@ -10,7 +10,7 @@ require 'rails_helper'
 # trava sem nenhum feedback visível pro usuário (nem a mensagem de erro
 # aparece). Ver config/initializers/devise.rb (config.responder).
 RSpec.describe 'Compatibilidade do Devise com Turbo Drive', type: :request do
-  let!(:user) { create(:user, password: 'senha123456') }
+  let!(:user) { create(:user, password: 'senhaSegura123') }
 
   it 'responde 422 (não 200) pra uma tentativa de login inválida' do
     post '/users/sign_in', params: { user: { email: user.email, password: 'senha-errada' } }

@@ -12,8 +12,8 @@ RSpec.describe 'Api::V1::Users', type: :request do
       user: {
         name: 'Novo Usuário',
         email: 'novo.usuario@task-keeper.local',
-        password: 'senha123456',
-        password_confirmation: 'senha123456',
+        password: 'senhaSegura123',
+        password_confirmation: 'senhaSegura123',
         role: 'executor'
       }
     }

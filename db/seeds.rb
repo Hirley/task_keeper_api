@@ -12,22 +12,22 @@ return if Rails.env.test?
 # Seeds de exemplo para ambiente de desenvolvimento.
 User.find_or_create_by!(email: 'admin@task-keeper.local') do |u|
   u.name = 'Admin Exemplo'
-  u.password = 'senha123456'
-  u.password_confirmation = 'senha123456'
+  u.password = 'senhaSegura123'
+  u.password_confirmation = 'senhaSegura123'
   u.role = :admin
 end
 
 lider = User.find_or_create_by!(email: 'lider@task-keeper.local') do |u|
   u.name = 'Líder Exemplo'
-  u.password = 'senha123456'
-  u.password_confirmation = 'senha123456'
+  u.password = 'senhaSegura123'
+  u.password_confirmation = 'senhaSegura123'
   u.role = :lider
 end
 
 executor = User.find_or_create_by!(email: 'executor@task-keeper.local') do |u|
   u.name = 'Executor Exemplo'
-  u.password = 'senha123456'
-  u.password_confirmation = 'senha123456'
+  u.password = 'senhaSegura123'
+  u.password_confirmation = 'senhaSegura123'
   u.role = :executor
 end
 

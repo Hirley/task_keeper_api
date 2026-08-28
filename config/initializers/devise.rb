@@ -12,7 +12,15 @@ Devise.setup do |config|
   config.stretches = Rails.env.test? ? 1 : 12
   config.reconfirmable = true
   config.expire_all_remember_me_on_sign_out = true
-  config.password_length = 6..128
+  # 12 em vez dos 6 do default do Devise. O mínimo importa mais aqui do
+  # que num cadastro comum: não há autocadastro, então a PRIMEIRA senha
+  # de todo usuário é digitada por um líder/admin em UsersController#create
+  # (senha provisória) — e senha escolhida às pressas por terceiro tende
+  # a ser curta e padronizada ("mudar123"). Com 6 caracteres permitidos,
+  # essa senha é o elo mais fraco do sistema inteiro; ver também o
+  # rate limit em Users::SessionsController, que é a outra metade dessa
+  # proteção.
+  config.password_length = 12..128
   config.email_regexp = /\A[^@\s]+@[^@\s]+\z/
   config.reset_password_within = 6.hours
   config.sign_out_via = :delete

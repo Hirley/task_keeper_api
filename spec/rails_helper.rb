@@ -23,6 +23,20 @@ RSpec.configure do |config|
 
   config.include FactoryBot::Syntax::Methods
   config.include Devise::Test::IntegrationHelpers, type: :request
+
+  # O throttle das telas de autenticação (ver AuthThrottling) guarda o
+  # contador de tentativas no cache, que em teste é :memory_store e
+  # sobrevive entre exemplos. Sem limpar, um spec que faz vários POST em
+  # /users/sign_in deixaria o contador alto e derrubaria specs seguintes
+  # sem relação nenhuma com throttle.
+  #
+  # Os dois stores são o mesmo objeto na configuração padrão do Rails
+  # (ActionController::Base.cache_store recebe o Rails.cache no boot) —
+  # limpar os dois é barato e não depende desse detalhe continuar valendo.
+  config.before do
+    Rails.cache.clear
+    ActionController::Base.cache_store.clear
+  end
 end
 
 Shoulda::Matchers.configure do |config|

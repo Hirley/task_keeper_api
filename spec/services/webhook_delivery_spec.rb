@@ -12,20 +12,24 @@ RSpec.describe WebhookDelivery do
   let(:resposta_sucesso) { Net::HTTPOK.allocate }
   let(:resposta_falha) { Net::HTTPBadRequest.allocate }
   let(:transport) do
-    lambda { |uri, body|
-      chamadas << { uri: uri, body: body }
+    lambda { |uri, body, ipaddr|
+      chamadas << { uri: uri, body: body, ipaddr: ipaddr }
       resposta_sucesso
     }
   end
 
-  let(:subscription) { build_stubbed(:webhook_subscription, url: 'https://hooks.example.com/in') }
+  # IP literal em vez de hostname, mesma razão da factory: Resolv
+  # reconhece um IP literal sem consultar DNS de verdade, então o teste
+  # não depende de rede externa. 8.8.8.8 é público, logo passa na
+  # verificação de PublicHttpTarget.
+  let(:subscription) { build_stubbed(:webhook_subscription, url: 'https://8.8.8.8/in') }
 
   describe '#entregar' do
     it 'faz POST na URL da assinatura com o evento e o payload' do
       delivery.entregar(subscription, 'demanda_criada', { id: 1, title: 'Revisar contrato' })
 
       expect(chamadas.size).to eq(1)
-      expect(chamadas.first[:uri].to_s).to eq('https://hooks.example.com/in')
+      expect(chamadas.first[:uri].to_s).to eq('https://8.8.8.8/in')
 
       corpo = JSON.parse(chamadas.first[:body])
       expect(corpo['event']).to eq('demanda_criada')
@@ -38,7 +42,7 @@ RSpec.describe WebhookDelivery do
     end
 
     it 'retorna false quando o endpoint responde com erro' do
-      delivery_com_falha = described_class.new(transport: ->(_uri, _body) { resposta_falha })
+      delivery_com_falha = described_class.new(transport: ->(_uri, _body, _ip) { resposta_falha })
 
       expect(delivery_com_falha.entregar(subscription, 'demanda_criada', {})).to be false
     end
@@ -56,9 +60,36 @@ RSpec.describe WebhookDelivery do
     end
 
     it 'não propaga exceção se o transporte falhar (ex.: endpoint fora do ar) e retorna false' do
-      delivery_com_erro = described_class.new(transport: ->(_uri, _body) { raise SocketError, 'falha de rede' })
+      delivery_com_erro = described_class.new(transport: ->(_uri, _body, _ip) { raise SocketError, 'falha de rede' })
 
       expect(delivery_com_erro.entregar(subscription, 'demanda_criada', {})).to be false
+    end
+
+    # Ver PublicHttpTarget: a validação do cadastro sozinha não segura DNS
+    # rebinding, porque o host pode mudar de IP depois de salvo. Por isso
+    # a checagem é refeita aqui, na hora de conectar.
+    describe 'proteção contra SSRF na hora da entrega' do
+      it 'recusa a entrega quando a URL salva aponta pra um endereço privado' do
+        # build_stubbed não roda validação — é exatamente a assinatura que
+        # passou na checagem no cadastro e só depois virou interna.
+        interna = build_stubbed(:webhook_subscription, url: 'http://169.254.169.254/latest/meta-data')
+
+        expect(delivery.entregar(interna, 'demanda_criada', {})).to be false
+        expect(chamadas).to be_empty
+      end
+
+      it 'recusa a entrega pra loopback' do
+        loopback = build_stubbed(:webhook_subscription, url: 'http://127.0.0.1/hook')
+
+        expect(delivery.entregar(loopback, 'demanda_criada', {})).to be false
+        expect(chamadas).to be_empty
+      end
+
+      it 'entrega no IP já verificado, em vez de deixar o Net::HTTP resolver o host de novo' do
+        delivery.entregar(subscription, 'demanda_criada', {})
+
+        expect(chamadas.first[:ipaddr]).to eq('8.8.8.8')
+      end
     end
   end
 

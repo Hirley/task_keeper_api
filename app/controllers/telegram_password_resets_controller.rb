@@ -7,7 +7,15 @@
 # Users::SendPasswordResetViaTelegram). Não exige login: é justamente pra
 # quem está tentando recuperar o próprio acesso.
 class TelegramPasswordResetsController < ApplicationController
+  include AuthThrottling
+
   skip_before_action :authenticate_user!
+
+  # A mensagem genérica abaixo não conta se o e-mail existe, mas sem
+  # throttle o formulário ainda dá pra ser usado como metralhadora: quem
+  # souber o e-mail de alguém com Chat ID cadastrado dispara mensagem de
+  # redefinição no Telegram da vítima em looping.
+  throttle_auth_attempts only: :create, voltar_para: -> { new_telegram_password_reset_path }
 
   # Sempre a mesma mensagem, exista ou não o e-mail e tenha ou não Chat ID
   # cadastrado — evita que alguém descubra, por tentativa e erro, quais
