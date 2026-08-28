@@ -59,6 +59,89 @@ RSpec.describe User, type: :model do
     end
   end
 
+  # Ver User#validar_atribuicao_de_papel. O papel admin é a única coisa
+  # que separa admin de líder (app/models/ability.rb), e o líder gerencia
+  # usuários — sem estas regras ele se promovia a admin sozinho.
+  describe 'atribuição de papel' do
+    let(:lider) { create(:user, :lider) }
+    let(:admin) { create(:user, :admin) }
+    let(:alvo) { create(:user, :executor) }
+
+    def alterar(usuario, para:, por:)
+      usuario.ator = por
+      usuario.role = para
+      usuario
+    end
+
+    context 'quando quem altera é líder' do
+      it 'não deixa promover outro usuário a admin' do
+        expect(alterar(alvo, para: 'admin', por: lider)).not_to be_valid
+      end
+
+      it 'não deixa promover a si mesmo a admin' do
+        expect(alterar(lider, para: 'admin', por: lider)).not_to be_valid
+      end
+
+      it 'não deixa rebaixar um admin' do
+        expect(alterar(admin, para: 'lider', por: lider)).not_to be_valid
+      end
+
+      it 'continua deixando promover outro usuário a líder' do
+        expect(alterar(alvo, para: 'lider', por: lider)).to be_valid
+      end
+
+      it 'continua deixando rebaixar outro líder para executor' do
+        outro_lider = create(:user, :lider)
+
+        expect(alterar(outro_lider, para: 'executor', por: lider)).to be_valid
+      end
+    end
+
+    context 'quando quem altera é admin' do
+      it 'deixa promover outro usuário a admin' do
+        expect(alterar(alvo, para: 'admin', por: admin)).to be_valid
+      end
+
+      it 'deixa rebaixar outro admin' do
+        outro_admin = create(:user, :admin)
+
+        expect(alterar(outro_admin, para: 'lider', por: admin)).to be_valid
+      end
+
+      # Impede o último admin de se rebaixar e deixar os webhooks sem
+      # ninguém que possa gerenciá-los.
+      it 'não deixa alterar o próprio papel' do
+        expect(alterar(admin, para: 'lider', por: admin)).not_to be_valid
+      end
+    end
+
+    it 'não impede editar os próprios dados quando o papel não muda' do
+      lider.ator = lider
+      lider.name = 'Outro Nome'
+
+      expect(lider).to be_valid
+    end
+
+    it 'não impede um líder de editar o nome de um admin (o papel não muda)' do
+      admin.ator = lider
+      admin.name = 'Outro Nome'
+
+      expect(admin).to be_valid
+    end
+
+    it 'não roda sem ator (seeds e console seguem funcionando)' do
+      alvo.role = 'admin'
+
+      expect(alvo).to be_valid
+    end
+
+    it 'explica o motivo na mensagem de erro' do
+      alterar(alvo, para: 'admin', por: lider).valid?
+
+      expect(alvo.errors[:role].join).to include('admin')
+    end
+  end
+
   describe '#must_change_password' do
     it 'é true por padrão (senha provisória cadastrada pelo líder/admin, ver a migration)' do
       expect(described_class.new.must_change_password?).to be true

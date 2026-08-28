@@ -42,6 +42,27 @@ RSpec.describe 'Api::V1::Users', type: :request do
       expect(response).to have_http_status(:forbidden)
     end
 
+    # A API não pode ser a porta dos fundos da regra que a tela web
+    # aplica — ver User#validar_atribuicao_de_papel.
+    it 'não deixa um líder cadastrar um admin' do
+      sign_in lider
+
+      expect do
+        post '/api/v1/users', params: { user: novo_usuario_params[:user].merge(role: 'admin') }, as: :json
+      end.not_to change(User, :count)
+
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
+    it 'deixa um admin cadastrar outro admin' do
+      sign_in admin
+
+      post '/api/v1/users', params: { user: novo_usuario_params[:user].merge(role: 'admin') }, as: :json
+
+      expect(response).to have_http_status(:created)
+      expect(User.find_by(email: 'novo.usuario@task-keeper.local')).to be_admin
+    end
+
     it 'permite que um líder cadastre um novo usuário' do
       sign_in lider
       expect do

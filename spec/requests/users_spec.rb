@@ -28,6 +28,27 @@ RSpec.describe 'Usuários (tela web de Acessos)', type: :request do
     response.body[%r{<tbody>.*?</tbody>}m]
   end
 
+  describe 'POST /users (cadastro com papel admin)' do
+    it 'não deixa um líder cadastrar um admin' do
+      sign_in lider
+
+      expect do
+        post '/users', params: { user: novo_usuario_params[:user].merge(role: 'admin') }
+      end.not_to change(User, :count)
+
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+
+    it 'deixa um admin cadastrar outro admin' do
+      sign_in admin
+
+      post '/users', params: { user: novo_usuario_params[:user].merge(role: 'admin') }
+
+      expect(response).to redirect_to(users_path)
+      expect(User.find_by(email: 'novo.acesso@task-keeper.local')).to be_admin
+    end
+  end
+
   describe 'GET /users' do
     it 'bloqueia um executor' do
       sign_in executor
@@ -273,6 +294,50 @@ RSpec.describe 'Usuários (tela web de Acessos)', type: :request do
       patch "/users/#{outro_usuario.id}", params: { user: { role: 'lider', telegram_chat_id: '111222333' } }
       expect(outro_usuario.reload.lider?).to be true
       expect(outro_usuario.telegram_chat_id).to be_nil
+    end
+
+    # O líder tem `can :manage, :all` com um único `cannot :manage,
+    # WebhookSubscription` (ver app/models/ability.rb). Como ele também
+    # gerencia usuários, sem a validação do model bastava este PATCH pra
+    # ele contornar aquele `cannot` — virava admin e, no request
+    # seguinte, administrava webhooks.
+    describe 'escalada de privilégio pelo papel' do
+      it 'não deixa o líder se promover a admin' do
+        sign_in lider
+
+        patch "/users/#{lider.id}", params: { user: { role: 'admin' } }
+
+        expect(lider.reload.admin?).to be false
+        expect(lider).to be_lider
+      end
+
+      it 'não deixa o líder promover outro usuário a admin' do
+        sign_in lider
+
+        patch "/users/#{outro_usuario.id}", params: { user: { role: 'admin' } }
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(outro_usuario.reload.admin?).to be false
+      end
+
+      it 'não deixa o líder rebaixar um admin' do
+        outro_admin = create(:user, :admin)
+        sign_in lider
+
+        patch "/users/#{outro_admin.id}", params: { user: { role: 'executor' } }
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(outro_admin.reload.admin?).to be true
+      end
+
+      it 'deixa o admin promover outro usuário a admin' do
+        sign_in admin
+
+        patch "/users/#{outro_usuario.id}", params: { user: { role: 'admin' } }
+
+        expect(response).to redirect_to(users_path)
+        expect(outro_usuario.reload.admin?).to be true
+      end
     end
   end
 
