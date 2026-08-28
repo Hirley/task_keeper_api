@@ -287,6 +287,22 @@ A implementação de fonte/contraste é só JS (`app/javascript/application.js`,
 
 O locale padrão da aplicação é `pt-BR` (ver `config/application.rb`), mas nem o Rails nem o Devise têm tradução embutida para esse locale — sem `config/locales/pt-BR.yml`, mensagens como a de "faça login para continuar" apareciam como `Translation missing`. Esse arquivo traduz as mensagens do Devise (login, logout, credenciais inválidas, recuperação de senha), as mensagens padrão de validação do Rails (`não pode ficar em branco`, `já está em uso` etc.), incluindo os nomes dos campos (`Título`, `E-mail`, `Permissão`...), e também `datetime.distance_in_words` (usado por `time_ago_in_words` em "Atividade recente" no painel inicial — sem essa tradução, o mesmo `Translation missing` apareceria ali). A regressão (mensagem sem login e credenciais inválidas) tem teste dedicado em `spec/requests/devise_i18n_spec.rb`.
 
+## Content Security Policy e SRI
+
+A política está em `config/initializers/content_security_policy.rb`, e o objetivo dela é um só: se algum dia entrar HTML de terceiro numa página, o navegador se recuse a **executar** script que não venha de uma origem declarada.
+
+Por isso `script-src` não tem `'unsafe-inline'` — e isso custou uma refatoração. Os botões da barra de acessibilidade e o link do tour usavam `onclick` inline, que só executa com essa diretiva ligada (nonce vale para tag `<script>`, não para atributo de evento). Passaram a declarar `data-tk-action`, resolvido por um único listener delegado no fim de `app/javascript/application.js`. Manter cinco atributos não valeria abrir mão de quase todo o valor do CSP.
+
+`style-src` mantém `'unsafe-inline'`, e isso é concessão consciente: o Bootstrap escreve estilo inline em tempo de execução (tooltip, dropdown, collapse) e as barras de carga do dashboard calculam a largura no servidor. Injeção de CSS deforma a página; não executa código.
+
+O nonce fica preso à sessão, não à requisição. Nonce novo a cada resposta quebra o Turbo Drive, que troca o `<body>` sem criar documento novo e mantém em vigor o CSP da **primeira** resposta — o script inline da página seguinte chegaria com um nonce que a política não conhece. O comentário no initializer detalha por que o gerador padrão do scaffold do Rails também não serve sozinho.
+
+Os dois arquivos do Bootstrap vindos do jsDelivr carregam com `integrity` (SHA-384) e `crossorigin`. Sem SRI, um comprometimento do CDN entrega JavaScript arbitrário dentro de uma origem que o CSP autoriza. Não há SRI no CSS do Google Fonts (a resposta varia conforme o navegador, então não há hash estável) nem no plugin do VLibras (a URL não é versionada e o arquivo é atualizado no lugar — um hash fixo quebraria o widget silenciosamente na próxima atualização do gov.br).
+
+`spec/requests/content_security_policy_spec.rb` cobre isso. Os exemplos verificam **ausências** de propósito: uma diretiva afrouxada não quebra nenhuma tela, então sem teste explícito a proteção sumiria sem ninguém notar.
+
+Limitação conhecida, anterior a este CSP: o Turbo reexecuta o `<script src>` do VLibras a cada navegação e o plugin redeclara sua variável `vw`, gerando `Uncaught SyntaxError` no console. Verificado com o CSP desativado — o widget continua funcionando.
+
 ## Devise + Turbo Drive
 
 A tela de login usa Turbo Drive (gem `turbo-rails`), que exige que toda resposta **2xx** a um `POST` de formulário seja um redirect — senão lança `Error: Form responses must redirect to another location` no console do navegador e não faz nada (a tela trava sem nenhum feedback pro usuário, nem a mensagem de erro aparece).

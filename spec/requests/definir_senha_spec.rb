@@ -67,7 +67,7 @@ RSpec.describe 'Definir senha no primeiro acesso', type: :request do
       follow_redirect!
 
       expect(response.body).to include('Fazer o tour guiado agora')
-      expect(response.body).to include('TkGuideTour.start()')
+      expect(response.body).to include('data-tk-action="tour-start"')
     end
 
     it 'permite continuar navegando normalmente depois de definir a senha' do
