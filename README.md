@@ -134,7 +134,7 @@ Cenários validados explicitamente:
 
 - um `executor` consegue criar uma demanda (via tela ou API), mas recebe `403`/é redirecionado ao tentar atualizar ou excluir;
 - líder e admin conseguem criar, atualizar e excluir demandas;
-- líder e admin conseguem listar/criar/excluir usuários, tanto pela tela `/users` quanto por `/api/v1/users` — mas só admin consegue definir o `telegram_chat_id` de um usuário (um líder que tenta é ignorado silenciosamente, sem erro);
+- líder e admin conseguem listar/criar/excluir usuários, tanto pela tela `/users` quanto por `/api/v1/users` — mas só admin consegue definir e ler o `telegram_chat_id` de um usuário (um líder que tenta definir é ignorado silenciosamente, sem erro, e o campo nem aparece na resposta da API para quem não é admin);
 - só admin acessa `/webhooks` — um líder que tenta é redirecionado, do mesmo jeito que um executor;
 - um usuário com permissão de gerenciar acessos não consegue excluir a própria conta, nem um usuário com demandas vinculadas;
 - o botão "Excluir" (demandas e usuários) carrega o Turbo e mostra o alerta de confirmação antes de enviar o form;
@@ -159,6 +159,8 @@ O que **não** tem cobertura automatizada, e por quê: interações que são só
 | DELETE | `/api/v1/users/:id`       | líder ou admin                 |
 
 Toda ação de escrita (`POST`/`PATCH`/`DELETE`) exige o header `Content-Type: application/json` — uma requisição sem esse header recebe `415 Unsupported Media Type`. Isso não é um capricho de formato: essa API autentica por sessão (cookie do Devise) e tem o token CSRF desativado (`Api::V1::BaseController`), então exigir `application/json` é o que impede um `<form>` HTML comum de outro site de forjar uma requisição usando a sessão já autenticada do usuário — um formulário nunca consegue definir esse Content-Type, só `application/x-www-form-urlencoded`, `multipart/form-data` ou `text/plain`.
+
+As respostas de `/api/v1/users` trazem uma lista fechada de campos (`Api::V1::UsersController::CAMPOS_PUBLICOS`): `id`, `name`, `email`, `role`, `must_change_password`, `created_at` e `updated_at` — mais o `telegram_chat_id`, e só para admin, que é quem pode gravá-lo. É uma allowlist de propósito, e não uma lista do que esconder: assim uma coluna nova na tabela `users` nasce fora da API até alguém decidir publicá-la, em vez de nascer publicada até alguém lembrar de escondê-la.
 
 ## Painel inicial (dashboard)
 

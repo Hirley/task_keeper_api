@@ -129,4 +129,54 @@ RSpec.describe 'Api::V1::Users', type: :request do
       expect(response.parsed_body['error']).to match(/demandas cadastradas/i)
     end
   end
+
+  # Ver Api::V1::UsersController::CAMPOS_PUBLICOS. A serialização daqui era
+  # uma blocklist (`except: %i[encrypted_password reset_password_token]`),
+  # então toda coluna nova da tabela users nascia publicada na API e só
+  # deixava de ser se alguém lembrasse de excluí-la — foi assim que o
+  # telegram_chat_id, que só admin pode gravar, passou a ser devolvido a
+  # qualquer líder. Os dois primeiros exemplos fecham a lista de propósito:
+  # uma coluna nova que apareça na resposta sem passar por CAMPOS_PUBLICOS
+  # quebra o spec em vez de vazar em silêncio.
+  describe 'serialização do usuário' do
+    let(:campos_esperados) { %w[id name email role must_change_password created_at updated_at] }
+    let!(:com_telegram) { create(:user, :executor, telegram_chat_id: '123456789') }
+
+    it 'devolve exatamente os campos públicos para um líder' do
+      sign_in lider
+
+      get '/api/v1/users'
+
+      serializado = response.parsed_body.find { |usuario| usuario['id'] == com_telegram.id }
+      expect(serializado.keys).to match_array(campos_esperados)
+    end
+
+    it 'acrescenta o telegram_chat_id para um admin, que é quem pode gravá-lo' do
+      sign_in admin
+
+      get "/api/v1/users/#{com_telegram.id}"
+
+      expect(response.parsed_body.keys).to match_array(campos_esperados + ['telegram_chat_id'])
+      expect(response.parsed_body['telegram_chat_id']).to eq('123456789')
+    end
+
+    it 'não devolve material do Devise nem para o admin' do
+      sign_in admin
+
+      get "/api/v1/users/#{com_telegram.id}"
+
+      %w[encrypted_password reset_password_token reset_password_sent_at remember_created_at].each do |campo|
+        expect(response.parsed_body).not_to have_key(campo)
+      end
+    end
+
+    it 'aplica a mesma lista na resposta do cadastro' do
+      sign_in lider
+
+      post '/api/v1/users', params: novo_usuario_params, as: :json
+
+      expect(response).to have_http_status(:created)
+      expect(response.parsed_body.keys).to match_array(campos_esperados)
+    end
+  end
 end
