@@ -45,10 +45,12 @@ function initializeTooltips() {
 document.addEventListener("turbo:load", initializeTooltips)
 
 // Barra de acessibilidade (ver app/views/layouts/application.html.haml):
-// tamanho de fonte e alto contraste. Os botões chamam window.TkAccessibility
-// diretamente via onclick — como o Turbo Drive substitui o <body> a cada
-// navegação mas nunca recria o <html>/o contexto JS, um objeto global
-// simples aqui dispensa reanexar event listeners a cada "turbo:load".
+// tamanho de fonte e alto contraste. Os botões declaram data-tk-action e
+// são resolvidos pela delegação no fim deste arquivo (antes chamavam
+// window.TkAccessibility direto via onclick, o que obrigaria o CSP a
+// liberar 'unsafe-inline' — ver config/initializers/content_security_policy.rb).
+// O objeto global continua existindo porque é ele que guarda o estado
+// entre navegações do Turbo Drive.
 const TK_FONT_SCALE_KEY = "tk-font-scale"
 const TK_CONTRAST_KEY = "tk-high-contrast"
 const TK_FONT_SCALE_DEFAULT = 100
@@ -542,4 +544,35 @@ window.TkGuideTour = {
 document.addEventListener("turbo:load", () => {
   const autostart = document.getElementById("tk-tour-autostart")
   if (autostart?.dataset.autostart === "true") window.TkGuideTour.start()
+})
+
+// ---------------------------------------------------------------------------
+// Delegação de clique para as ações declaradas em data-tk-action: os botões
+// da barra de acessibilidade e o link "Fazer o tour guiado agora" do flash
+// (ver app/views/layouts/application.html.haml).
+//
+// Existe por causa do CSP. Esses botões usavam onclick inline, e atributo de
+// evento inline só executa se script-src liberar 'unsafe-inline' — que é
+// exatamente a diretiva que faz o CSP deixar de proteger contra XSS. Nonce
+// não resolve: nonce vale para tags <script>, não para atributos onclick.
+//
+// Um único listener em `document`, registrado uma vez no carregamento do
+// módulo, cobre tudo: o Turbo Drive troca o <body> a cada navegação, mas
+// nunca recria o document, então não há o que reanexar em "turbo:load".
+// As funções são resolvidas na hora do clique, e não aqui, porque
+// window.TkGuideTour só é definido mais acima neste mesmo arquivo.
+const TK_ACTIONS = {
+  "font-decrease": () => window.TkAccessibility.decreaseFont(),
+  "font-increase": () => window.TkAccessibility.increaseFont(),
+  "font-reset": () => window.TkAccessibility.resetFont(),
+  "contrast-toggle": () => window.TkAccessibility.toggleContrast(),
+  "tour-start": () => window.TkGuideTour.start()
+}
+
+document.addEventListener("click", (event) => {
+  const trigger = event.target.closest("[data-tk-action]")
+  if (!trigger) return
+
+  const acao = TK_ACTIONS[trigger.dataset.tkAction]
+  if (acao) acao()
 })
