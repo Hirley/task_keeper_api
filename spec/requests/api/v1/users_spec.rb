@@ -148,7 +148,7 @@ RSpec.describe 'Api::V1::Users', type: :request do
       get '/api/v1/users'
 
       serializado = response.parsed_body.find { |usuario| usuario['id'] == com_telegram.id }
-      expect(serializado.keys).to contain_exactly(*campos_esperados)
+      expect(serializado.keys).to match_array(campos_esperados)
     end
 
     it 'acrescenta o telegram_chat_id para um admin, que é quem pode gravá-lo' do
@@ -156,7 +156,7 @@ RSpec.describe 'Api::V1::Users', type: :request do
 
       get "/api/v1/users/#{com_telegram.id}"
 
-      expect(response.parsed_body.keys).to contain_exactly(*campos_esperados, 'telegram_chat_id')
+      expect(response.parsed_body.keys).to match_array(campos_esperados + ['telegram_chat_id'])
       expect(response.parsed_body['telegram_chat_id']).to eq('123456789')
     end
 
@@ -176,7 +176,7 @@ RSpec.describe 'Api::V1::Users', type: :request do
       post '/api/v1/users', params: novo_usuario_params, as: :json
 
       expect(response).to have_http_status(:created)
-      expect(response.parsed_body.keys).to contain_exactly(*campos_esperados)
+      expect(response.parsed_body.keys).to match_array(campos_esperados)
     end
   end
 end
