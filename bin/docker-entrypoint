@@ -5,6 +5,31 @@
 # Puma recusa subir achando que já existe uma instância rodando.
 rm -f /rails/tmp/pids/server.pid
 
+# Sem SECRET_KEY_BASE definido, gera um efêmero em vez de deixar o Rails
+# cair — é o que mantém o `docker compose up` funcionando sem nenhum
+# passo manual (ver docker-compose.yml).
+#
+# Antes havia uma chave fixa como default no docker-compose.yml, o que
+# era pior de um jeito silencioso: ela está no histórico do repositório,
+# que é público, e o SECRET_KEY_BASE assina o cookie de sessão. Qualquer
+# pessoa que lesse o repo conseguiria forjar um cookie e autenticar como
+# qualquer usuário, inclusive admin, numa instância que tivesse subido
+# com o default. E o modo de falha era opt-out: bastava esquecer de
+# definir a variável.
+#
+# Uma chave nova a cada boot desloga todo mundo quando o container
+# reinicia — chato num deploy de verdade, mas é uma falha ÓBVIA, que se
+# percebe e se corrige, e não uma brecha invisível. Em produção de
+# verdade, defina a variável (ver README, seção "Docker").
+if [ -z "${SECRET_KEY_BASE}" ]; then
+  echo "[entrypoint] SECRET_KEY_BASE não definido — gerando uma chave efêmera só para esta execução."
+  echo "[entrypoint] As sessões serão invalidadas no próximo restart. Defina SECRET_KEY_BASE em produção."
+  # Ruby puro, e não `bin/rails secret`: o comando do Rails faz boot da
+  # aplicação, que é exatamente o que não sobe sem SECRET_KEY_BASE.
+  SECRET_KEY_BASE="$(ruby -rsecurerandom -e 'print SecureRandom.hex(64)')"
+  export SECRET_KEY_BASE
+fi
+
 # Prepara o banco (cria se não existir, aplica migrations pendentes) toda
 # vez que o servidor sobe — bin/rails db:prepare é idempotente, então é
 # seguro rodar isso a cada restart do container.

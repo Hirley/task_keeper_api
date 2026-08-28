@@ -4,8 +4,8 @@
 # descrito no README, apontando pra um Postgres local ou pro serviço "db"
 # abaixo).
 #
-# Uso (sem nenhum passo manual — já sobe com um SECRET_KEY_BASE padrão
-# pra uso local/demo, ver o default abaixo):
+# Uso (sem nenhum passo manual — sem SECRET_KEY_BASE definido, o
+# entrypoint gera uma chave efêmera pra execução; ver bin/docker-entrypoint):
 #   docker compose up --build
 #
 # Os dados do Postgres ficam num volume nomeado (tk_pgdata), então
@@ -33,11 +33,17 @@ services:
     ports:
       - "${PORT:-3000}:3000"
     environment:
-      # Só serve pra rodar local/demo sem passo manual — em produção de
-      # verdade, defina SECRET_KEY_BASE de verdade via variável de
-      # ambiente/.env (ver README, seção "Docker"), nunca reaproveite este
-      # valor.
-      SECRET_KEY_BASE: ${SECRET_KEY_BASE:-507f0ac1cad395ebf59321b19903ca5926a5fda68872d87ef9a6106d83ec4ac5a09de644578b7ac2d8c531623d2940a9301fe030f441cced29da4fcd9a662500}
+      # Sem valor default de propósito: quando esta variável chega vazia,
+      # bin/docker-entrypoint gera uma chave efêmera só para a execução
+      # (ver o comentário lá, que explica por que uma chave fixa aqui era
+      # perigosa). Em produção de verdade, defina via .env — ver README,
+      # seção "Docker".
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:-}
+      # Servido em http://localhost — sem TLS, então o redirect do
+      # force_ssl deixaria a demo inacessível. Num deploy de verdade essa
+      # variável não é definida, e o default de production.rb (ligado)
+      # vale. Ver config/environments/production.rb.
+      FORCE_SSL: ${FORCE_SSL:-false}
       DB_HOST: db
       DB_PORT: 5432
       DB_USERNAME: ${DB_USERNAME:-postgres}

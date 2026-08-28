@@ -2,9 +2,12 @@
 
 class ApplicationController < ActionController::Base
   include Paginatable
+  # O before_action vem de dentro do concern, então roda antes do
+  # authenticate_user! abaixo — não faz diferença, porque
+  # #troca_de_senha_pendente? já sai cedo pra quem não está logado.
+  include ExigeTrocaDeSenha
 
   before_action :authenticate_user!
-  before_action :exigir_troca_de_senha!
 
   rescue_from CanCan::AccessDenied do |exception|
     respond_to do |format|
@@ -16,18 +19,9 @@ class ApplicationController < ActionController::Base
 
   private
 
-  # Primeiro acesso: quem loga com a senha provisória cadastrada pelo
-  # líder/admin (User#must_change_password) é barrado em qualquer outra
-  # tela até passar por DefinirSenhaController e cadastrar a própria
-  # senha. `devise_controller?` libera as telas do próprio Devise (acima
-  # de tudo o logout — ver destroy_user_session_path no navbar — senão
-  # quem está preso nesse estado não conseguiria nem deslogar).
-  def exigir_troca_de_senha!
-    return unless user_signed_in?
-    return if devise_controller?
-    return if controller_name == 'definir_senha'
-    return unless current_user.must_change_password?
-
+  # Como a tela web recusa quem ainda está com a senha provisória — a
+  # condição em si mora em ExigeTrocaDeSenha, compartilhada com a API.
+  def responder_troca_de_senha_exigida
     redirect_to edit_definir_senha_path
   end
 end
