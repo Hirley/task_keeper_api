@@ -3,6 +3,12 @@
 module Api
   module V1
     class BaseController < ActionController::Base
+      # Herda de ActionController::Base, e não de ApplicationController —
+      # por isso a regra de primeiro acesso precisa ser incluída
+      # explicitamente aqui. Era justamente essa divergência de herança
+      # que deixava a API inteira fora do portão da senha provisória.
+      include ExigeTrocaDeSenha
+
       # Esta API autentica por sessão (Devise), não por token, e por isso
       # tem o token CSRF desativado (skip_before_action abaixo) — normal
       # para uma API JSON pura. O problema é que, sem a checagem de
@@ -39,6 +45,14 @@ module Api
         return if request.content_type == 'application/json'
 
         render json: { error: 'Content-Type deve ser application/json.' }, status: :unsupported_media_type
+      end
+
+      # 403 e não redirect: a tela web manda o usuário pra /definir-senha,
+      # mas um cliente de API precisa de uma resposta que ele consiga ler.
+      def responder_troca_de_senha_exigida
+        render json: {
+          error: 'Defina a sua senha antes de usar a API. Acesse /definir-senha na interface web.'
+        }, status: :forbidden
       end
     end
   end

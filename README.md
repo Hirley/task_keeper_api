@@ -69,7 +69,12 @@ Pra subir localmente, um único comando, sem nenhum passo manual antes:
 docker compose up --build
 ```
 
-Isso sobe a imagem de produção **e** um serviço `db` (PostgreSQL) localmente, na porta `3000`, com os dados do banco persistidos num volume nomeado (sobrevivem a `docker compose down`, mas não a `docker compose down -v`). O `docker-compose.yml` já traz um `SECRET_KEY_BASE` padrão pra esse uso local/demo (só copie `.env.example` para `.env` se quiser sobrescrever algum valor). Não é um ambiente de desenvolvimento com hot-reload — para isso, continue usando `bundle install && rails server` (apontando pro serviço `db` ou pra um Postgres local), como na seção anterior.
+Isso sobe a imagem de produção **e** um serviço `db` (PostgreSQL) localmente, na porta `3000`, com os dados do banco persistidos num volume nomeado (sobrevivem a `docker compose down`, mas não a `docker compose down -v`). Não é um ambiente de desenvolvimento com hot-reload — para isso, continue usando `bundle install && rails server` (apontando pro serviço `db` ou pra um Postgres local), como na seção anterior.
+
+Duas coisas acontecem sozinhas nesse modo local, e **nenhuma das duas deve valer num deploy de verdade**:
+
+- **`SECRET_KEY_BASE`**: se a variável não estiver definida, `bin/docker-entrypoint` gera uma chave efêmera só pra aquela execução, e avisa no log. Isso mantém o comando acima sem nenhum passo manual, mas invalida as sessões a cada restart do container. Em produção, defina a variável (copie `.env.example` para `.env`) — uma chave gerada com `bin/rails secret`. O `SECRET_KEY_BASE` assina o cookie de sessão: quem o conhece consegue forjar um cookie e autenticar como qualquer usuário, então ele nunca deve ser versionado nem reaproveitado entre ambientes.
+- **`FORCE_SSL=false`**: a demo é servida em `http://localhost`, sem TLS, e o redirect de `force_ssl` a deixaria inacessível. Num deploy de verdade essa variável não é definida e o default de `config/environments/production.rb` (ligado) vale — é o que marca o cookie de sessão como `Secure`, envia HSTS e faz os links de redefinição de senha saírem como `https://`.
 
 Também dá pra usar a imagem já publicada em vez de buildar localmente (ver seção "Integração contínua"):
 
