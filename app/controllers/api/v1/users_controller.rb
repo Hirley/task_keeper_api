@@ -22,6 +22,9 @@ module Api
       # POST /api/v1/users
       def create
         @user = User.new(user_params)
+        # Ver User#validar_atribuicao_de_papel: sem isso a API seria a
+        # porta dos fundos pra um líder cadastrar um admin.
+        @user.ator = current_user
 
         if @user.save
           render json: @user, except: %i[encrypted_password reset_password_token], status: :created

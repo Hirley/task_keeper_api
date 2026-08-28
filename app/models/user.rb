@@ -6,10 +6,13 @@
 #
 # Três papéis: executor (cadastra/visualiza demandas), líder (mais
 # gerencia demandas de qualquer usuário e cadastra/altera acessos) e admin
-# (mais dois privilégios exclusivos que nem o líder tem: telegram_chat_id
-# — ver UsersController#user_params/#permission_params — e Webhooks de
-# saída — ver app/models/ability.rb). Admin não substitui o líder: os dois
-# continuam cadastrando usuários/alterando permissões igualmente.
+# (mais três privilégios exclusivos que nem o líder tem: telegram_chat_id
+# — ver UsersController#user_params/#permission_params —, Webhooks de
+# saída — ver app/models/ability.rb — e conceder/remover o próprio papel
+# admin — ver #validar_atribuicao_de_papel).
+#
+# Fora esses três, admin não substitui o líder: os dois cadastram
+# usuários e alternam qualquer outro entre executor e líder igualmente.
 class User < ApplicationRecord
   devise :database_authenticatable, :recoverable, :rememberable, :validatable
 
@@ -20,6 +23,15 @@ class User < ApplicationRecord
 
   validates :name, presence: true
   validates :role, presence: true
+  validate :validar_atribuicao_de_papel
+
+  # Quem está cadastrando/editando este usuário. Não é coluna — os
+  # controllers preenchem (ver UsersController#set_user/#create e
+  # Api::V1::UsersController#create) só pra #validar_atribuicao_de_papel
+  # poder decidir. Fica nil no console, nos seeds e nos testes que não
+  # tratam dessa regra, e aí a validação não roda: quem chega no console
+  # já chega no banco, não há fronteira a defender ali.
+  attr_accessor :ator
 
   # Usado por TelegramNotifier para avisar o usuário sobre demandas
   # atrasadas (ver app/services/telegram_notifier.rb). É opcional — nem
@@ -97,5 +109,51 @@ class User < ApplicationRecord
 
   def self.ransackable_associations(_auth_object = nil)
     []
+  end
+
+  private
+
+  # O papel admin é a ÚNICA coisa que separa admin de líder: em
+  # app/models/ability.rb o líder tem `can :manage, :all` com um único
+  # `cannot :manage, WebhookSubscription`. Como o líder também gerencia
+  # usuários (e isso é regra de negócio, não descuido), sem esta
+  # validação ele contornava aquele `cannot` num request só — bastava um
+  # PATCH no próprio usuário com role=admin, e no request seguinte já
+  # administrava webhooks. Duas regras fecham isso:
+  #
+  #   * ninguém altera o próprio papel. Vale inclusive pro admin, o que
+  #     de quebra impede o último admin de se rebaixar e deixar os
+  #     webhooks sem ninguém que possa gerenciá-los;
+  #   * só admin concede ou remove o papel admin — nas duas direções,
+  #     senão um líder ainda poderia rebaixar todos os admins.
+  #
+  # O que o líder continua podendo fazer, porque é a regra documentada:
+  # alternar qualquer outro usuário entre executor e líder.
+  def validar_atribuicao_de_papel
+    return if ator.blank?
+    return unless papel_mudou?
+
+    if proprio_usuario?
+      errors.add(:role, 'não pode ser alterado por você mesmo — peça a outro líder ou admin')
+    elsif envolve_papel_admin? && !ator.admin?
+      errors.add(:role, 'de admin só pode ser concedido ou removido por outro admin')
+    end
+  end
+
+  # Em registro novo o papel está sempre sendo definido. Nos demais, só
+  # interessa quando role de fato muda — sem esta guarda, um líder que
+  # editasse apenas o NOME de um admin levaria um erro de permissão que
+  # não tem nada a ver com o que ele fez.
+  def papel_mudou?
+    new_record? || will_save_change_to_role?
+  end
+
+  def proprio_usuario?
+    persisted? && ator.id == id
+  end
+
+  # Tanto conceder (o papel novo é admin) quanto remover (o antigo era).
+  def envolve_papel_admin?
+    admin? || role_was == 'admin'
   end
 end

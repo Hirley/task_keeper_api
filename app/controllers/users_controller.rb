@@ -42,6 +42,7 @@ class UsersController < ApplicationController
 
   def create
     @user = User.new(user_params)
+    @user.ator = current_user
 
     if @user.save
       redirect_to users_path, notice: 'Usuário cadastrado com sucesso.'
@@ -74,8 +75,12 @@ class UsersController < ApplicationController
     authorize! :manage, User
   end
 
+  # +ator+ não é coluna: é quem está mexendo neste usuário, e o model usa
+  # pra decidir se a mudança de papel é permitida (ver
+  # User#validar_atribuicao_de_papel).
   def set_user
     @user = User.find(params[:id])
+    @user.ator = current_user
   end
 
   def user_params

@@ -8,7 +8,11 @@
 #     (não há autocadastro) — mas só admin edita o telegram_chat_id de um
 #     usuário (restrição de atributo, não dá pra expressar via CanCan; ver
 #     UsersController#user_params/#permission_params e
-#     app/views/users/_form.html.haml).
+#     app/views/users/_form.html.haml), e só admin concede ou remove o
+#     papel admin (restrição de VALOR, que o CanCan também não expressa —
+#     fica em User#validar_atribuicao_de_papel). Sem essa última, o
+#     `cannot` de WebhookSubscription logo abaixo seria decorativo: o
+#     líder gerencia usuários, então bastaria se promover a admin.
 #   * Líder e admin acessam o relatório semanal (RelatoriosController,
 #     autorizado via `can? :read, :relatorio` — símbolo, não um model,
 #     porque não existe uma tabela/registro "Relatorio"; já coberto pelo

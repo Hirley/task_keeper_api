@@ -32,13 +32,28 @@
       = f.text_field :telegram_chat_id, class: "form-control", autocomplete: "off", inputmode: "numeric", placeholder: "Ex.: 123456789"
       %div.form-text Para receber lembretes de demandas atrasadas pelo Telegram (veja o ⓘ acima como descobrir o número).
 
-  .mb-3
-    = f.label :role, "Permissão", class: "form-label"
-    = f.select :role, User.roles.keys.map { |role| [role.humanize, role] }, {}, class: "form-select"
-    %div.form-text
-      Líder gerencia demandas de qualquer usuário e cadastra/altera acessos.
-      Admin faz o mesmo, e é o único que configura Chat ID do Telegram e Webhooks.
-      Executor só cadastra e visualiza demandas.
+  -# Só admin concede/remove o papel admin, e ninguém altera o próprio
+  -# papel (ver User#validar_atribuicao_de_papel — a garantia é lá, no
+  -# servidor; aqui é só pra não oferecer uma opção que vai falhar).
+  - proprio_usuario = user.persisted? && user.id == current_user.id
+  - papeis = current_user.admin? ? User.roles.keys : User.roles.keys - ["admin"]
+
+  - if proprio_usuario
+    .mb-3
+      = f.label :role, "Permissão", class: "form-label"
+      = f.text_field :role, value: user.role_label, class: "form-control", disabled: true
+      %div.form-text Você não pode alterar a própria permissão — peça a outro líder ou admin.
+  - else
+    .mb-3
+      = f.label :role, "Permissão", class: "form-label"
+      = f.select :role, papeis.map { |role| [role.humanize, role] }, {}, class: "form-select"
+      %div.form-text
+        Líder gerencia demandas de qualquer usuário e cadastra/altera acessos.
+        Admin faz o mesmo, e é o único que configura Chat ID do Telegram e Webhooks.
+        Executor só cadastra e visualiza demandas.
+        - unless current_user.admin?
+          %br
+          Só um admin concede ou remove o papel de admin.
 
   .d-flex.gap-2
     = f.submit(user.new_record? ? "Cadastrar" : "Salvar permissões", class: "btn btn-tk-primary")
