@@ -36,6 +36,29 @@ RSpec.describe User, type: :model do
     end
   end
 
+  # Ver config/initializers/devise.rb: o mínimo é maior que o default do
+  # Devise porque a primeira senha de todo usuário é escolhida por um
+  # líder/admin, não pelo dono da conta.
+  describe 'tamanho mínimo da senha' do
+    it 'rejeita uma senha mais curta que o mínimo configurado' do
+      curta = 'a' * (Devise.password_length.min - 1)
+      user = build(:user, password: curta, password_confirmation: curta)
+
+      expect(user).not_to be_valid
+      expect(user.errors[:password]).to be_present
+    end
+
+    it 'aceita uma senha no tamanho mínimo' do
+      no_limite = 'a' * Devise.password_length.min
+
+      expect(build(:user, password: no_limite, password_confirmation: no_limite)).to be_valid
+    end
+
+    it 'exige pelo menos 12 caracteres' do
+      expect(Devise.password_length.min).to be >= 12
+    end
+  end
+
   describe '#must_change_password' do
     it 'é true por padrão (senha provisória cadastrada pelo líder/admin, ver a migration)' do
       expect(described_class.new.must_change_password?).to be true

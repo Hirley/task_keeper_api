@@ -1,7 +1,13 @@
 # frozen_string_literal: true
 
 Rails.application.routes.draw do
-  devise_for :users
+  # Controllers próprios só pra pendurar o throttle de tentativas nas duas
+  # ações que aceitam e-mail/senha sem login (ver AuthThrottling); o resto
+  # do comportamento e todos os helpers de rota continuam os do Devise.
+  devise_for :users, controllers: {
+    sessions: 'users/sessions',
+    passwords: 'users/passwords'
+  }
 
   # Primeiro acesso: troca obrigatória da senha provisória cadastrada
   # pelo líder/admin (ver ApplicationController#exigir_troca_de_senha! e

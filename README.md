@@ -55,9 +55,9 @@ Usuários de exemplo criados pelo `db:seed`:
 
 | Papel    | E-mail                        | Senha        |
 |----------|--------------------------------|--------------|
-| admin    | admin@task-keeper.local        | senha123456  |
-| líder    | lider@task-keeper.local        | senha123456  |
-| executor | executor@task-keeper.local     | senha123456  |
+| admin    | admin@task-keeper.local        | senhaSegura123  |
+| líder    | lider@task-keeper.local        | senhaSegura123  |
+| executor | executor@task-keeper.local     | senhaSegura123  |
 
 ## Docker
 
@@ -197,7 +197,10 @@ Além do Telegram, o **admin** pode cadastrar webhooks genéricos em `/webhooks`
 - `WebhookSubscription` (`app/models/webhook_subscription.rb`) guarda a URL e os eventos escolhidos (array nativo do Postgres). Um webhook pode ser pausado (`active: false`) sem precisar excluir o cadastro.
 - `WebhookDispatcher` (`app/services/webhook_dispatcher.rb`) encontra as assinaturas ativas que escutam o evento e enfileira `WebhookDeliveryJob` pra cada uma — em background (adapter `:async` padrão do Rails; este projeto não tem Sidekiq/Solid Queue configurado), pra não travar a request original no tempo de resposta de um serviço de terceiro.
 - `WebhookDelivery` (`app/services/webhook_delivery.rb`) faz o `POST` de fato, com timeout curto (5s). Um endpoint de terceiro fora do ar, lento ou respondendo erro não derruba nada — só loga e segue; não há retry.
-- **Proteção contra SSRF**: a URL cadastrada é validada no momento do cadastro/edição — o host é resolvido e endereços de rede privada/local (`127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16` e as faixas IPv6 equivalentes) são recusados, pra reduzir o risco do admin apontar um webhook pra um serviço interno da própria rede.
+- **Proteção contra SSRF**: `PublicHttpTarget` (`app/services/public_http_target.rb`) resolve o host e recusa endereços de rede privada/local (`127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16` e as faixas IPv6 equivalentes), pra que um webhook não vire um jeito de fazer a aplicação bater num serviço interno da própria rede. A checagem roda **duas vezes, de propósito**:
+  - no **cadastro/edição** (validação de `WebhookSubscription`), só pra dar o erro no formulário enquanto o admin ainda está na tela;
+  - de novo na **hora da entrega** (`WebhookDelivery`), imediatamente antes de conectar — e é essa que protege de fato. Sozinha, a validação do cadastro não segura *DNS rebinding*: como a entrega acontece quando um evento dispara (possivelmente dias depois), bastaria cadastrar um host que resolve pra um IP público e trocar o registro DNS com calma. O IP verificado na entrega é passado direto pro `Net::HTTP` (`ipaddr:`), então o endereço checado é exatamente o endereço conectado — sem intervalo entre a checagem e o uso. O host original continua valendo pro cabeçalho `Host`, SNI e validação do certificado TLS.
+  - o IP **não** é gravado no banco: resolver a cada entrega é o que mantém endpoints legítimos funcionando quando o provedor troca de IP.
 
 ## Relatório semanal
 
@@ -243,6 +246,11 @@ Como não há autocadastro, todo usuário novo entra pela primeira vez com a sen
   - **por e-mail** — `/users/password`, fluxo padrão do Devise (`:recoverable`), com views próprias em `app/views/devise/passwords/` no mesmo estilo visual da tela de login;
   - **por Telegram** — `/senha/telegram` (`TelegramPasswordResetsController`), pra quem já tem o **Chat ID do Telegram** cadastrado (ver seção "Notificação de atraso via Telegram"): `Users::SendPasswordResetViaTelegram` gera o mesmo token de redefinição do Devise e `TelegramNotifier#enviar_redefinicao_senha` entrega o link por lá em vez de e-mail; sem Chat ID cadastrado, nada é enviado (mesmo padrão de "silenciosamente pula" já usado no lembrete de atraso);
   - os dois fluxos terminam na mesma tela (`/users/password/edit?reset_password_token=...`) e, ao definir a nova senha, `User#reset_password` (sobrescrito) também marca `must_change_password` como `false`.
+
+**Proteção das telas de autenticação.** Como a primeira senha de todo usuário é escolhida por um líder/admin (e não pelo dono da conta), ela tende a ser o elo mais fraco — por isso duas travas se apoiam uma na outra:
+
+- **tamanho mínimo de 12 caracteres** (`config.password_length`, em `config/initializers/devise.rb`), acima do default de 6 do Devise;
+- **rate limit** por IP e por e-mail no login e nos dois fluxos de "esqueci minha senha" (`AuthThrottling`, em `app/controllers/concerns/auth_throttling.rb`), usando o `rate_limit` nativo do Rails 8 — sem rack-attack, mesma filosofia de manter poucas dependências. É throttle e não bloqueio de conta (`:lockable`) de propósito: bloqueio é ele mesmo um vetor de negação de serviço, já que quem souber o e-mail da vítima consegue trancar a conta dela; o throttle só atrasa e se resolve sozinho quando a janela passa. Além da força bruta, o limite por e-mail é o que impede o formulário de redefinição de senha de virar uma metralhadora de e-mails/mensagens de Telegram pra caixa de uma vítima.
 
 ## Identidade visual e busca/paginação
 

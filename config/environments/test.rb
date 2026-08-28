@@ -33,7 +33,13 @@ Rails.application.configure do
   config.eager_load = false
   config.consider_all_requests_local = true
   config.action_controller.perform_caching = false
-  config.cache_store = :null_store
+  # :memory_store, e não :null_store, porque o rate_limit do Rails conta
+  # as tentativas no cache — com :null_store o contador nunca sobe e o
+  # throttle de AuthThrottling ficaria sem teste nenhum. Nada mais na
+  # aplicação usa Rails.cache, então isso não liga cache de verdade em
+  # lugar nenhum; o rails_helper limpa o store antes de cada exemplo pra
+  # que um contador não vaze de um teste pro outro.
+  config.cache_store = :memory_store
 
   config.action_dispatch.show_exceptions = :none
 
