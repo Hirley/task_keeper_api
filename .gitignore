@@ -30,3 +30,10 @@
 .env
 .env.*
 !.env.example
+
+# Configuração do Claude Code: settings.json é versionado (vale pra todo
+# mundo que clonar o repositório), settings.local.json é a sobrescrita
+# pessoal de cada um. Worktrees ficam em .claude/worktrees/ e são cópias
+# de trabalho do próprio repositório — nunca devem ser versionadas.
+/.claude/settings.local.json
+/.claude/worktrees/
