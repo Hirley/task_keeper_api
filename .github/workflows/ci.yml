@@ -118,14 +118,20 @@ jobs:
       #   * "latest" — só no topo da main. É uma tag que se move, então
       #     serve pra "me dá a última", nunca pra fixar uma versão.
       #
-      #     A condição é uma comparação explícita de ref, e não o
-      #     {{is_default_branch}} do metadata-action, porque essa expressão
-      #     também vale TRUE em push de tag (o próprio README da action diz
-      #     que "Git tag is also considered as default branch"). O build da
-      #     v2.0.0 reescreveu o "latest" por causa disso. Não deu problema
-      #     ali, porque a tag saiu do topo da main — mas marcar um commit
-      #     antigo faria o "latest" regredir para uma imagem velha, que é
-      #     exatamente o que não se quer;
+      #     Manter o "latest" fora dos builds de tag exigiu fechar DUAS
+      #     portas, e a segunda só apareceu depois que a primeira foi
+      #     fechada e o "latest" continuou saindo:
+      #
+      #       1. a condição desta regra é uma comparação explícita de ref,
+      #          e não o {{is_default_branch}} do metadata-action — essa
+      #          expressão também vale TRUE em push de tag (o README da
+      #          action diz que "Git tag is also considered as default
+      #          branch");
+      #       2. o `flavor: latest=false` acima, porque o default
+      #          "latest=auto" acrescenta a tag por fora destas regras.
+      #
+      #     Marcar um commit antigo com as duas portas abertas faria o
+      #     "latest" regredir para uma imagem velha, em silêncio;
       #   * SHA completo — sempre, em qualquer disparo. É a única tag que
       #     identifica exatamente um commit;
       #   * semver — só em push de tag v*. "2.0.0" fixa a release; "2.0"
@@ -138,6 +144,16 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository }}
+          # O default é "latest=auto", que acrescenta "latest" sozinho em
+          # toda tag semver — por FORA das regras de `tags:` abaixo. Foi o
+          # que reescreveu o "latest" nos builds da v2.0.0 e da v2.0.1,
+          # mesmo com a regra type=raw já avaliando enable=false na v2.0.1
+          # (dá pra ver no log do job: "type=raw,value=latest,enable=false"
+          # e, logo abaixo, "Processing flavor input / latest=auto").
+          #
+          # Com latest=false, a única coisa capaz de gerar "latest" passa a
+          # ser a regra explícita logo abaixo — que só vale no default branch.
+          flavor: latest=false
           tags: |
             type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
             type=sha,format=long

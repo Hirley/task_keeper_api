@@ -120,7 +120,12 @@ O build é validado automaticamente a cada push/PR pelo CI (ver seção "Integra
   | `2.0.0` | push de tag `v2.0.0` | fixar a release |
   | `2.0` | push de tag `v2.0.x` | acompanhar correções dentro do minor |
 
-  Build de tag **não** mexe no `latest` — publicar uma release não deve reescrever o que "a última" aponta. Isso exige uma comparação explícita de ref na condição do `latest`, e não o `{{is_default_branch}}` do `metadata-action`: essa expressão também vale `true` em push de tag, e foi assim que o build da v2.0.0 acabou reescrevendo o `latest`. Ali não houve dano, porque a tag saiu do topo da `main`, mas marcar um commit antigo faria o `latest` regredir.
+  Build de tag **não** mexe no `latest` — publicar uma release não deve reescrever o que "a última" aponta. Isso exigiu fechar duas portas no `metadata-action`, e a segunda só apareceu depois que a primeira foi fechada e o `latest` continuou saindo:
+
+  1. a condição da regra do `latest` compara o ref com o default branch explicitamente, em vez de usar `{{is_default_branch}}` — essa expressão também vale `true` em push de tag;
+  2. `flavor: latest=false`, porque o default `latest=auto` acrescenta a tag por fora das regras de `tags:`, para toda tag semver.
+
+  Os builds da v2.0.0 e da v2.0.1 reescreveram o `latest` por causa disso. Não houve dano em nenhum dos dois, porque as duas tags saíram do topo da `main` e o `latest` já apontava para aquele commit — mas marcar um commit antigo faria o `latest` regredir em silêncio.
 
   Também não é gerada tag só de major (`2`) de propósito — num projeto que ainda muda comportamento entre minors, uma tag tão larga prometeria mais estabilidade do que existe.
 
