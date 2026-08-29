@@ -116,10 +116,16 @@ jobs:
       # pelo GHCR) e decide as tags conforme o que disparou o build:
       #
       #   * "latest" — só no topo da main. É uma tag que se move, então
-      #     serve pra "me dá a última", nunca pra fixar uma versão. Note
-      #     que build de tag NÃO mexe nela: is_default_branch é falso num
-      #     ref de tag, e é isso que se quer — publicar uma release não
-      #     deve reescrever o que "latest" aponta;
+      #     serve pra "me dá a última", nunca pra fixar uma versão.
+      #
+      #     A condição é uma comparação explícita de ref, e não o
+      #     {{is_default_branch}} do metadata-action, porque essa expressão
+      #     também vale TRUE em push de tag (o próprio README da action diz
+      #     que "Git tag is also considered as default branch"). O build da
+      #     v2.0.0 reescreveu o "latest" por causa disso. Não deu problema
+      #     ali, porque a tag saiu do topo da main — mas marcar um commit
+      #     antigo faria o "latest" regredir para uma imagem velha, que é
+      #     exatamente o que não se quer;
       #   * SHA completo — sempre, em qualquer disparo. É a única tag que
       #     identifica exatamente um commit;
       #   * semver — só em push de tag v*. "2.0.0" fixa a release; "2.0"
@@ -133,7 +139,7 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
             type=sha,format=long
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
