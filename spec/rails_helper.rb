@@ -37,6 +37,19 @@ RSpec.configure do |config|
     Rails.cache.clear
     ActionController::Base.cache_store.clear
   end
+
+  # Ver config/initializers/devise.rb e spec/devise_warden_boot_spec.rb.
+  # A invariante é "o Warden já conhece as estratégias antes da primeira
+  # requisição", e depois de qualquer requisição ela passa a valer de
+  # qualquer jeito — então medir dentro de um exemplo só funcionaria se
+  # esse exemplo fosse o primeiro da suíte, que é exatamente o tipo de
+  # dependência de ordem que deixou o bug escondido. O retrato é tirado
+  # aqui, antes de qualquer exemplo rodar.
+  config.add_setting :estrategias_do_warden_no_boot
+  config.before(:suite) do
+    RSpec.configuration.estrategias_do_warden_no_boot =
+      Devise.warden_config[:default_strategies].dup
+  end
 end
 
 Shoulda::Matchers.configure do |config|
