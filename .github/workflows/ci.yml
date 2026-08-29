@@ -3,6 +3,12 @@ name: CI
 on:
   push:
     branches: [main]
+    # Tag de release (v1.2.3) dispara o CI inteiro de novo — e é isso que
+    # faz a imagem sair com a tag da versão (ver o job "docker" abaixo).
+    # Rodar lint e testes de novo aqui não é redundância inútil: a tag pode
+    # ser criada sobre um commit antigo, e o que interessa é que o código
+    # daquele ponto passa, não que o topo da main passava.
+    tags: ['v*']
   pull_request:
 
 concurrency:
@@ -107,8 +113,20 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # docker/metadata-action normaliza owner/repo pra minúsculas (exigido
-      # pelo GHCR) e gera as tags: "latest" (default branch) + o SHA do
-      # commit, pra sempre dar pra apontar exatamente qual build está rodando.
+      # pelo GHCR) e decide as tags conforme o que disparou o build:
+      #
+      #   * "latest" — só no topo da main. É uma tag que se move, então
+      #     serve pra "me dá a última", nunca pra fixar uma versão. Note
+      #     que build de tag NÃO mexe nela: is_default_branch é falso num
+      #     ref de tag, e é isso que se quer — publicar uma release não
+      #     deve reescrever o que "latest" aponta;
+      #   * SHA completo — sempre, em qualquer disparo. É a única tag que
+      #     identifica exatamente um commit;
+      #   * semver — só em push de tag v*. "2.0.0" fixa a release; "2.0"
+      #     acompanha as correções dentro daquele minor. Não geramos a tag
+      #     de major sozinho ("2") de propósito: num projeto que ainda muda
+      #     de comportamento entre minors, uma tag tão larga promete mais
+      #     estabilidade do que existe.
       - name: Metadados da imagem (tags, labels)
         id: meta
         uses: docker/metadata-action@v5
@@ -117,6 +135,8 @@ jobs:
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,format=long
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
 
       - name: Build da imagem (publica só em push; em pull_request só valida o build)
         uses: docker/build-push-action@v6

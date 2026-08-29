@@ -105,11 +105,22 @@ O build é validado automaticamente a cada push/PR pelo CI (ver seção "Integra
 
 ## Integração contínua
 
-`.github/workflows/ci.yml` roda no GitHub Actions em todo push para `main` e em toda pull request, com três jobs:
+`.github/workflows/ci.yml` roda no GitHub Actions em todo push para `main`, em toda pull request e em todo push de tag de versão (`v*`), com três jobs:
 
 - **rubocop** — `bundle exec rubocop` (usa o `.rubocop.yml` já existente no repositório);
 - **rspec** — sobe um serviço `postgres:16-alpine`, roda `bin/rails db:prepare`, depois `bin/rails zeitwerk:check` (eager load isolado num processo à parte, só pra pegar erro de autoload cedo — ver comentário em `config/environments/test.rb` sobre por que isso não é feito via `config.eager_load = true` no ambiente de teste) e por fim `bundle exec rspec` contra o banco `task_keeper_api_test`;
-- **docker** — builda a imagem de produção (`docker/build-push-action`); só roda depois que `rubocop` e `rspec` passam. Em pull request, só valida que o `Dockerfile` builda (sem publicar). Em push pra `main`, publica a imagem no GitHub Container Registry (`ghcr.io/hirley/task_keeper_api`), usando o `GITHUB_TOKEN` automático do Actions — não exige nenhum secret configurado manualmente. Cada build fica marcado com duas tags: `latest` e o SHA do commit (`sha-<commit completo>`), pra sempre dar pra rastrear exatamente qual código está publicado.
+- **docker** — builda a imagem de produção (`docker/build-push-action`); só roda depois que `rubocop` e `rspec` passam. Em pull request, só valida que o `Dockerfile` builda (sem publicar). Em push pra `main`, publica a imagem no GitHub Container Registry (`ghcr.io/hirley/task_keeper_api`), usando o `GITHUB_TOKEN` automático do Actions — não exige nenhum secret configurado manualmente.
+
+  As tags da imagem dependem do que disparou o build:
+
+  | Tag | Quando | Serve para |
+  |---|---|---|
+  | `latest` | só no topo da `main` | "me dá a última" — se move, não fixa nada |
+  | `sha-<commit completo>` | sempre | apontar exatamente um commit |
+  | `2.0.0` | push de tag `v2.0.0` | fixar a release |
+  | `2.0` | push de tag `v2.0.x` | acompanhar correções dentro do minor |
+
+  Build de tag **não** mexe no `latest`: publicar uma release não deve reescrever o que "a última" aponta. E não é gerada tag só de major (`2`) de propósito — num projeto que ainda muda comportamento entre minors, uma tag tão larga prometeria mais estabilidade do que existe.
 
 ⚠️ **Passo manual único**: por padrão, um pacote novo no GHCR nasce privado, mesmo em repositório público — depois do primeiro push em `main` que publicar a imagem, é preciso ir em *Package settings* (na página do pacote em `github.com/Hirley?tab=packages`) e trocar a visibilidade pra pública, se quiser puxar a imagem (`docker pull`) sem autenticação.
 
