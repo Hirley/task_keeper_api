@@ -148,7 +148,11 @@ Duas armadilhas que ele já teve, e que valem para qualquer hook parecido: `set 
 
 ### Permissões
 
-O `.claude/settings.json` libera sem confirmação os comandos `docker` do ciclo de verificação e os comandos `gh` de leitura, além do `gh pr create`. É uma escolha deliberada de conveniência sobre superfície: os containers são descartáveis e recriáveis pela skill. Quem preferir o contrário remove as entradas de `docker exec` e `docker cp` — o fluxo continua funcionando, com uma confirmação por comando.
+O `.claude/settings.json` libera sem confirmação apenas o que tem superfície pequena: `docker ps`, `docker logs` e `docker restart` (que só operam sobre containers nomeados), os comandos `gh` de leitura e o `gh pr create`.
+
+`docker exec` e `docker cp` ficam **de fora de propósito**, ainda que sejam o coração do ciclo de verificação e por isso os mais repetidos. `docker exec` roda comando arbitrário dentro do container e `docker cp` escreve arquivo arbitrário lá dentro — liberar os dois é, na prática, liberar execução e escrita sem confirmação. Como cada um aparece várias vezes por sessão, é justamente o par em que uma liberação por conveniência renderia mais e custaria mais. Cada chamada pede confirmação, e é assim que deve ser.
+
+O hook de RuboCop não é afetado: hooks são comandos configurados pelo próprio usuário, executados direto, sem passar pelo sistema de permissões. Ele continua rodando `docker exec` e `docker cp` sozinho.
 
 ## Cobertura de testes
 
