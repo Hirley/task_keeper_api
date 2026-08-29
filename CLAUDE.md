@@ -68,3 +68,5 @@ Se você mexeu nessas áreas, suba a app e verifique de verdade — console sem 
 ## Honestidade sobre o próprio trabalho
 
 Este repositório passou por uma revisão de segurança em que vários achados foram reclassificados depois de investigados — um deles estava simplesmente errado na premissa, e só apareceu porque o histórico do Git foi conferido antes de escrever a correção. Verifique a premissa antes de consertar. E quando a verificação contrariar o que você já afirmou, corrija em voz alta.
+
+**O primeiro login de um processo já quebrou por causa de rota preguiçosa.** `Devise.configure_warden!` só roda quando o RouteSet é finalizado; sem eager load isso acontecia dentro da primeira requisição, depois de o Warden já ter copiado uma config sem estratégia nenhuma — e um `POST /users/sign_in` com credenciais válidas respondia 422. Corrigido por um `after_initialize` no fim de `config/initializers/devise.rb`, com `spec/devise_warden_boot_spec.rb` guardando a invariante. Se algum dia a suíte falhar num login que deveria funcionar, comece por aí: o sintoma aparece e some conforme a ordem aleatória do RSpec, o que faz parecer culpa do PR da vez.
