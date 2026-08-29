@@ -115,6 +115,41 @@ O build é validado automaticamente a cada push/PR pelo CI (ver seção "Integra
 
 `SECRET_KEY_BASE` no workflow é um valor fixo só para o boot da aplicação em CI (não é usado em nenhum ambiente real — produção continua exigindo a variável de ambiente própria, como descrito na seção "Docker"). As demais variáveis de banco seguem o mesmo padrão de `.env.example`/`config/database.yml`.
 
+## Fluxo de desenvolvimento com agentes
+
+Boa parte deste projeto é escrita em pares com um agente de código (Claude Code). O que está descrito aqui não é aspiracional — é o processo que sobrou depois de uma revisão de segurança de doze achados, e cada regra existe porque a ausência dela custou alguma coisa.
+
+A configuração vive em três arquivos versionados:
+
+| Arquivo | Papel |
+|---|---|
+| `CLAUDE.md` | contexto carregado no início de toda sessão: idioma, estilo de comentário, armadilhas do repositório, convenção de commit e PR |
+| `.claude/skills/verificar-local/SKILL.md` | como executar RuboCop, `zeitwerk:check`, RSpec e a app em container |
+| `.claude/settings.json` | permissões e um hook que roda RuboCop no que acabou de mudar |
+
+### O ciclo
+
+1. **Investigar antes de consertar.** Numa das correções desta revisão, o achado reportado estava errado na premissa: o problema só apareceu ao conferir o histórico do Git antes de escrever a migration, e a correção final tratou um grupo bem mais estreito do que o anunciado. Confirmar o diagnóstico é parte do conserto, não um passo opcional antes dele.
+2. **Escrever, com o porquê junto.** Ver a seção sobre comentários no `CLAUDE.md`: aqui se documenta decisão, não assinatura de método.
+3. **Verificar de fato.** Não há Ruby compatível instalado na máquina de desenvolvimento, então RuboCop e RSpec rodam num container `ruby:4.0.6-slim` que espelha o `ci.yml`. Um ciclo completo leva cerca de 20 segundos.
+4. **Abrir com o que não foi verificado dito em voz alta.** A descrição do PR registra a decisão, a alternativa descartada e o que ficou sem cobertura.
+
+### Por que um container, e não o CI
+
+O CI é a fonte de verdade — roda em Linux, com as versões travadas. Mas descobrir uma ofensa de estilo só depois do push custa um commit extra e um ciclo de dois minutos; foi o que aconteceu duas vezes antes deste fluxo existir. O container encurta o laço sem substituir o CI.
+
+Ele também permite o que o CI não faz: **subir a aplicação e olhar no navegador**. O `Gemfile` não tem driver Capybara/JS, então nada que dependa de JavaScript tem teste — barra de acessibilidade, tour guiado, busca, widget do VLibras e o CSP inteiro. A política de CSP deste projeto foi corrigida **duas vezes** por causa de comportamento que só apareceu num navegador de verdade, e nenhuma das duas quebraria um spec.
+
+### O hook
+
+`PostToolUse` em `Write|Edit` roda RuboCop apenas nos arquivos `.rb` tocados nos últimos 20 segundos, dentro do container, e devolve as ofensas ao agente na hora. Sai em silêncio se o Docker estiver parado — um hook que falha quando a infraestrutura não está de pé vira ruído, e ruído se aprende a ignorar.
+
+Duas armadilhas que ele já teve, e que valem para qualquer hook parecido: `set -o pipefail` não existe no shell que executa o comando, então o código de saída do RuboCop precisa ser capturado explicitamente em vez de vir pelo pipe; e o `docker cp` sobrescreve o `Gemfile.lock` do container com o do repositório, que não tem a plataforma Linux — sem um `bundle lock --add-platform` antes, o `bundle exec` falha.
+
+### Permissões
+
+O `.claude/settings.json` libera sem confirmação os comandos `docker` do ciclo de verificação e os comandos `gh` de leitura, além do `gh pr create`. É uma escolha deliberada de conveniência sobre superfície: os containers são descartáveis e recriáveis pela skill. Quem preferir o contrário remove as entradas de `docker exec` e `docker cp` — o fluxo continua funcionando, com uma confirmação por comando.
+
 ## Cobertura de testes
 
 A suíte RSpec cobre:
