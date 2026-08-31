@@ -10,6 +10,22 @@ require 'json'
 # evita depender de uma gem de mock de rede — o Gemfile não tem
 # WebMock/VCR — e evita qualquer chamada de rede real nos testes).
 class WebhookDelivery
+  # Única exceção que escapa daqui de propósito. É o sinal que faz
+  # WebhookDeliveryJob reagendar a entrega (ver o retry_on lá).
+  class FalhaTemporaria < StandardError; end
+
+  # Erros de rede que costumam passar sozinhos: o endpoint pode estar
+  # reiniciando, o DNS oscilando, a rota caindo por um instante.
+  #
+  # Erro de TLS fica de fora de propósito. Certificado inválido, expirado
+  # ou com nome errado é configuração do outro lado — repetir cinco vezes
+  # não conserta, só adia o diagnóstico e mantém uma assinatura quebrada
+  # parecendo viva.
+  ERROS_TEMPORARIOS = [
+    Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::EHOSTUNREACH, Errno::ENETUNREACH,
+    Net::OpenTimeout, Net::ReadTimeout, Timeout::Error, EOFError, SocketError
+  ].freeze
+
   # +ipaddr+ é o endereço já verificado por PublicHttpTarget. Passar ele
   # pro Net::HTTP faz a conexão ir direto nesse IP, sem resolver o host de
   # novo — é o que impede que o DNS mude entre a checagem e a conexão
@@ -33,11 +49,18 @@ class WebhookDelivery
     @transport = transport
   end
 
-  # Não levanta exceção pra fora — um endpoint de terceiro fora do ar,
-  # lento ou respondendo erro não pode derrubar o job (nem, se algum dia a
-  # entrega virar síncrona, a request que originou o evento). Loga e
-  # retorna false; não há retry (fora do escopo deste MVP — ver issue de
-  # webhooks de saída no board).
+  # O retorno é o que decide se o job tenta de novo:
+  #
+  #   * +true+ — entregue (2xx);
+  #   * +false+ — recusa definitiva: assinatura inexistente ou pausada,
+  #     URL reprovada na checagem de SSRF, ou resposta 4xx. Tentar de novo
+  #     não mudaria nada, então o job encerra sem gastar tentativa;
+  #   * +FalhaTemporaria+ — erro de rede, 429 ou 5xx.
+  #
+  # Antes, TODA falha virava +false+ e o ActiveJob dava a entrega por
+  # concluída: um endpoint fora do ar sumia com um aviso no log e ninguém
+  # reprocessava. A distinção acima existe pra que só o caso que vale a
+  # pena repetir chegue ao retry_on.
   def entregar(subscription, event, payload)
     return false unless subscription&.active?
 
@@ -53,14 +76,43 @@ class WebhookDelivery
     end
 
     body = { event: event, occurred_at: Time.current.iso8601, data: payload }.to_json
-    response = @transport.call(alvo.uri, body, alvo.ip)
-    response.is_a?(Net::HTTPSuccess)
+    entregue?(subscription, event, @transport.call(alvo.uri, body, alvo.ip))
+  rescue FalhaTemporaria
+    # Precisa vir ANTES do rescue de StandardError: FalhaTemporaria herda
+    # dele, e sem esta cláusula a exceção levantada por #entregue? seria
+    # engolida logo abaixo — virando de novo o `false` silencioso que
+    # esta classe deixou de produzir.
+    raise
+  rescue *ERROS_TEMPORARIOS => e
+    raise FalhaTemporaria, "#{subscription.url}: #{e.class} #{e.message}"
   rescue StandardError => e
-    Rails.logger.warn("[WebhookDelivery] falha ao entregar \"#{event}\" pra #{subscription&.url}: #{e.class} #{e.message}")
+    # Erro inesperado aqui é bug nosso, não instabilidade do outro lado.
+    # Repetir não conserta e só atrasa o diagnóstico — loga alto e
+    # encerra, sem consumir tentativa.
+    Rails.logger.error(
+      "[WebhookDelivery] erro inesperado ao entregar \"#{event}\" pra #{subscription&.url}: #{e.class} #{e.message}"
+    )
     false
   end
 
   private
+
+  def entregue?(subscription, event, response)
+    return true if response.is_a?(Net::HTTPSuccess)
+    raise FalhaTemporaria, "#{subscription.url} respondeu #{response.class}" if temporaria?(response)
+
+    Rails.logger.warn(
+      "[WebhookDelivery] entrega de \"#{event}\" pra #{subscription.url} recusada com #{response.class}"
+    )
+    false
+  end
+
+  # 5xx é problema do servidor do outro lado; 429 é ele pedindo pra
+  # esperar. Os dois merecem outra tentativa. Um 4xx qualquer, não: o
+  # payload ou a rota é que estão errados, e repetir só gera ruído.
+  def temporaria?(response)
+    response.is_a?(Net::HTTPServerError) || response.is_a?(Net::HTTPTooManyRequests)
+  end
 
   # Só registra o motivo — quem chama é que decide desistir da entrega. O
   # `return false` fica lá em cima, visível junto do `unless`, em vez de

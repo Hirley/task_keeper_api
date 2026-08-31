@@ -59,10 +59,47 @@ RSpec.describe WebhookDelivery do
       expect(chamadas).to be_empty
     end
 
-    it 'não propaga exceção se o transporte falhar (ex.: endpoint fora do ar) e retorna false' do
-      delivery_com_erro = described_class.new(transport: ->(_uri, _body, _ip) { raise SocketError, 'falha de rede' })
+    # Antes, toda falha virava `false` e o ActiveJob dava a entrega por
+    # concluída. O que separa "vale tentar de novo" de "não adianta" é o
+    # tipo de retorno, e é ele que WebhookDeliveryJob usa pra decidir —
+    # por isso cada caso abaixo verifica exceção OU booleano, nunca os dois.
+    describe 'classificação da falha' do
+      def delivery_que(&bloco)
+        described_class.new(transport: ->(_uri, _body, _ip) { bloco.call })
+      end
 
-      expect(delivery_com_erro.entregar(subscription, 'demanda_criada', {})).to be false
+      it 'levanta FalhaTemporaria quando o endpoint está fora do ar' do
+        expect { delivery_que { raise SocketError, 'falha de rede' }.entregar(subscription, 'demanda_criada', {}) }
+          .to raise_error(WebhookDelivery::FalhaTemporaria, /SocketError/)
+      end
+
+      it 'levanta FalhaTemporaria quando a conexão estoura o tempo' do
+        expect { delivery_que { raise Net::ReadTimeout }.entregar(subscription, 'demanda_criada', {}) }
+          .to raise_error(WebhookDelivery::FalhaTemporaria)
+      end
+
+      it 'levanta FalhaTemporaria quando o endpoint responde 5xx' do
+        expect { delivery_que { Net::HTTPServiceUnavailable.allocate }.entregar(subscription, 'demanda_criada', {}) }
+          .to raise_error(WebhookDelivery::FalhaTemporaria)
+      end
+
+      it 'levanta FalhaTemporaria quando o endpoint pede pra esperar (429)' do
+        expect { delivery_que { Net::HTTPTooManyRequests.allocate }.entregar(subscription, 'demanda_criada', {}) }
+          .to raise_error(WebhookDelivery::FalhaTemporaria)
+      end
+
+      # Certificado inválido é configuração do outro lado, não
+      # instabilidade: repetir não conserta e mantém uma assinatura
+      # quebrada parecendo viva. Ver ERROS_TEMPORARIOS.
+      it 'não repete um erro de TLS' do
+        expect(delivery_que { raise OpenSSL::SSL::SSLError, 'certificado expirado' }
+                 .entregar(subscription, 'demanda_criada', {})).to be false
+      end
+
+      it 'não repete um erro inesperado, que seria bug nosso' do
+        expect(delivery_que { raise ArgumentError, 'payload malformado' }
+                 .entregar(subscription, 'demanda_criada', {})).to be false
+      end
     end
 
     # Ver PublicHttpTarget: a validação do cadastro sozinha não segura DNS
