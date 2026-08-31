@@ -260,7 +260,17 @@ Além do Telegram, o **admin** pode cadastrar webhooks genéricos em `/webhooks`
 
 - `WebhookSubscription` (`app/models/webhook_subscription.rb`) guarda a URL e os eventos escolhidos (array nativo do Postgres). Um webhook pode ser pausado (`active: false`) sem precisar excluir o cadastro.
 - `WebhookDispatcher` (`app/services/webhook_dispatcher.rb`) encontra as assinaturas ativas que escutam o evento e enfileira `WebhookDeliveryJob` pra cada uma — em background (adapter `:async` padrão do Rails; este projeto não tem Sidekiq/Solid Queue configurado), pra não travar a request original no tempo de resposta de um serviço de terceiro.
-- `WebhookDelivery` (`app/services/webhook_delivery.rb`) faz o `POST` de fato, com timeout curto (5s). Um endpoint de terceiro fora do ar, lento ou respondendo erro não derruba nada — só loga e segue; não há retry.
+- `WebhookDelivery` (`app/services/webhook_delivery.rb`) faz o `POST` de fato, com timeout curto (5s). O retorno dele é o que decide se o job tenta de novo, e a distinção é deliberada:
+
+  | Situação | Resultado | O job… |
+  |---|---|---|
+  | `2xx` | `true` | encerra |
+  | assinatura pausada ou excluída, URL reprovada na checagem de SSRF, resposta `4xx`, erro de TLS | `false` | encerra **sem gastar tentativa** — repetir não mudaria a resposta |
+  | erro de rede (conexão recusada, timeout, DNS), `429`, `5xx` | levanta `FalhaTemporaria` | reagenda, com backoff, até 5 tentativas |
+
+  Esgotadas as tentativas, `WebhookDeliveryJob` registra a desistência no log em nível `error` — a entrega perdida deixa rastro em vez de sumir. Um erro inesperado (bug nosso, não instabilidade do outro lado) também não consome tentativas: é logado como `error` e encerra, porque repetir cinco vezes não conserta e só atrasa o diagnóstico.
+
+  Vale a ressalva: como o adapter ainda é o `:async` em memória, as tentativas reagendadas também se perdem num restart do processo. O retry cobre a instabilidade curta, que é a maioria; durabilidade de verdade depende de trocar o backend da fila.
 - **Proteção contra SSRF**: `PublicHttpTarget` (`app/services/public_http_target.rb`) resolve o host e recusa endereços de rede privada/local (`127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16` e as faixas IPv6 equivalentes), pra que um webhook não vire um jeito de fazer a aplicação bater num serviço interno da própria rede. A checagem roda **duas vezes, de propósito**:
   - no **cadastro/edição** (validação de `WebhookSubscription`), só pra dar o erro no formulário enquanto o admin ainda está na tela;
   - de novo na **hora da entrega** (`WebhookDelivery`), imediatamente antes de conectar — e é essa que protege de fato. Sozinha, a validação do cadastro não segura *DNS rebinding*: como a entrega acontece quando um evento dispara (possivelmente dias depois), bastaria cadastrar um host que resolve pra um IP público e trocar o registro DNS com calma. O IP verificado na entrega é passado direto pro `Net::HTTP` (`ipaddr:`), então o endereço checado é exatamente o endereço conectado — sem intervalo entre a checagem e o uso. O host original continua valendo pro cabeçalho `Host`, SNI e validação do certificado TLS.

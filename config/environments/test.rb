@@ -47,6 +47,15 @@ Rails.application.configure do
 
   config.active_storage.service = :test
 
+  # Sem isto valeria o default do Rails, :async, que roda o job de verdade
+  # numa thread de fundo durante o teste — contra o mesmo banco, dentro de
+  # uma transação que o RSpec vai desfazer, e (no caso de WebhookDelivery)
+  # com chance de tentar rede de verdade. Hoje isso quase nunca dispara,
+  # porque os specs dublam WebhookDeliveryJob.perform_later, mas é
+  # acidente e não desenho. O adapter :test também é o que permite
+  # verificar o retry de WebhookDeliveryJob sem esperar backoff real.
+  config.active_job.queue_adapter = :test
+
   config.action_mailer.perform_caching = false
   config.action_mailer.delivery_method = :test
   # Necessário pra gerar URLs fora de uma requisição (o e-mail de
