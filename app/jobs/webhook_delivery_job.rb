@@ -4,12 +4,12 @@
 # resposta de um serviço de terceiro. Ver WebhookDispatcher (quem
 # enfileira) e WebhookDelivery (quem sabe fazer o POST de fato).
 #
-# O adapter ainda é o padrão do Rails (:async), que guarda a fila na
-# memória do processo web — jobs pendentes se perdem num restart, e as
-# tentativas reagendadas abaixo também. Trocar por um backend persistente
-# é assunto de outra issue; o retry aqui é útil de qualquer forma, porque
-# a maioria das instabilidades de rede passa em segundos, muito antes de
-# um deploy.
+# Em produção o adapter é o Solid Queue, que guarda a fila no próprio
+# banco (ver config/environments/production.rb): as tentativas
+# reagendadas abaixo sobrevivem a restart e deploy, que é justamente o
+# que o antigo adapter :async — fila na memória do processo web — não
+# fazia. O backoff polinomial da quinta tentativa passa longe do tempo de
+# um deploy, então isso não é detalhe.
 class WebhookDeliveryJob < ApplicationJob
   queue_as :default
 
