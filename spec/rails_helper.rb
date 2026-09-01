@@ -8,6 +8,11 @@ abort('The Rails environment is running in production mode!') if Rails.env.produ
 
 require 'rspec/rails'
 require 'cancan/matchers'
+# Explícito, e não um Dir[] varrendo spec/support: só há dois arquivos
+# ali, e um require nomeado diz de onde vem o driver dos system specs
+# (ver o comentário em spec/support/factory_bot.rb sobre o glob que este
+# projeto optou por não usar).
+require_relative 'support/system'
 
 begin
   ActiveRecord::Migration.maintain_test_schema!
@@ -23,6 +28,21 @@ RSpec.configure do |config|
 
   config.include FactoryBot::Syntax::Methods
   config.include Devise::Test::IntegrationHelpers, type: :request
+
+  # Nos system specs o navegador é um cliente HTTP de verdade, então os
+  # helpers de request do Devise não valem — quem autentica é o Warden em
+  # modo de teste, que injeta a sessão no servidor que a Capybara sobe no
+  # mesmo processo. É o que evita ter que preencher o formulário de login
+  # em todo spec só para chegar na tela que interessa.
+  config.include Warden::Test::Helpers, type: :system
+  config.include ConsoleDoNavegador, type: :system
+
+  config.before(type: :system) do
+    driven_by :chrome_headless
+    Warden.test_mode!
+  end
+
+  config.after(type: :system) { Warden.test_reset! }
 
   # O throttle das telas de autenticação (ver AuthThrottling) guarda o
   # contador de tentativas no cache, que em teste é :memory_store e
