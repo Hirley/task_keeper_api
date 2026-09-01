@@ -203,6 +203,18 @@ jobs:
       - name: O entrypoint gerou a chave efêmera (caminho sem SECRET_KEY_BASE)
         run: docker compose logs web | grep -q 'gerando uma chave'
 
+      # A etapa de release que o README manda usar em deploy de verdade
+      # (DB_PREPARE_ON_BOOT=false + migrations antes de subir as réplicas).
+      # Sem isto ela seria um caminho documentado que nada exercita — a
+      # mesma lacuna que este smoke test veio fechar para a imagem inteira.
+      #
+      # `compose run` passa pelo ENTRYPOINT, e o entrypoint só prepara o
+      # banco quando o comando é `./bin/rails server`: é justamente isso
+      # que se verifica aqui, além de o db:prepare ser idempotente contra
+      # um banco que a stack já preparou.
+      - name: O caminho de release prepara o banco sem subir servidor
+        run: docker compose run --rm web ./bin/rails db:prepare
+
       # Desde a adoção do Solid Queue o deploy tem DOIS processos, e o
       # segundo nunca foi exercitado por nada automatizado. Um worker que
       # sobe e não consome nada é invisível: a tela responde normalmente e

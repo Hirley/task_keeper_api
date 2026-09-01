@@ -56,6 +56,11 @@ x-app-env: &app-env
   # variável não é definida, e o default de production.rb (ligado)
   # vale. Ver config/environments/production.rb.
   FORCE_SSL: ${FORCE_SSL:-false}
+  # Vazio = ligado (default do entrypoint), que é o que mantém o
+  # `docker compose up` sem passo manual. Defina "false" para exercitar
+  # aqui o modo de produção: migrations numa etapa de release separada,
+  # antes de subir o web. Ver bin/docker-entrypoint e o README.
+  DB_PREPARE_ON_BOOT: ${DB_PREPARE_ON_BOOT:-}
   DB_HOST: db
   DB_PORT: 5432
   DB_USERNAME: ${DB_USERNAME:-postgres}

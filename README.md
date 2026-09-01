@@ -102,7 +102,31 @@ docker run -p 3000:3000 \
   task_keeper_api
 ```
 
+### Migrations: boot ou release
+
 `bin/docker-entrypoint` roda `bin/rails db:prepare` (idempotente) toda vez que o container sobe, antes de iniciar o Puma — então o banco é criado/migrado automaticamente, sem passo manual (mas o PostgreSQL em si precisa já estar de pé e acessível; o Dockerfile não sobe um banco dentro do próprio container da aplicação).
+
+Isso é **conveniência de demonstração**, e é o que faz `docker compose up --build` funcionar de primeira. Num deploy de verdade, o modo certo é o outro:
+
+| | Quando | Como |
+|---|---|---|
+| **No boot** (default) | `docker compose up`, `docker run`, demo de uma réplica só | nada a fazer — o entrypoint cuida |
+| **Etapa de release** | qualquer deploy real, e obrigatório com mais de uma réplica | `DB_PREPARE_ON_BOOT=false` no serviço web, e as migrations rodam antes de subir as réplicas |
+
+O comando da etapa de release é o mesmo binário, com outro argumento — o entrypoint só prepara o banco quando o comando é `./bin/rails server`, então qualquer outro comando passa direto:
+
+```bash
+docker compose run --rm web ./bin/rails db:prepare
+```
+
+Fora do compose, é a mesma ideia: `docker run --rm -e DATABASE_URL=... ghcr.io/hirley/task_keeper_api:latest ./bin/rails db:prepare`. No Railway, um *pre-deploy command* com `bin/rails db:prepare`.
+
+**O que se ganha desligando não é evitar corrupção de schema.** As migrations do Rails pegam um advisory lock no Postgres, então o schema está protegido de qualquer jeito. São duas outras coisas:
+
+- **com mais de uma réplica, quem perde o lock não espera**: o Rails usa `pg_try_advisory_lock`, que é não-bloqueante, e levanta `ConcurrentMigrationError`. Como o entrypoint roda com `bash -e`, o `db:prepare` que falha derruba o container — a réplica **morre no boot** em vez de simplesmente subir depois da que migrou;
+- **a disponibilidade do web deixa de depender das migrations**: uma migration longa atrasa o boot, e uma que falha impede a aplicação de subir mesmo que o código já rodasse contra o schema antigo.
+
+O default continua sendo ligado de propósito. Inverter deixaria o `docker run` acima e o compose local subindo contra um banco vazio — um jeito pior de falhar do que o problema que se quer evitar. O CI exercita os dois caminhos: o smoke test sobe a stack pelo boot automático e, em seguida, roda a etapa de release isolada (ver "Integração contínua").
 
 Este projeto não tem `config/master.key`/`config/credentials.yml.enc`, então `SECRET_KEY_BASE` (variável de ambiente) é obrigatória em produção — sem ela, o container não sobe. As variáveis de conexão com o banco (`DATABASE_URL` ou `DB_HOST`/`DB_PORT`/`DB_USERNAME`/`DB_PASSWORD`/`DB_NAME`) e as demais (`TELEGRAM_BOT_TOKEN`, `APP_HOST`, `RAILS_MAX_THREADS`) são opcionais/têm default; ver `.env.example` para a lista completa e o que cada uma faz.
 
