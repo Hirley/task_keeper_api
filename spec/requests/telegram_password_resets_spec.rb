@@ -13,37 +13,42 @@ RSpec.describe 'Redefinição de senha por Telegram', type: :request do
   end
 
   describe 'POST /senha/telegram' do
-    it 'aciona o envio por Telegram quando o e-mail existe e tem Chat ID cadastrado' do
+    it 'enfileira o envio por Telegram quando o e-mail existe e tem Chat ID cadastrado' do
+      usuario = create(:user, email: 'comtelegram@task-keeper.local', telegram_chat_id: '555111222')
+
+      expect { post telegram_password_resets_path, params: { email: usuario.email } }
+        .to have_enqueued_job(TelegramPasswordResetJob).with(usuario.id)
+      expect(response).to redirect_to(new_telegram_password_reset_path)
+    end
+
+    # O critério da issue #78: nenhuma chamada a terceiro dentro do ciclo
+    # de request/response. Quem fala com o Telegram é
+    # Users::SendPasswordResetViaTelegram, e ela só deve ser alcançada
+    # pelo job (ver TelegramPasswordResetJob).
+    it 'não fala com o Telegram dentro da requisição' do
       usuario = create(:user, email: 'comtelegram@task-keeper.local', telegram_chat_id: '555111222')
       allow(Users::SendPasswordResetViaTelegram).to receive(:call)
 
       post telegram_password_resets_path, params: { email: usuario.email }
 
-      expect(Users::SendPasswordResetViaTelegram).to have_received(:call).with(user: usuario)
-      expect(response).to redirect_to(new_telegram_password_reset_path)
+      expect(Users::SendPasswordResetViaTelegram).not_to have_received(:call)
     end
 
-    it 'não aciona nada quando o e-mail existe mas não tem Chat ID do Telegram cadastrado' do
+    it 'não enfileira nada quando o e-mail existe mas não tem Chat ID do Telegram cadastrado' do
       usuario = create(:user, email: 'semtelegram@task-keeper.local', telegram_chat_id: nil)
-      allow(Users::SendPasswordResetViaTelegram).to receive(:call)
 
-      post telegram_password_resets_path, params: { email: usuario.email }
-
-      expect(Users::SendPasswordResetViaTelegram).not_to have_received(:call)
+      expect { post telegram_password_resets_path, params: { email: usuario.email } }
+        .not_to have_enqueued_job(TelegramPasswordResetJob)
     end
 
-    it 'não aciona nada e não quebra quando o e-mail não existe' do
-      allow(Users::SendPasswordResetViaTelegram).to receive(:call)
-
-      post telegram_password_resets_path, params: { email: 'ninguem@task-keeper.local' }
-
-      expect(Users::SendPasswordResetViaTelegram).not_to have_received(:call)
+    it 'não enfileira nada e não quebra quando o e-mail não existe' do
+      expect { post telegram_password_resets_path, params: { email: 'ninguem@task-keeper.local' } }
+        .not_to have_enqueued_job(TelegramPasswordResetJob)
       expect(response).to redirect_to(new_telegram_password_reset_path)
     end
 
     it 'mostra sempre a mesma mensagem genérica, exista ou não o e-mail (evita vazar quem está cadastrado)' do
       create(:user, email: 'comtelegram@task-keeper.local', telegram_chat_id: '555111222')
-      allow(Users::SendPasswordResetViaTelegram).to receive(:call)
 
       post telegram_password_resets_path, params: { email: 'comtelegram@task-keeper.local' }
       follow_redirect!

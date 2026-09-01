@@ -8,6 +8,15 @@ module Relatorios
   # usado tanto pro download direto (RelatoriosController#semanal_pdf)
   # quanto pro envio via Telegram (TelegramNotifier#enviar_documento).
   class SemanalPdf
+    # Nome do arquivo entregue ao usuário — mesmo no download direto e no
+    # envio por Telegram. Fica aqui, e não em cada chamador, porque a data
+    # é resolvida na hora da geração: num envio que ficou um tempo na fila
+    # (ver RelatorioSemanalTelegramJob), o nome certo é o do dia em que o
+    # relatório foi de fato montado, que é o dia dos dados dentro dele.
+    def self.nome_arquivo
+      "relatorio-semanal-task-keeper-#{Date.current.iso8601}.pdf"
+    end
+
     def initialize(relatorio)
       @relatorio = relatorio
     end

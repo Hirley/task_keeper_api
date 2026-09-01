@@ -10,34 +10,56 @@
 class RelatoriosController < ApplicationController
   before_action :authorize_relatorio!
 
+  ALERTA_TELEGRAM_INDISPONIVEL = 'Não foi possível enviar pelo Telegram. Confira se o servidor tem ' \
+                                 'TELEGRAM_BOT_TOKEN configurado e se você tem um Chat ID do Telegram ' \
+                                 'cadastrado (em Acessos → Editar permissões).'
+
+  AVISO_ENVIO_ENFILEIRADO = 'Relatório em preparação. Ele chega no seu Telegram em instantes.'
+
   def show
     @relatorio = Relatorios::Semanal.new.gerar
   end
 
   # GET /relatorios/semanal.pdf — baixa o mesmo relatório em PDF.
+  #
+  # Este continua síncrono: o PDF É a resposta, não há como devolvê-lo
+  # depois. Só o envio por Telegram saiu da requisição, porque lá o
+  # documento não vai pro navegador de quem pediu.
   def semanal_pdf
-    pdf = gerar_pdf
-    send_data pdf, filename: nome_arquivo, type: 'application/pdf', disposition: 'inline'
+    send_data Relatorios::GerarPdfSemanal.call,
+              filename: Relatorios::SemanalPdf.nome_arquivo,
+              type: 'application/pdf',
+              disposition: 'inline'
   end
 
-  # POST /relatorios/enviar_telegram — envia o PDF pro Telegram do próprio
-  # líder que pediu (não pra outros usuários — ver README).
+  # POST /relatorios/enviar_telegram — enfileira a geração do PDF e o
+  # envio pro Telegram do próprio líder que pediu (não pra outros
+  # usuários — ver README).
+  #
+  # Gerar o documento e fazer o upload rodavam aqui dentro: a tela ficava
+  # presa no tempo de resposta da API do Telegram, e um serviço de
+  # terceiro lento prendia um worker do Puma por requisição. Ver
+  # RelatorioSemanalTelegramJob.
+  #
+  # A checagem de disponibilidade continua AQUI, e não no job, porque os
+  # dois motivos previsíveis de não conseguir enviar (servidor sem
+  # TELEGRAM_BOT_TOKEN, usuário sem Chat ID) são exatamente o que o alerta
+  # abaixo explica — e nenhum dos dois precisa tocar a rede pra ser
+  # verificado. A tela continua dando o mesmo aviso útil de antes, sem
+  # esperar o Telegram responder.
+  #
+  # O que se perde: uma falha no envio em si (Telegram fora do ar,
+  # timeout) não aparece mais na tela — quem pediu vê "em instantes" e
+  # nada chega; fica só no log do job. Trazer isso de volta pra tela
+  # exigiria persistir o resultado de cada envio e uma tela pra consultar
+  # o status, o que é desproporcional pro caso raro. A alternativa era
+  # continuar prendendo um worker do Puma no tempo do Telegram por causa
+  # dele.
   def enviar_telegram
-    pdf = gerar_pdf
-    enviado = TelegramNotifier.new.enviar_documento(
-      current_user,
-      filename: nome_arquivo,
-      conteudo: pdf,
-      legenda: 'Relatório semanal — Task Keeper API'
-    )
+    return redirect_to relatorios_path, alert: ALERTA_TELEGRAM_INDISPONIVEL unless envio_por_telegram_disponivel?
 
-    if enviado
-      redirect_to relatorios_path, notice: 'Relatório enviado no seu Telegram.'
-    else
-      redirect_to relatorios_path,
-                  alert: 'Não foi possível enviar pelo Telegram. Confira se o servidor tem TELEGRAM_BOT_TOKEN ' \
-                         'configurado e se você tem um Chat ID do Telegram cadastrado (em Acessos → Editar permissões).'
-    end
+    RelatorioSemanalTelegramJob.perform_later(current_user.id)
+    redirect_to relatorios_path, notice: AVISO_ENVIO_ENFILEIRADO
   end
 
   private
@@ -46,29 +68,7 @@ class RelatoriosController < ApplicationController
     authorize! :read, :relatorio
   end
 
-  # Dispara o webhook "relatorio_gerado" aqui (não em #show) porque #show
-  # é a tela de pré-visualização, visitada toda vez que o líder abre
-  # /relatorios — disparar um evento externo a cada visita seria ruído.
-  # #gerar_pdf só roda quando o líder efetivamente baixa ou envia o PDF
-  # (ações deliberadas), ver #semanal_pdf e #enviar_telegram.
-  def gerar_pdf
-    relatorio = Relatorios::Semanal.new.gerar
-    WebhookDispatcher.dispatch('relatorio_gerado', relatorio_webhook_payload(relatorio))
-    Relatorios::SemanalPdf.new(relatorio).render
-  end
-
-  def relatorio_webhook_payload(relatorio)
-    {
-      periodo_inicio: relatorio.periodo_inicio.iso8601,
-      periodo_fim: relatorio.periodo_fim.iso8601,
-      total_criadas: relatorio.criadas.size,
-      total_concluidas: relatorio.concluidas.size,
-      total_atrasadas: relatorio.atrasadas,
-      status_counts: relatorio.status_counts
-    }
-  end
-
-  def nome_arquivo
-    "relatorio-semanal-task-keeper-#{Date.current.iso8601}.pdf"
+  def envio_por_telegram_disponivel?
+    TelegramNotifier.new.pode_enviar_para?(current_user)
   end
 end
