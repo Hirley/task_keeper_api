@@ -61,9 +61,20 @@ class TelegramNotifier
     @document_transport = document_transport
   end
 
+  # Precondição de qualquer envio: token do bot no servidor e Chat ID no
+  # destinatário. É público porque quem chama às vezes precisa decidir
+  # ANTES de enfileirar um job — ver RelatoriosController#enviar_telegram,
+  # que usa isto pra continuar mostrando na tela o mesmo aviso de sempre
+  # sobre configuração faltando. As duas condições são verificáveis sem
+  # tocar na rede, que é o que torna a checagem barata o bastante pra
+  # ficar dentro da requisição.
+  def pode_enviar_para?(usuario)
+    @bot_token.present? && usuario&.telegram_chat_id.present?
+  end
+
   def notify_atraso(demanda)
     responsavel = demanda.user
-    return false if @bot_token.blank? || responsavel&.telegram_chat_id.blank?
+    return false unless pode_enviar_para?(responsavel)
 
     enviar(responsavel.telegram_chat_id, mensagem_atraso(demanda))
   rescue StandardError => e
@@ -77,7 +88,7 @@ class TelegramNotifier
   # token que o link por e-mail usaria. Mesma filosofia de #notify_atraso:
   # sem token/chat_id configurado, não é erro — só não envia.
   def enviar_redefinicao_senha(usuario, reset_url)
-    return false if @bot_token.blank? || usuario&.telegram_chat_id.blank?
+    return false unless pode_enviar_para?(usuario)
 
     enviar(usuario.telegram_chat_id, mensagem_redefinicao_senha(usuario, reset_url))
   rescue StandardError => e
@@ -88,10 +99,15 @@ class TelegramNotifier
   # Envia um arquivo (ex.: o PDF do relatório semanal — ver
   # Relatorios::SemanalPdf) como documento pro chat_id de +usuario+. Mesma
   # filosofia de #notify_atraso: sem token configurado, ou sem chat_id
-  # cadastrado, não é erro — só não envia (retorna false), quem chama
-  # decide como avisar quem pediu o envio (ver RelatoriosController).
+  # cadastrado, não é erro — só não envia (retorna false).
+  #
+  # Quem chama é RelatorioSemanalTelegramJob, que roda fora da
+  # requisição: quando o retorno é false ali, não há mais tela pra avisar
+  # quem pediu (ela já respondeu). Por isso a tela checa
+  # #pode_enviar_para? antes de enfileirar — os dois motivos previsíveis
+  # de falha são justamente os que dá pra verificar sem rede.
   def enviar_documento(usuario, filename:, conteudo:, legenda: nil)
-    return false if @bot_token.blank? || usuario&.telegram_chat_id.blank?
+    return false unless pode_enviar_para?(usuario)
 
     uri = URI("#{API_BASE}/bot#{@bot_token}/sendDocument")
     response = @document_transport.call(uri, usuario.telegram_chat_id, filename, conteudo, legenda.to_s)

@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require 'net/http'
 
 RSpec.describe 'Relatório semanal (tela web)', type: :request do
   let(:lider) { create(:user, :lider) }
@@ -85,44 +84,54 @@ RSpec.describe 'Relatório semanal (tela web)', type: :request do
       expect(response).to redirect_to(root_path)
     end
 
-    it 'envia o PDF pro Telegram do próprio líder e mostra uma mensagem de sucesso' do
+    # O envio saiu da requisição (ver RelatorioSemanalTelegramJob), então
+    # o que a tela deve garantir aqui é: enfileirou, respondeu na hora e
+    # não gerou o PDF nem tocou na rede no caminho.
+    it 'enfileira o envio e responde na hora, sem gerar o PDF dentro da requisição' do
       original_token = ENV.fetch('TELEGRAM_BOT_TOKEN', nil)
       ENV['TELEGRAM_BOT_TOKEN'] = 'token-de-teste'
       lider.update!(telegram_chat_id: '111222333')
-
-      chamadas = []
-      transport = lambda do |uri, chat_id, filename, _conteudo, legenda|
-        chamadas << { uri: uri, chat_id: chat_id, filename: filename, legenda: legenda }
-        Net::HTTPOK.allocate
-      end
-      # Substitui TelegramNotifier.new por uma instância com o transporte
-      # dublê injetado, pra este request spec não fazer nenhuma chamada de
-      # rede real (RelatoriosController#enviar_telegram chama
-      # `TelegramNotifier.new` sem argumentos — ver app/controllers/relatorios_controller.rb).
-      allow(TelegramNotifier).to receive(:new).and_return(TelegramNotifier.new(document_transport: transport))
+      allow(Relatorios::GerarPdfSemanal).to receive(:call)
 
       sign_in lider
-      post '/relatorios/enviar_telegram'
 
+      expect { post '/relatorios/enviar_telegram' }
+        .to have_enqueued_job(RelatorioSemanalTelegramJob).with(lider.id)
+      expect(Relatorios::GerarPdfSemanal).not_to have_received(:call)
       expect(response).to redirect_to(relatorios_path)
       follow_redirect!
-      expect(response.body).to include('Relatório enviado no seu Telegram.')
-      expect(chamadas.size).to eq(1)
-      expect(chamadas.first[:chat_id]).to eq('111222333')
+      expect(response.body).to include('Ele chega no seu Telegram em instantes.')
     ensure
       ENV['TELEGRAM_BOT_TOKEN'] = original_token
     end
 
-    it 'mostra uma mensagem de erro clara quando não é possível enviar (ex.: sem chat_id cadastrado)' do
+    # Os dois motivos previsíveis de falha (sem token no servidor, sem
+    # Chat ID no usuário) continuam sendo decididos na tela — é o que
+    # permite manter a mensagem de erro útil mesmo com o envio assíncrono.
+    # Ver RelatoriosController#enviar_telegram.
+    it 'mostra uma mensagem de erro clara e não enfileira nada quando falta configuração' do
       original_token = ENV.fetch('TELEGRAM_BOT_TOKEN', nil)
       ENV['TELEGRAM_BOT_TOKEN'] = nil
       sign_in lider
 
-      post '/relatorios/enviar_telegram'
+      expect { post '/relatorios/enviar_telegram' }
+        .not_to have_enqueued_job(RelatorioSemanalTelegramJob)
 
       expect(response).to redirect_to(relatorios_path)
       follow_redirect!
       expect(response.body).to include('Não foi possível enviar pelo Telegram.')
+    ensure
+      ENV['TELEGRAM_BOT_TOKEN'] = original_token
+    end
+
+    it 'não enfileira nada quando o líder não tem Chat ID do Telegram cadastrado' do
+      original_token = ENV.fetch('TELEGRAM_BOT_TOKEN', nil)
+      ENV['TELEGRAM_BOT_TOKEN'] = 'token-de-teste'
+      lider.update!(telegram_chat_id: nil)
+      sign_in lider
+
+      expect { post '/relatorios/enviar_telegram' }
+        .not_to have_enqueued_job(RelatorioSemanalTelegramJob)
     ensure
       ENV['TELEGRAM_BOT_TOKEN'] = original_token
     end

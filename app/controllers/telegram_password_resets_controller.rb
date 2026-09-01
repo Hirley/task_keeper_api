@@ -27,9 +27,26 @@ class TelegramPasswordResetsController < ApplicationController
 
   def new; end
 
+  # O envio é enfileirado (ver TelegramPasswordResetJob): a chamada à API
+  # do Telegram acontecia aqui dentro, prendendo um worker do Puma no
+  # tempo de resposta de um serviço de terceiro — numa tela pública, que
+  # qualquer um alcança sem login.
+  #
+  # Isso melhora a resposta genérica em vez de enfraquecê-la: antes, o
+  # e-mail cadastrado esperava o Telegram responder e o desconhecido
+  # voltava na hora, então o cronômetro entregava o que a mensagem tenta
+  # esconder. Agora os dois caminhos fazem um SELECT, e um deles um
+  # INSERT na fila.
+  #
+  # Descartado enfileirar sempre, passando o e-mail digitado pro job (que
+  # deixaria a resposta rigorosamente constante): guardaria e-mail
+  # arbitrário de visitante anônimo na tabela de jobs, e deixaria o
+  # formulário encher a fila. O throttle por IP e por e-mail
+  # (AuthThrottling) já é o que barra o uso do formulário como
+  # metralhadora.
   def create
     usuario = User.find_by(email: params[:email].to_s.strip.downcase)
-    Users::SendPasswordResetViaTelegram.call(user: usuario) if usuario&.telegram_chat_id.present?
+    TelegramPasswordResetJob.perform_later(usuario.id) if usuario&.telegram_chat_id.present?
 
     redirect_to new_telegram_password_reset_path, notice: GENERIC_NOTICE
   end
