@@ -147,11 +147,53 @@ jobs:
       # subir. Este passo achou isso na primeira vez que rodou, com a
       # imagem publicada em main já quebrada havia dois merges.
       #
-      # --wait só volta quando o banco e o web estão SAUDÁVEIS pelo
-      # healthcheck do próprio Dockerfile, e o worker rodando; se algum
-      # container morre no boot, o passo falha aqui.
-      - name: Sobe a stack de produção (banco + web + worker)
-        run: docker compose up --detach --wait --wait-timeout 240
+      # --wait é pedido só para db e web, de propósito: ele exige que todo
+      # serviço nomeado tenha healthcheck, e falha com "container ... has
+      # no healthcheck configured" para os que não têm. O worker não tem —
+      # não serve HTTP nenhum, e o healthcheck do Dockerfile (curl na
+      # 3000) está desligado nele por isso (ver docker-compose.yml).
+      #
+      # Não inventamos um healthcheck de processo para o worker só para
+      # satisfazer o --wait: quem prova que ele está vivo é o passo "O
+      # worker consome um job da fila", mais abaixo, que mede o trabalho
+      # em vez do pulso.
+      #
+      # (O compose do Docker Desktop aceita --wait com healthcheck
+      # desligado e reporta o serviço como "Healthy"; o do runner trata
+      # como erro. Foi o que quebrou a primeira versão deste job.)
+      - name: Sobe o banco e o web, e espera ficarem saudáveis
+        run: docker compose up --detach --wait --wait-timeout 240 db web
+
+      - name: Sobe o worker
+        run: docker compose up --detach worker
+
+      # Falha rápido e com o motivo na mão. Sem isto, um worker que morre
+      # no boot só apareceria 60s depois, como "não consumiu o job" — foi
+      # exatamente o que aconteceu com o bin/jobs sem bit de execução, que
+      # este smoke test pegou (exit 126) na primeira vez que rodou.
+      - name: O worker continua de pé depois de subir
+        run: |
+          cid=$(docker compose ps --quiet worker)
+
+          for _ in $(seq 1 10); do
+            estado=$(docker inspect --format '{{.State.Status}}' "$cid")
+
+            if [ "$estado" = "running" ]; then
+              echo "worker de pé"
+              exit 0
+            fi
+
+            if [ "$estado" = "exited" ] || [ "$estado" = "dead" ]; then
+              codigo=$(docker inspect --format '{{.State.ExitCode}}' "$cid")
+              echo "::error::o worker morreu no boot (estado: $estado, exit code: $codigo)"
+              exit 1
+            fi
+
+            sleep 2
+          done
+
+          echo "::error::o worker não chegou a rodar em 20s"
+          exit 1
 
       # O healthcheck já bate em /acessibilidade de dentro do container.
       # Este curl é de fora: verifica também a publicação da porta.

@@ -128,14 +128,17 @@ O build é validado automaticamente a cada push/PR pelo CI, que também **sobe a
 
   Dos três bugs listados na seção "Docker", os dois primeiros **não** são exemplo disso — quebravam durante o `docker build`, e o job de build já os pegava. O terceiro é: `bin/jobs` sem bit de execução buildava perfeitamente e derrubava o `worker` com `exit 126` ao subir. **Foi encontrado por este smoke test na primeira vez que ele rodou**, num repositório onde a imagem publicada em `main` já estava assim havia dois merges.
 
-  O job sobe `db` + `web` + `worker` com `docker compose up --wait` (que só volta quando os healthchecks passam) e checa quatro coisas:
+  O job sobe `db` + `web` + `worker` e checa cinco coisas:
 
   | Verificação | O que quebraria sem ela |
   |---|---|
-  | `--wait` volta sem erro | container que morre no boot, entrypoint quebrado, healthcheck quebrado, `db:prepare` falhando |
+  | `up --wait db web` volta sem erro | container que morre no boot, entrypoint quebrado, healthcheck quebrado, `db:prepare` falhando |
   | `curl` em `/acessibilidade` de fora do container | porta não publicada, Puma escutando só em loopback |
   | a linha de chave efêmera no log do entrypoint | o caminho "sem `SECRET_KEY_BASE`" da v2.0.0, que nada exercitava |
+  | o `worker` ainda está `running` depois de subir | worker que morre no boot — dá o exit code na hora, em vez de virar um timeout obscuro |
   | o `worker` executa um job enfileirado pelo `web` | worker que sobe e não consome nada — invisível, porque a tela responde normal e a entrega só não acontece |
+
+  O `--wait` é pedido só para `db` e `web`: ele exige healthcheck em todo serviço nomeado, e o `worker` não tem um (não serve HTTP — ver `docker-compose.yml`). Não inventamos um healthcheck de processo só para satisfazê-lo; quem prova que o worker está vivo é a última linha da tabela, que mede o trabalho em vez do pulso.
 
   O `SECRET_KEY_BASE` do job é vazio **de propósito**: é o que faz o entrypoint gerar a chave efêmera. O job enfileirado é `WebhookDeliveryJob` para uma assinatura inexistente, que `WebhookDelivery` recusa antes de tocar a rede — o que se verifica é o percurso (web → Postgres → worker), não a entrega.
 
