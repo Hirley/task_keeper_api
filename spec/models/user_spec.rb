@@ -129,8 +129,37 @@ RSpec.describe User, type: :model do
       expect(admin).to be_valid
     end
 
-    it 'não roda sem ator (seeds e console seguem funcionando)' do
+    # A invariante é fail-CLOSED: o esquecimento vira erro visível, não
+    # brecha silenciosa. Antes esta validação começava com
+    # `return if ator.blank?`, e valia só porque os controllers de hoje
+    # lembram de preencher o ator — qualquer caminho novo passava direto.
+    it 'recusa a mudança de papel quando ninguém informou o ator' do
       alvo.role = 'admin'
+
+      expect(alvo).not_to be_valid
+      expect(alvo.errors[:role].join).to include('quem está fazendo a alteração')
+    end
+
+    it 'recusa também a criação de um usuário com papel, sem ator' do
+      novo = build(:user, role: :admin, ator_dispensado: false)
+
+      expect(novo).not_to be_valid
+    end
+
+    # A saída declarada, para os poucos lugares legítimos: seeds, console
+    # e a própria factory desta suíte.
+    it 'permite quando o chamador declara que está fora de uma requisição' do
+      alvo.ator_dispensado = true
+      alvo.role = 'admin'
+
+      expect(alvo).to be_valid
+    end
+
+    # Sem esta guarda, exigir ator em toda escrita quebraria qualquer
+    # atualização de usuário feita fora de requisição (rake task, job) que
+    # não tem nada a ver com papel.
+    it 'não exige ator quando o papel não está mudando' do
+      alvo.name = 'Outro Nome'
 
       expect(alvo).to be_valid
     end
