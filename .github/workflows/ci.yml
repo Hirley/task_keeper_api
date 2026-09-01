@@ -86,7 +86,7 @@ jobs:
         run: bundle exec rspec
 
   docker:
-    name: Build da imagem Docker
+    name: Build e smoke test da imagem Docker
     runs-on: ubuntu-latest
     needs: [rubocop, rspec]
     # Só precisa de permissão de escrita no registry (packages: write) para
@@ -95,15 +95,115 @@ jobs:
     permissions:
       contents: read
       packages: write
+    # As três anulam, só dentro deste job, o `env:` do workflow — que
+    # descreve o ambiente de TESTE, e aqui o que sobe é a imagem de
+    # PRODUÇÃO, pelo docker-compose.yml:
+    #
+    #   * APP_IMAGE aponta o compose pra imagem que o passo de build
+    #     acabou de carregar no daemon, em vez de buildar tudo de novo
+    #     (ver o comentário da âncora x-app-image no docker-compose.yml);
+    #   * SECRET_KEY_BASE vazio é o ponto do smoke test, não descuido: é
+    #     o que exercita o caminho de chave efêmera do entrypoint, que
+    #     nasceu na v2.0.0 e nunca teve verificação automatizada;
+    #   * DB_NAME volta pro banco de produção — o global aponta pro banco
+    #     de teste, que não existe nesta stack.
+    env:
+      APP_IMAGE: task-keeper-api:ci
+      SECRET_KEY_BASE: ''
+      DB_NAME: task_keeper_api_production
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # Build em duas etapas de propósito. Esta carrega a imagem no daemon
+      # local (load) para o smoke test rodar contra o artefato de verdade,
+      # antes de qualquer publicação — uma imagem que não sobe não deve
+      # chegar ao registry. A etapa que publica vem depois de tudo passar,
+      # e acerta o cache do gha, então custa segundos.
+      - name: Build da imagem (carrega no daemon local, pro smoke test)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: ${{ env.APP_IMAGE }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # O CI buildava a imagem e nunca a executava, então tudo que só falha
+      # em runtime passava batido: entrypoint, db:prepare, permissões do
+      # usuário não-root, healthcheck, publicação de porta, variável de
+      # ambiente faltando.
+      #
+      # Os dois bugs de build que este projeto já teve (CRLF em bin/*,
+      # plataforma ausente no Gemfile.lock) NÃO são exemplo disso — os
+      # dois quebravam durante o próprio build, porque o Dockerfile
+      # executa ./bin/rails assets:precompile, e o job de build já os
+      # pegava. O vizinho deles é que interessa: bin/docker-entrypoint
+      # depende da mesma normalização de LF e só roda quando o container
+      # SOBE, então um problema ali passaria por um build verde.
+      #
+      # --wait só volta quando o banco e o web estão SAUDÁVEIS pelo
+      # healthcheck do próprio Dockerfile, e o worker rodando; se algum
+      # container morre no boot, o passo falha aqui.
+      - name: Sobe a stack de produção (banco + web + worker)
+        run: docker compose up --detach --wait --wait-timeout 240
+
+      # O healthcheck já bate em /acessibilidade de dentro do container.
+      # Este curl é de fora: verifica também a publicação da porta.
+      - name: A rota pública responde pela porta publicada
+        run: curl --fail --silent --show-error --max-time 10 -o /dev/null http://localhost:3000/acessibilidade
+
+      - name: O entrypoint gerou a chave efêmera (caminho sem SECRET_KEY_BASE)
+        run: docker compose logs web | grep -q 'gerando uma chave'
+
+      # Desde a adoção do Solid Queue o deploy tem DOIS processos, e o
+      # segundo nunca foi exercitado por nada automatizado. Um worker que
+      # sobe e não consome nada é invisível: a tela responde normalmente e
+      # a entrega simplesmente não acontece.
+      #
+      # O job escolhido não tem efeito colateral nenhum — a assinatura 0
+      # não existe, então WebhookDelivery recusa antes de tocar a rede
+      # (ver o contrato de retorno em WebhookDelivery#entregar). O que se
+      # verifica aqui é o percurso: o web enfileira, o Postgres guarda, o
+      # worker reclama e executa.
+      #
+      # O -e SECRET_KEY_BASE é necessário porque `docker compose exec` não
+      # passa pelo ENTRYPOINT, então não herda a chave efêmera que o
+      # entrypoint gerou pro processo do Puma.
+      - name: O worker consome um job da fila
+        run: |
+          docker compose exec -T -e SECRET_KEY_BASE=smoke-test web \
+            bin/rails runner 'WebhookDeliveryJob.perform_later(0, "smoke_test", {})'
+
+          for _ in $(seq 1 30); do
+            if docker compose logs worker | grep -q 'Performed WebhookDeliveryJob'; then
+              echo "O worker executou o job enfileirado pelo web."
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "::error::o worker não executou o job em 60s"
+          exit 1
+
+      # Sem isto, um smoke test vermelho não diz nada além de "falhou": o
+      # container que morreu já foi derrubado pelo passo seguinte.
+      - name: Estado e logs da stack (só quando algum passo acima falha)
+        if: failure()
+        run: |
+          docker compose ps --all
+          docker compose logs --no-color
+
+      - name: Derruba a stack
+        if: always()
+        run: docker compose down --volumes --remove-orphans
+
       # Só publica quando o CI roda por push (ex.: merge em main) — em
-      # pull_request o job continua só validando que o Dockerfile builda,
-      # sem publicar imagem de branch/fork ainda não revisado.
+      # pull_request o job continua só validando que o Dockerfile builda e
+      # que a imagem sobe, sem publicar imagem de branch/fork ainda não
+      # revisado.
       - name: Login no GitHub Container Registry
         if: github.event_name == 'push'
         uses: docker/login-action@v3
@@ -160,7 +260,14 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
 
-      - name: Build da imagem (publica só em push; em pull_request só valida o build)
+      # Segunda etapa do build: mesmo contexto, então acerta inteiro o
+      # cache gravado pelo build local acima — o que ela acrescenta são as
+      # tags/labels definitivos e o push. Sem cache-to justamente por isso:
+      # gravar o mesmo cache de novo só custaria tempo.
+      #
+      # Publica só em push (ex.: merge em main); em pull_request continua
+      # sendo apenas mais uma validação.
+      - name: Publica a imagem (só em push; em pull_request só revalida o build)
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -168,4 +275,3 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max

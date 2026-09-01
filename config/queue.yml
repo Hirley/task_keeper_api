@@ -1,8 +1,10 @@
 # Configuração do Solid Queue (ver Gemfile e a seção "Webhooks de saída"
 # do README). Só vale onde o adapter é :solid_queue — hoje, produção.
 #
-# Um worker só, com 3 threads, é folgado para o volume deste projeto: a
-# única coisa que roda em background é a entrega de webhooks. JOB_CONCURRENCY
+# Um worker só, com 3 threads, é folgado para o volume deste projeto: o
+# que roda em background é a entrega de webhooks, o envio do relatório
+# semanal por Telegram e o link de redefinição de senha por Telegram —
+# tudo disparado por ação humana numa equipe pequena. JOB_CONCURRENCY
 # existe para escalar sem mexer no arquivo, se um dia isso mudar.
 default: &default
   dispatchers:

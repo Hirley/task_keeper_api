@@ -2,7 +2,7 @@
 
 Aplicação Ruby on Rails full-stack (API REST + interface web) para times pequenos organizarem e acompanharem demandas do dia a dia: quem é responsável por quê, o que está atrasado, e um jeito rápido de saber "o que precisa da minha atenção agora?".
 
-Três papéis com permissões diferentes (executor/líder/admin), autenticação e autorização (Devise + CanCanCan), notificação automática de atraso via Telegram, webhooks de saída (Slack/Teams/Discord/n8n), relatório semanal em PDF, e uma API JSON versionada ao lado da tela web — tudo com suíte de testes automatizados, CI (RuboCop + RSpec + build/publish da imagem Docker) e deploy em container.
+Três papéis com permissões diferentes (executor/líder/admin), autenticação e autorização (Devise + CanCanCan), notificação automática de atraso via Telegram, webhooks de saída (Slack/Teams/Discord/n8n), relatório semanal em PDF, e uma API JSON versionada ao lado da tela web — tudo com suíte de testes automatizados, CI (RuboCop + RSpec + build, smoke test e publish da imagem Docker) e deploy em container.
 
 **Rodando em produção:** ver seção "Docker" — imagem publicada automaticamente em `ghcr.io/hirley/task_keeper_api` a cada merge em `main`.
 
@@ -12,7 +12,7 @@ Três papéis com permissões diferentes (executor/líder/admin), autenticação
 - HAML + Bootstrap (interface web) + Ransack (filtro/ordenação — ver "Identidade visual e busca/paginação")
 - Prawn + prawn-table (PDF do relatório semanal — ver "Relatório semanal")
 - RSpec + FactoryBot + Shoulda Matchers (testes) · RuboCop (estilo)
-- Docker + GitHub Actions (CI: lint, testes, build e publish da imagem)
+- Docker + GitHub Actions (CI: lint, testes, build, smoke test e publish da imagem)
 
 ## Regras de negócio
 
@@ -108,7 +108,7 @@ Este projeto não tem `config/master.key`/`config/credentials.yml.enc`, então `
 
 **Sobre a plataforma do `Gemfile.lock`**: o lockfile deste projeto foi gerado originalmente numa máquina Windows — a seção `PLATFORMS` só tem `x64-mingw-ucrt`, sem a plataforma Linux. Sem isso, `bundle install` falha dentro de um container Linux ao tentar resolver as gems com extensão nativa (`pg`, `nokogiri`). O `Dockerfile` já corrige isso sozinho (roda `bundle lock --add-platform x86_64-linux` antes do `bundle install`, dentro da própria imagem), então não é preciso fazer nada manualmente por causa disso — mas é bom saber que esse ajuste existe, caso apareça algum erro de plataforma ao rodar `bundle install` fora do Docker também (nesse caso, `bundle lock --add-platform x86_64-linux` resolve, e o mesmo vale se você desenvolver num Mac Apple Silicon: `bundle lock --add-platform arm64-darwin`).
 
-O build é validado automaticamente a cada push/PR pelo CI (ver seção "Integração contínua"). Durante o desenvolvimento, dois bugs reais de build já apareceram e foram corrigidos:
+O build é validado automaticamente a cada push/PR pelo CI, que também **sobe a imagem e verifica que ela funciona** (ver seção "Integração contínua"). Durante o desenvolvimento, dois bugs reais de build já apareceram e foram corrigidos:
 
 1. **`COPY . .` sobrescrevendo o `Gemfile.lock` corrigido**: rodava depois do `bundle lock --add-platform`, apagando silenciosamente o ajuste de plataforma antes do `bootsnap precompile app/ lib/` seguinte (`bundle exec` revalida a plataforma a cada chamada). Corrigido copiando o projeto inteiro antes de mexer no `Gemfile.lock`.
 2. **CRLF em `bin/*`**: quem desenvolve no Windows normalmente tem `core.autocrlf=true` no Git, que converte os scripts de `bin/` (LF no repositório) para CRLF no checkout local; como `docker build` copia o contexto direto do disco (não do objeto Git), o CRLF ia parar no container e o shebang `#!/usr/bin/env ruby` de `bin/rails` virava `ruby\r` — `env: 'ruby\r': No such file or directory`. Corrigido normalizando `bin/*` para LF em tempo de build (`sed -i 's/\r$//' bin/*`, logo após o `COPY . .`), além de um `.gitattributes` (`* text=auto eol=lf`) pra evitar isso em checkouts novos.
@@ -119,7 +119,24 @@ O build é validado automaticamente a cada push/PR pelo CI (ver seção "Integra
 
 - **rubocop** — `bundle exec rubocop` (usa o `.rubocop.yml` já existente no repositório);
 - **rspec** — sobe um serviço `postgres:16-alpine`, roda `bin/rails db:prepare`, depois `bin/rails zeitwerk:check` (eager load isolado num processo à parte, só pra pegar erro de autoload cedo — ver comentário em `config/environments/test.rb` sobre por que isso não é feito via `config.eager_load = true` no ambiente de teste) e por fim `bundle exec rspec` contra o banco `task_keeper_api_test`;
-- **docker** — builda a imagem de produção (`docker/build-push-action`); só roda depois que `rubocop` e `rspec` passam. Em pull request, só valida que o `Dockerfile` builda (sem publicar). Em push pra `main`, publica a imagem no GitHub Container Registry (`ghcr.io/hirley/task_keeper_api`), usando o `GITHUB_TOKEN` automático do Actions — não exige nenhum secret configurado manualmente.
+- **docker** — builda a imagem de produção, **sobe a stack inteira e verifica que ela funciona**, e só então publica; roda depois que `rubocop` e `rspec` passam. Em pull request, valida o build e o smoke test sem publicar. Em push pra `main`, publica a imagem no GitHub Container Registry (`ghcr.io/hirley/task_keeper_api`), usando o `GITHUB_TOKEN` automático do Actions — não exige nenhum secret configurado manualmente.
+
+  **O smoke test** existe porque validar que a imagem *builda* não diz nada sobre ela *subir*: entrypoint, `db:prepare`, permissões do usuário não-root, healthcheck, publicação de porta e variável de ambiente faltando só falham em runtime.
+
+  (Os dois bugs listados na seção "Docker" **não** são exemplo disso — os dois quebravam durante o `docker build`, porque o Dockerfile executa `./bin/rails assets:precompile`, e o job de build já os pegaria. O caso interessante é o vizinho: `bin/docker-entrypoint` também depende da normalização de LF, e ele só roda quando o container **sobe** — um problema ali passaria por um build verde.)
+
+  O job sobe `db` + `web` + `worker` com `docker compose up --wait` (que só volta quando os healthchecks passam) e checa quatro coisas:
+
+  | Verificação | O que quebraria sem ela |
+  |---|---|
+  | `--wait` volta sem erro | container que morre no boot, entrypoint quebrado, healthcheck quebrado, `db:prepare` falhando |
+  | `curl` em `/acessibilidade` de fora do container | porta não publicada, Puma escutando só em loopback |
+  | a linha de chave efêmera no log do entrypoint | o caminho "sem `SECRET_KEY_BASE`" da v2.0.0, que nada exercitava |
+  | o `worker` executa um job enfileirado pelo `web` | worker que sobe e não consome nada — invisível, porque a tela responde normal e a entrega só não acontece |
+
+  O `SECRET_KEY_BASE` do job é vazio **de propósito**: é o que faz o entrypoint gerar a chave efêmera. O job enfileirado é `WebhookDeliveryJob` para uma assinatura inexistente, que `WebhookDelivery` recusa antes de tocar a rede — o que se verifica é o percurso (web → Postgres → worker), não a entrega.
+
+  A imagem é buildada uma vez e carregada no daemon local (`load`), o smoke test roda contra ela, e só depois vem a etapa que publica — que acerta o cache inteiro e custa segundos. Uma imagem que não sobe nunca chega ao registry.
 
   As tags da imagem dependem do que disparou o build:
 
@@ -141,7 +158,7 @@ O build é validado automaticamente a cada push/PR pelo CI (ver seção "Integra
 
 ⚠️ **Passo manual único**: por padrão, um pacote novo no GHCR nasce privado, mesmo em repositório público — depois do primeiro push em `main` que publicar a imagem, é preciso ir em *Package settings* (na página do pacote em `github.com/Hirley?tab=packages`) e trocar a visibilidade pra pública, se quiser puxar a imagem (`docker pull`) sem autenticação.
 
-`SECRET_KEY_BASE` no workflow é um valor fixo só para o boot da aplicação em CI (não é usado em nenhum ambiente real — produção continua exigindo a variável de ambiente própria, como descrito na seção "Docker"). As demais variáveis de banco seguem o mesmo padrão de `.env.example`/`config/database.yml`.
+`SECRET_KEY_BASE` no workflow é um valor fixo só para o boot da aplicação em CI (não é usado em nenhum ambiente real — produção continua exigindo a variável de ambiente própria, como descrito na seção "Docker"). As demais variáveis de banco seguem o mesmo padrão de `.env.example`/`config/database.yml`. O job **docker** sobrescreve três delas, porque o `env:` do workflow descreve o ambiente de *teste* e ali o que sobe é a imagem de *produção* — ver o comentário no próprio `ci.yml`.
 
 ## Fluxo de desenvolvimento com agentes
 

@@ -25,6 +25,20 @@ x-app-build: &app-build
   args:
     RUBY_VERSION: ${RUBY_VERSION:-4.0.6}
 
+# Nome da imagem que web e worker usam. Com `--build` o compose builda e
+# marca a imagem com este nome; sem `--build`, ele reaproveita uma imagem
+# já existente com esse nome em vez de buildar.
+#
+# É esse segundo comportamento que o smoke test do CI usa: lá a imagem já
+# foi buildada pelo passo anterior do job (com cache), e APP_IMAGE aponta
+# pra ela — buildar de novo aqui dobraria o tempo do job pra produzir
+# exatamente o mesmo artefato. Ver .github/workflows/ci.yml.
+#
+# Efeito colateral local: se você já tem uma task-keeper-api:local antiga
+# e roda `docker compose up` sem `--build`, sobe a antiga. O README manda
+# usar `--build`, que é o que resolve.
+x-app-image: &app-image ${APP_IMAGE:-task-keeper-api:local}
+
 x-app-env: &app-env
   # Sem valor default de propósito: quando esta variável chega vazia,
   # bin/docker-entrypoint gera uma chave efêmera só para a execução
@@ -68,6 +82,7 @@ services:
 
   web:
     build: *app-build
+    image: *app-image
     ports:
       - "${PORT:-3000}:3000"
     environment: *app-env
@@ -79,6 +94,7 @@ services:
 
   worker:
     build: *app-build
+    image: *app-image
     command: ["./bin/jobs"]
     environment: *app-env
     volumes:
