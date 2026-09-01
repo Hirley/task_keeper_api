@@ -9,6 +9,20 @@ Rails.application.configure do
 
   config.active_storage.service = :local
 
+  # Fila persistente, nas tabelas solid_queue_* do próprio banco (ver
+  # config/queue.yml e a migration CreateSolidQueueTables).
+  #
+  # O default do Rails é :async, que guarda a fila na MEMÓRIA do processo
+  # web: todo restart, deploy ou OOM descartava em silêncio o que ainda
+  # não tinha rodado — inclusive as retentativas de webhook agendadas com
+  # backoff, que por definição estão pendentes por algum tempo.
+  #
+  # Exige um processo separado rodando `bin/jobs` (ver o serviço "worker"
+  # no docker-compose.yml). Sem ele os jobs ficam enfileirados no banco
+  # esperando, em vez de sumir — o que é o ponto: a falha passa a ser
+  # visível e recuperável.
+  config.active_job.queue_adapter = :solid_queue
+
   config.log_tags = [:request_id]
   config.logger = ActiveSupport::TaggedLogging.logger($stdout)
   config.log_level = ENV.fetch('RAILS_LOG_LEVEL', 'info')

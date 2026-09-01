@@ -1,0 +1,14 @@
+# Tarefas recorrentes do Solid Queue. Está vazio de propósito: sem o
+# arquivo, o worker sobe reclamando no log ("provided configuration file
+# does not exist"), o que vira ruído permanente numa saída que a gente
+# quer conseguir ler.
+#
+# A única tarefa periódica deste projeto hoje é a notificação de atraso
+# (`bin/rails demandas:notificar_atrasos`), que roda por um scheduler
+# externo — ver lib/tasks/telegram_notifications.rake e a seção
+# "Notificação de atraso via Telegram" do README. Migrá-la para cá é
+# possível, mas exigiria antes resolver a idempotência da tarefa, senão
+# duas execuções concorrentes duplicariam o aviso.
+production: {}
+development: {}
+test: {}

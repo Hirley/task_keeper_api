@@ -1,0 +1,9 @@
+#!/usr/bin/env ruby
+
+# Sobe o supervisor do Solid Queue (dispatcher + workers). É o processo
+# separado do web: ver o serviço "worker" no docker-compose.yml e a seção
+# "Webhooks de saída" do README.
+require_relative "../config/environment"
+require "solid_queue/cli"
+
+SolidQueue::Cli.start(ARGV)

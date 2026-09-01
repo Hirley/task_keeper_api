@@ -10,6 +10,11 @@ gem 'pg', '~> 1.5'
 gem 'propshaft'
 gem 'puma', '>= 6.0'
 gem 'rails', '~> 8.1'
+# Fila persistente de Active Job, no próprio PostgreSQL (ver
+# config/environments/production.rb e a seção "Webhooks de saída" do
+# README). Substitui o adapter :async, que guardava a fila na memória do
+# processo web e perdia tudo que estivesse pendente num restart.
+gem 'solid_queue'
 gem 'stimulus-rails'
 gem 'turbo-rails'
 gem 'tzinfo-data', platforms: %i[mingw mswin x64_mingw jruby]

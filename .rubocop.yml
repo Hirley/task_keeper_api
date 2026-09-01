@@ -9,6 +9,14 @@ AllCops:
     - "db/schema.rb"
     - "bin/**/*"
     - "vendor/**/*"
+    # Migrations do Solid Queue: são o schema da gem copiado para cá (ver
+    # o comentário em CreateSolidQueueTables), não código deste projeto.
+    # Reformatá-las para o nosso estilo faria o próximo
+    # `bin/rails solid_queue:update` virar um conflito a resolver à mão,
+    # e o ganho seria zero — ninguém edita esses arquivos. Mesmo critério
+    # do db/schema.rb acima. As migrations escritas por nós continuam
+    # sendo checadas normalmente.
+    - "db/migrate/*_solid_queue*.rb"
 
 # O projeto documenta decisões em comentários contextuais (o "porquê" de
 # cada escolha), não em RDoc por classe — exigir um comentário fixo de
