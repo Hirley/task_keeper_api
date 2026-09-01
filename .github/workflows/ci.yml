@@ -310,13 +310,17 @@ jobs:
       # tags/labels definitivos e o push. Sem cache-to justamente por isso:
       # gravar o mesmo cache de novo só custaria tempo.
       #
-      # Publica só em push (ex.: merge em main); em pull_request continua
-      # sendo apenas mais uma validação.
-      - name: Publica a imagem (só em push; em pull_request só revalida o build)
+      # Não roda em pull_request: com push=false ela seria um build inteiro
+      # (ainda que de cache) cujo resultado é descartado — o Dockerfile já
+      # foi validado pelo build local acima, e a imagem, pelo smoke test.
+      # O passo de metadados continua rodando em PR, então as regras de tag
+      # seguem sendo exercitadas nos dois casos.
+      - name: Publica a imagem no GHCR
+        if: github.event_name == 'push'
         uses: docker/build-push-action@v6
         with:
           context: .
-          push: ${{ github.event_name == 'push' }}
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha

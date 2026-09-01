@@ -142,7 +142,9 @@ O build é validado automaticamente a cada push/PR pelo CI, que também **sobe a
 
   O `SECRET_KEY_BASE` do job é vazio **de propósito**: é o que faz o entrypoint gerar a chave efêmera. O job enfileirado é `WebhookDeliveryJob` para uma assinatura inexistente, que `WebhookDelivery` recusa antes de tocar a rede — o que se verifica é o percurso (web → Postgres → worker), não a entrega.
 
-  A imagem é buildada uma vez e carregada no daemon local (`load`), o smoke test roda contra ela, e só depois vem a etapa que publica — que acerta o cache inteiro e custa segundos. Uma imagem que não sobe nunca chega ao registry.
+  A imagem é buildada uma vez e carregada no daemon local (`load`), o smoke test roda contra ela, e só depois vem a etapa que publica — que acerta o cache inteiro e custa segundos, e só existe em push (em pull request seria um build descartado). **Uma imagem que não sobe nunca chega ao registry.**
+
+  Custo medido no runner: o smoke test em si leva **~26s** (18s esperando `db`+`web` ficarem saudáveis, 3s subindo o worker, 3s para o job ir do `web` ao `worker`, 1s de teardown). O que pesa é o build com `load`, ~1m45s contra ~1m10s de um build sem exportar a imagem — o preço de testar exatamente o artefato que vai ser publicado. O job inteiro fica em ~2m50s, e o CI completo em ~4min.
 
   As tags da imagem dependem do que disparou o build:
 
