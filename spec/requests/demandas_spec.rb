@@ -418,6 +418,43 @@ RSpec.describe 'Demandas (tela web)', type: :request do
         delete "/demandas/#{demanda.id}"
       end.to change(Demanda, :count).by(-1)
       expect(response).to redirect_to(demandas_path)
+      follow_redirect!
+      expect(response.body).to include('Demanda excluída com sucesso.')
+    end
+
+    # Nenhum impeditivo de exclusão existe hoje (ver o comentário em
+    # DemandasController#destroy), então o bloqueio é simulado: o que se
+    # verifica é que a tela olha o retorno de #destroy, e não que ela
+    # sempre anuncia sucesso.
+    it 'mostra o erro quando a exclusão é bloqueada, em vez de anunciar sucesso' do
+      bloqueada = Demanda.find(demanda.id)
+      bloqueada.errors.add(:base, 'Existe um apontamento vinculado a esta demanda.')
+      allow(Demanda).to receive(:find).and_return(bloqueada)
+      allow(bloqueada).to receive(:destroy).and_return(false)
+
+      sign_in lider
+      expect do
+        delete "/demandas/#{demanda.id}"
+      end.not_to change(Demanda, :count)
+
+      expect(response).to redirect_to(demandas_path)
+      follow_redirect!
+      expect(response.body).to include('Existe um apontamento vinculado a esta demanda.')
+      expect(response.body).not_to include('Demanda excluída com sucesso.')
+    end
+
+    # Um before_destroy com `throw :abort` devolve false sem popular
+    # errors — sem o fallback, a tela mostraria um alerta vazio.
+    it 'usa uma mensagem genérica quando a exclusão falha sem popular errors' do
+      bloqueada = Demanda.find(demanda.id)
+      allow(Demanda).to receive(:find).and_return(bloqueada)
+      allow(bloqueada).to receive(:destroy).and_return(false)
+
+      sign_in lider
+      delete "/demandas/#{demanda.id}"
+
+      follow_redirect!
+      expect(response.body).to include('Não foi possível excluir a demanda.')
     end
   end
 end

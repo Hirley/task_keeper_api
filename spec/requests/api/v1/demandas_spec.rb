@@ -146,5 +146,35 @@ RSpec.describe 'Api::V1::Demandas', type: :request do
       end.to change(Demanda, :count).by(-1)
       expect(response).to have_http_status(:no_content)
     end
+
+    # Mesmo caso do spec da tela web: nenhum impeditivo existe hoje, então
+    # o bloqueio é simulado. O que se verifica é que a API olha o retorno
+    # de #destroy antes de responder 204.
+    it 'responde 422 com os erros quando a exclusão é bloqueada' do
+      bloqueada = Demanda.find(demanda.id)
+      bloqueada.errors.add(:base, 'Existe um apontamento vinculado a esta demanda.')
+      allow(Demanda).to receive(:find).and_return(bloqueada)
+      allow(bloqueada).to receive(:destroy).and_return(false)
+
+      sign_in lider
+      expect do
+        delete "/api/v1/demandas/#{demanda.id}", as: :json
+      end.not_to change(Demanda, :count)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.parsed_body['errors']).to include('Existe um apontamento vinculado a esta demanda.')
+    end
+
+    it 'devolve uma mensagem genérica quando a exclusão falha sem popular errors' do
+      bloqueada = Demanda.find(demanda.id)
+      allow(Demanda).to receive(:find).and_return(bloqueada)
+      allow(bloqueada).to receive(:destroy).and_return(false)
+
+      sign_in lider
+      delete "/api/v1/demandas/#{demanda.id}", as: :json
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.parsed_body['errors']).to eq(['Não foi possível excluir a demanda.'])
+    end
   end
 end
