@@ -10,11 +10,18 @@
 return if Rails.env.test?
 
 # Seeds de exemplo para ambiente de desenvolvimento.
+#
+# O `u.ator_dispensado = true` dos três usuários abaixo declara o óbvio
+# para o model: seeds rodam fora de qualquer requisição, não há ator e não
+# há fronteira a defender. Sem essa declaração a criação é recusada — ver
+# User#validar_atribuicao_de_papel, que trata ator ausente como recusa e
+# não como dispensa.
 User.find_or_create_by!(email: 'admin@task-keeper.local') do |u|
   u.name = 'Admin Exemplo'
   u.password = 'senhaSegura123'
   u.password_confirmation = 'senhaSegura123'
   u.role = :admin
+  u.ator_dispensado = true
 end
 
 lider = User.find_or_create_by!(email: 'lider@task-keeper.local') do |u|
@@ -22,6 +29,7 @@ lider = User.find_or_create_by!(email: 'lider@task-keeper.local') do |u|
   u.password = 'senhaSegura123'
   u.password_confirmation = 'senhaSegura123'
   u.role = :lider
+  u.ator_dispensado = true
 end
 
 executor = User.find_or_create_by!(email: 'executor@task-keeper.local') do |u|
@@ -29,6 +37,7 @@ executor = User.find_or_create_by!(email: 'executor@task-keeper.local') do |u|
   u.password = 'senhaSegura123'
   u.password_confirmation = 'senhaSegura123'
   u.role = :executor
+  u.ator_dispensado = true
 end
 
 Demanda.find_or_create_by!(title: 'Preparar relatório semanal') do |d|

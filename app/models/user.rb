@@ -27,11 +27,27 @@ class User < ApplicationRecord
 
   # Quem está cadastrando/editando este usuário. Não é coluna — os
   # controllers preenchem (ver UsersController#set_user/#create e
-  # Api::V1::UsersController#create) só pra #validar_atribuicao_de_papel
-  # poder decidir. Fica nil no console, nos seeds e nos testes que não
-  # tratam dessa regra, e aí a validação não roda: quem chega no console
-  # já chega no banco, não há fronteira a defender ali.
+  # Api::V1::UsersController#create) pra #validar_atribuicao_de_papel
+  # poder decidir.
   attr_accessor :ator
+
+  # Declara que este registro está sendo escrito FORA de um contexto de
+  # requisição: seeds, console, factory de teste. Sem isto, definir ou
+  # mudar +role+ sem +ator+ é recusado (ver
+  # #validar_atribuicao_de_papel).
+  #
+  # O nome é deliberadamente incômodo de escrever, e é assim de propósito:
+  # quem o usa está afirmando "não há requisição aqui, não há fronteira a
+  # defender". Isso precisa ser uma decisão consciente, não o atalho para
+  # calar uma validação que apareceu no caminho.
+  attr_accessor :ator_dispensado
+
+  # Mensagem de erro de programação, não de usuário: nenhuma tela leva a
+  # ela, porque os controllers sempre preenchem o ator. Se ela aparecer, o
+  # caminho que a produziu é novo e precisa decidir de qual lado da
+  # fronteira está — por isso ela nomeia as duas saídas.
+  ERRO_SEM_ATOR = 'só pode ser definido informando quem está fazendo a alteração ' \
+                  '(User#ator) — fora de uma requisição, use User#ator_dispensado'
 
   # Usado por TelegramNotifier para avisar o usuário sobre demandas
   # atrasadas (ver app/services/telegram_notifier.rb). É opcional — nem
@@ -129,11 +145,24 @@ class User < ApplicationRecord
   #
   # O que o líder continua podendo fazer, porque é a regra documentada:
   # alternar qualquer outro usuário entre executor e líder.
+  #
+  # A ausência de ator é RECUSA, não dispensa. Antes era o contrário
+  # (`return if ator.blank?`), e a diferença não é teórica: a invariante
+  # valia só porque os dois controllers de hoje lembram de preencher o
+  # ator. Qualquer caminho novo que esquecesse — um job, um importador,
+  # uma rake task, um endpoint futuro — passava direto, em silêncio, e o
+  # silêncio é o problema: um esquecimento virava brecha em vez de erro.
+  #
+  # Os lugares legítimos que escrevem papel sem ator (seeds, console,
+  # factory) declaram isso com +ator_dispensado+. São poucos, e é neles
+  # que o custo deve cair.
   def validar_atribuicao_de_papel
-    return if ator.blank?
     return unless papel_mudou?
+    return if ator_dispensado
 
-    if proprio_usuario?
+    if ator.blank?
+      errors.add(:role, ERRO_SEM_ATOR)
+    elsif proprio_usuario?
       errors.add(:role, 'não pode ser alterado por você mesmo — peça a outro líder ou admin')
     elsif envolve_papel_admin? && !ator.admin?
       errors.add(:role, 'de admin só pode ser concedido ou removido por outro admin')
