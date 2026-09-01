@@ -14,10 +14,12 @@ Prefixe todo comando com `MSYS_NO_PATHCONV=1`. Sem isso o Git Bash converte `/ap
 ## Ciclo rápido (containers já de pé)
 
 ```bash
-MSYS_NO_PATHCONV=1 docker cp . tk-ruby:/app && MSYS_NO_PATHCONV=1 docker exec -e RAILS_ENV=test -e DB_HOST=tk-pg -e DB_USERNAME=postgres -e DB_PASSWORD=postgres -e DB_NAME=task_keeper_api_test -e SECRET_KEY_BASE=dummy tk-ruby bash -c 'cd /app && bundle lock --add-platform x86_64-linux >/dev/null && bundle exec rubocop --format simple | tail -2 && bundle exec rspec 2>&1 | tail -4'
+MSYS_NO_PATHCONV=1 docker cp . tk-ruby:/app && MSYS_NO_PATHCONV=1 docker exec -e RAILS_ENV=test -e DB_HOST=tk-pg -e DB_USERNAME=postgres -e DB_PASSWORD=postgres -e DB_NAME=task_keeper_api_test -e SECRET_KEY_BASE=dummy -e CHROME_BIN=/usr/bin/chromium tk-ruby bash -c 'cd /app && bundle lock --add-platform x86_64-linux >/dev/null && bundle exec rubocop --format simple | tail -2 && bundle exec rspec 2>&1 | tail -4'
 ```
 
 Leva ~20s. O `add-platform` está ali porque o `docker cp` sobrescreve o `Gemfile.lock` do container com o do worktree, que não tem a plataforma Linux. As gems ficam em `/usr/local/bundle`, fora do `/app`, então recopiar o código não obriga a reinstalar nada.
+
+`CHROME_BIN` aponta os system specs (`spec/system`) para o Chromium do Debian — no runner do GitHub o binário é o `google-chrome`, que o Selenium acha sozinho, mas aqui não existe com esse nome. Sem a variável **a suíte inteira falha**, não só os cinco system specs: eles fazem parte do `bundle exec rspec` normal, de propósito, para que "rodar os testes" signifique a mesma coisa aqui e no CI.
 
 Rodou uma migration? Acrescente `bin/rails db:migrate` antes do RSpec, senão o `maintain_test_schema!` recarrega o schema antigo e o RSpec aborta com "Migrations are pending".
 
@@ -32,12 +34,12 @@ MSYS_NO_PATHCONV=1 docker network create tk-test; MSYS_NO_PATHCONV=1 docker run 
 Depois, dentro do `tk-ruby`: copie o código, remova o `/app/.git` (é um arquivo de worktree apontando para um caminho Windows que não existe lá), instale `build-essential` e `libpq-dev`, fixe o Bundler na versão do `Gemfile.lock` (`BUNDLED WITH`) e rode `bundle install`.
 
 ```bash
-MSYS_NO_PATHCONV=1 docker cp . tk-ruby:/app && MSYS_NO_PATHCONV=1 docker exec tk-ruby bash -c 'rm -f /app/.git && apt-get update -qq && apt-get install -y --no-install-recommends build-essential libpq-dev >/dev/null 2>&1 && gem install bundler -v 4.0.18 --no-document >/dev/null && cd /app && bundle lock --add-platform x86_64-linux >/dev/null && bundle install --jobs 4 --retry 3 2>&1 | tail -2'
+MSYS_NO_PATHCONV=1 docker cp . tk-ruby:/app && MSYS_NO_PATHCONV=1 docker exec tk-ruby bash -c 'rm -f /app/.git && apt-get update -qq && apt-get install -y --no-install-recommends build-essential libpq-dev chromium chromium-driver >/dev/null 2>&1 && gem install bundler -v 4.0.18 --no-document >/dev/null && cd /app && bundle lock --add-platform x86_64-linux >/dev/null && bundle install --jobs 4 --retry 3 2>&1 | tail -2'
 ```
 
 ## Verificação no navegador
 
-Obrigatória para mudança em JS, CSS, HAML ou CSP — o `Gemfile` não tem driver Capybara/JS, então nada disso tem spec.
+Obrigatória para mudança em JS, CSS, HAML ou CSP. Os system specs cobrem CSP e o alto contraste sobrevivendo ao Turbo — mas tour guiado, dropdown de busca, busca por voz e o widget do VLibras continuam sem spec, e são justamente os que só o olho pega.
 
 Congele a imagem com as gems e suba a app numa porta publicada:
 

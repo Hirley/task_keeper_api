@@ -34,9 +34,14 @@ Na ordem, todos dentro do container:
 
 ## O que os specs não cobrem
 
-O `Gemfile` não tem driver Capybara/JS. Nada que dependa de JavaScript no navegador tem teste automatizado: barra de acessibilidade, tour guiado, dropdown de busca, widget do VLibras, e o CSP inteiro.
+Existem cinco system specs (`spec/system`, Capybara + Chrome headless) e eles cobrem só o que falha em **silêncio**: violação de CSP em página pública, autenticada e depois de uma navegação do Turbo; o alto contraste sobrevivendo ao Turbo; e a confirmação do Turbo ao excluir.
 
-Se você mexeu nessas áreas, suba a app e verifique de verdade — console sem erros, elemento aparecendo, clique funcionando, **e o mesmo depois de uma navegação do Turbo Drive**. O CSP deste projeto foi corrigido duas vezes por causa de coisas que só o navegador mostrou, e nenhuma delas quebraria um spec.
+Continua sem teste: tour guiado, dropdown de busca, busca por voz e o widget do VLibras. Se você mexeu nisso — ou em qualquer JS, CSS, HAML ou CSP —, suba a app e verifique de verdade: console sem erros, elemento aparecendo, clique funcionando, **e o mesmo depois de uma navegação do Turbo Drive**.
+
+Dois detalhes que mordem ao escrever system spec aqui:
+
+- **o container de verificação precisa de Chromium** (`apt-get install -y chromium chromium-driver` + `CHROME_BIN=/usr/bin/chromium`). Sem ele `bundle exec rspec` falha inteiro, não só os system specs — ver a skill `verificar-local`;
+- **o tour guiado dispara sozinho** no painel de quem tem `tour_completed_at` nulo, e o overlay intercepta todo clique. Use `create(:user, ..., tour_completed_at: 1.day.ago)` nos specs que precisam clicar.
 
 ## Armadilhas deste repositório
 

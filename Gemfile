@@ -71,4 +71,19 @@ end
 
 group :test do
   gem 'rails-controller-testing'
+
+  # Cobertura de navegador (ver spec/system e o README, seção "Testes").
+  # Até aqui nada que dependesse de JavaScript tinha teste — e o CSP deste
+  # projeto precisou ser corrigido DUAS vezes por comportamento que só
+  # aparece num navegador de verdade (o widget do VLibras e o nonce por
+  # requisição quebrando o Turbo Drive). Nenhuma das duas quebraria um
+  # spec de request.
+  #
+  # É a única dependência pesada admitida no projeto, e entra só no grupo
+  # de teste: não vai para a imagem de produção (BUNDLE_WITHOUT no
+  # Dockerfile). selenium-webdriver em vez de cuprite/ferrum por ser o
+  # driver padrão dos system tests do Rails — o Chrome já vem instalado no
+  # runner do GitHub, então não exige pacote de sistema no CI.
+  gem 'capybara'
+  gem 'selenium-webdriver'
 end

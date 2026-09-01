@@ -215,7 +215,7 @@ A configuração vive em três arquivos versionados:
 
 O CI é a fonte de verdade — roda em Linux, com as versões travadas. Mas descobrir uma ofensa de estilo só depois do push custa um commit extra e um ciclo de dois minutos; foi o que aconteceu duas vezes antes deste fluxo existir. O container encurta o laço sem substituir o CI.
 
-Ele também permite o que o CI não faz: **subir a aplicação e olhar no navegador**. O `Gemfile` não tem driver Capybara/JS, então nada que dependa de JavaScript tem teste — barra de acessibilidade, tour guiado, busca, widget do VLibras e o CSP inteiro. A política de CSP deste projeto foi corrigida **duas vezes** por causa de comportamento que só apareceu num navegador de verdade, e nenhuma das duas quebraria um spec.
+Ele também permite o que o CI não faz: **subir a aplicação e olhar no navegador**. Existe hoje uma cobertura automatizada de navegador (`spec/system`, ver "Testes"), mas ela é pequena de propósito e cobre a classe de bug que já mordeu — CSP e o JS da aplicação sobrevivendo ao Turbo. Fora disso continua sem teste: tour guiado, dropdown de busca, busca por voz e o widget do VLibras. Olhar de verdade continua valendo para mudança em JS, CSS, HAML ou CSP.
 
 ### O hook
 
@@ -258,7 +258,23 @@ Cenários validados explicitamente:
 - a API rejeita com `415` qualquer `POST`/`PATCH`/`DELETE` sem `Content-Type: application/json` (proteção contra CSRF — ver seção "Endpoints principais"), sem afetar `GET`;
 - ao tentar acessar uma tela protegida sem login, ou ao errar e-mail/senha, a mensagem aparece traduzida em pt-BR (não `Translation missing` — ver seção "Mensagens em pt-BR").
 
-O que **não** tem cobertura automatizada, e por quê: interações que são só JavaScript/CSS (tamanho de fonte, alto contraste, o tooltip de ajuda do Chat ID) não têm teste, porque o `Gemfile` não inclui um driver Capybara/JS — foram verificadas manualmente (incluindo screenshots) antes de cada merge.
+### Navegador (`spec/system`)
+
+Capybara + Chrome headless, e deliberadamente **poucos** exemplos: eles não replicam o que os request specs já cobrem, cobrem os lugares onde a falha é **silenciosa** — a página renderiza, o servidor responde `200`, e só o navegador sabe que algo foi bloqueado ou deixou de rodar.
+
+| Exemplo | O que quebraria sem ele |
+|---|---|
+| página pública sem violação de CSP | uma diretiva nova bloqueando um recurso legítimo, sem sintoma no servidor |
+| página autenticada sem violação de CSP | idem, nas telas com importmap e widget do VLibras |
+| **sem violação depois de uma navegação do Turbo Drive** | o bug que já aconteceu: nonce por requisição contra um CSP que o Turbo mantém em vigor da primeira resposta |
+| alto contraste sobrevive à navegação do Turbo | `application.js` não executando — nonce do importmap recusado deixa a página bonita e inerte |
+| confirmação do Turbo ao excluir | `data-turbo-confirm` deixando de funcionar, e a exclusão passando a acontecer sem perguntar |
+
+Violação de CSP não levanta erro nem quebra a renderização: o navegador recusa o recurso e escreve no console. Por isso o driver liga `goog:loggingPrefs` e os exemplos leem o log — sem isso veriam uma página aparentemente perfeita, que é exatamente como as duas quebras anteriores passaram despercebidas.
+
+O filtro é pelo texto `Content Security Policy` do próprio navegador, e não "console limpo": o layout carrega Bootstrap, fontes do Google e o widget do VLibras de CDNs externos, e uma falha de rede do runner vira `Failed to load resource` — ruído que não é o que estes exemplos verificam.
+
+O que **continua** sem cobertura automatizada: tour guiado, dropdown de busca, busca por voz e o widget do VLibras em si. São verificados à mão (incluindo screenshots) quando mudam.
 
 ## Endpoints principais
 

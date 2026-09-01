@@ -82,6 +82,11 @@ jobs:
       - name: Zeitwerk check (eager load isolado, fora do processo do RSpec)
         run: bin/rails zeitwerk:check
 
+      # Inclui os system specs (spec/system, Capybara + Chrome headless).
+      # Não há passo de instalação de navegador porque a imagem do runner
+      # já traz o Google Chrome, e o Selenium o encontra sozinho — o
+      # container de verificação local, que usa o Chromium do Debian,
+      # precisa de CHROME_BIN (ver a skill verificar-local).
       - name: RSpec
         run: bundle exec rspec
 

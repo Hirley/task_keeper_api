@@ -4,6 +4,13 @@
     %meta{ charset: "utf-8" }
     %meta{ name: "viewport", content: "width=device-width, initial-scale=1" }
     %title= content_for?(:page_title) ? "#{yield(:page_title)} · Task Keeper API" : "Task Keeper API"
+    -# Sem um <link rel="icon"> declarado, todo navegador pede /favicon.ico
+    -# por conta própria — e como não existe rota para isso, cada primeira
+    -# visita virava um ActionController::RoutingError no log. Ninguém tinha
+    -# percebido porque nenhum teste usava um navegador de verdade; o
+    -# primeiro system spec (spec/system) falhou exatamente nisso.
+    -# Declarando o ícone, o navegador usa este e não pede o .ico.
+    %link{ rel: "icon", href: asset_path("icon.svg"), type: "image/svg+xml" }
     %link{ rel: "preconnect", href: "https://fonts.googleapis.com" }
     %link{ rel: "preconnect", href: "https://fonts.gstatic.com", crossorigin: "anonymous" }
     %link{ rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Open+Sans:wght@300;400;600&display=swap" }
