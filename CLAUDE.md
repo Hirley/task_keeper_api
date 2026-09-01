@@ -42,7 +42,9 @@ Se você mexeu nessas áreas, suba a app e verifique de verdade — console sem 
 
 **`db/schema.rb` regenerado no container vem com ruído.** O Postgres 16 do container acrescenta `enable_extension "pg_catalog.plpgsql"` e reordena as opções da coluna `events`. Para migration que só mexe em dados, edite **apenas** a linha `define(version:)` à mão e descarte o resto.
 
-**Git Bash converte caminho em argumento de `docker`.** `-w /app` vira `C:/Program Files/Git/app`. Prefixe os comandos com `MSYS_NO_PATHCONV=1`.
+**Git Bash converte caminho em argumento de `docker`.** `-w /app` vira `C:/Program Files/Git/app`. Prefixe os comandos com `MSYS_NO_PATHCONV=1`. Cuidado ao exportar essa variável para o shell inteiro: aí o `curl` do Git Bash também deixa de converter, e `-o /dev/null` falha com `curl: (23)` — parece erro da aplicação e não é.
+
+**Script novo em `bin/` nasce sem bit de execução.** O sistema de arquivos do Windows não tem esse bit, então o Git registra `100644`. Um `docker build` daqui não percebe (o contexto vem do disco, onde tudo parece executável) e um checkout Linux respeita o índice — foi assim que `bin/jobs` derrubou o container do worker com `exit 126`, com a imagem de `main` quebrada por dois merges. Depois de criar um script em `bin/`, rode `git update-index --chmod=+x bin/<arquivo>` e confira com `git ls-files -s bin/`. O `chmod +x bin/*` do Dockerfile é rede de segurança da imagem, não do repositório.
 
 **Cops que já morderam:**
 
