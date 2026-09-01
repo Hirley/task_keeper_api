@@ -281,9 +281,21 @@ Quando uma demanda de um executor fica atrasada (data no passado e ainda não co
 
 - `TelegramNotifier` (`app/services/telegram_notifier.rb`) monta a mensagem e chama a API do Telegram (`sendMessage`) via `Net::HTTP` puro, sem depender de nenhuma gem adicional.
 - A mensagem é empática e objetiva: cita o título da demanda e há quantos dias está atrasada, sem tom de cobrança, e diz o que fazer a seguir (atualizar o status, ou avisar o líder se precisar de mais tempo/ajuda).
-- Como "ficar atrasada" é um estado que muda com o tempo (não com uma ação do usuário), o envio não acontece automaticamente na aplicação — é a tarefa `bin/rails demandas:notificar_atrasos` (`lib/tasks/telegram_notifications.rake`) que precisa rodar periodicamente (ex.: 1x ao dia). No Railway, isso é feito criando um segundo serviço do tipo **Cron Job** no mesmo projeto, rodando esse comando.
+- Como "ficar atrasada" é um estado que muda com o tempo (não com uma ação do usuário), o envio não acontece automaticamente na aplicação — é a tarefa `bin/rails demandas:notificar_atrasos` (`lib/tasks/telegram_notifications.rake`) que precisa rodar periodicamente.
 - Cada atraso é notificado **uma única vez** (campo `Demanda#atraso_notificado_em`) — se a demanda deixar de estar atrasada (data adiada ou marcada como concluída) e depois atrasar de novo, um novo aviso é enviado.
 - Sem `TELEGRAM_BOT_TOKEN` configurado, ou sem `telegram_chat_id` no usuário, a notificação é simplesmente pulada (não é um erro).
+
+### Agendamento (parte do deploy, não detalhe da task)
+
+A tarefa não roda sozinha: **um deploy sem agendamento tem a funcionalidade desligada**, e nada na aplicação avisa isso. Uma vez por dia, em horário comercial do fuso da equipe, é a cadência para a qual a mensagem foi escrita ("está há N dias com o prazo vencido").
+
+No **Railway**, isso é um segundo serviço do tipo **Cron Job** no mesmo projeto, apontando para o mesmo repositório e rodando `bin/rails demandas:notificar_atrasos`. Em `docker compose`, um `cron` do host chamando `docker compose exec web bin/rails demandas:notificar_atrasos`.
+
+Existe hoje uma terceira via que não existia quando a task foi escrita: desde a adoção do Solid Queue (ver "Webhooks de saída"), o projeto tem `config/recurring.yml` e um processo `worker` de pé, que agendaria isso sem scheduler externo nenhum. É a evolução natural — exigiria embrulhar a task num job — e ainda não foi feita.
+
+**A garantia é "no máximo uma vez", e ela é do banco, não da disciplina de quem agenda.** A task reivindica cada demanda com um `UPDATE ... WHERE atraso_notificado_em IS NULL` **antes** de enviar: quem escreve a linha é quem envia. Duas execuções simultâneas — cron disparado duas vezes, retry do scheduler, uma réplica a mais — não notificam a mesma demanda duas vezes, e um processo que morra depois do envio não faz a execução seguinte repetir a mensagem.
+
+O preço é que uma notificação pode ser *gasta sem sair*, se o processo morrer entre a reivindicação e o envio. Uma falha declarada do envio (o Telegram respondeu erro) devolve a demanda para a próxima execução; uma queda no meio, não. Perder um lembrete numa queda é melhor do que mandar o mesmo lembrete duas vezes em toda execução concorrente.
 
 ## Webhooks de saída
 
