@@ -31,9 +31,32 @@ if [ -z "${SECRET_KEY_BASE}" ]; then
 fi
 
 # Prepara o banco (cria se não existir, aplica migrations pendentes) toda
-# vez que o servidor sobe — bin/rails db:prepare é idempotente, então é
-# seguro rodar isso a cada restart do container.
-if [ "${1}" == "./bin/rails" ] && [ "${2}" == "server" ]; then
+# vez que o servidor sobe. É idempotente, então é seguro a cada restart —
+# e é o que faz `docker compose up` funcionar sem nenhum passo manual.
+#
+# Isso é conveniência de DEMONSTRAÇÃO, e num deploy de verdade deve ser
+# desligado com DB_PREPARE_ON_BOOT=false, rodando as migrations numa etapa
+# de release própria, antes de subir as réplicas (ver README, seção
+# "Docker", subseção "Migrations: boot ou release").
+#
+# O que se ganha desligando não é evitar corrupção de schema — as
+# migrations do Rails pegam um advisory lock no Postgres, então o schema
+# está protegido de qualquer jeito. São duas outras coisas:
+#
+#   * com mais de uma réplica, quem PERDE o lock não espera: o Rails usa
+#     pg_try_advisory_lock (não-bloqueante) e levanta
+#     ConcurrentMigrationError. Como este script roda com `bash -e`, o
+#     db:prepare que falha derruba o container inteiro — a réplica morre
+#     no boot em vez de simplesmente subir depois;
+#   * a disponibilidade do web deixa de depender do tempo e do sucesso das
+#     migrations. Uma migration longa atrasa o boot; uma que falha impede
+#     a aplicação de subir, mesmo que o código já estivesse pronto para
+#     rodar contra o schema antigo.
+#
+# O default continua sendo ligado: desligar sem uma etapa de release no
+# lugar deixaria o `docker run` documentado no README (e o compose local)
+# subindo contra um banco vazio, que é um jeito pior de falhar.
+if [ "${1}" == "./bin/rails" ] && [ "${2}" == "server" ] && [ "${DB_PREPARE_ON_BOOT:-true}" != "false" ]; then
   ./bin/rails db:prepare
 fi
 
