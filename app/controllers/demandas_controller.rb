@@ -73,13 +73,37 @@ class DemandasController < ApplicationController
     end
   end
 
+  # Hoje nada impede a exclusão de uma demanda, então o caminho de erro
+  # abaixo não é alcançável — e é justamente esse o motivo de ele existir.
+  # Antes o sucesso era anunciado sem olhar o retorno de #destroy, o que
+  # estava certo por coincidência, não por verificação: um
+  # `dependent: :restrict_with_error`, um `before_destroy` que aborte ou
+  # uma FK nova fariam a tela dizer "excluída com sucesso" com o registro
+  # ainda no banco.
+  #
+  # Contraste com Users::Destroy, que existe porque a exclusão de usuário
+  # TEM impeditivos (conta própria, demandas vinculadas). Essa diferença
+  # entre os dois casos não estava registrada em lugar nenhum. Não vale um
+  # Demandas::Destroy agora: sem regra de negócio para compartilhar entre
+  # web e API, seria uma classe só para embrulhar uma chamada.
   def destroy
     authorize! :destroy, @demanda
-    @demanda.destroy
-    redirect_to demandas_path, notice: 'Demanda excluída com sucesso.'
+
+    if @demanda.destroy
+      redirect_to demandas_path, notice: 'Demanda excluída com sucesso.'
+    else
+      redirect_to demandas_path, alert: erro_de_exclusao
+    end
   end
 
   private
+
+  # Um `before_destroy` que dá `throw :abort` faz #destroy devolver false
+  # sem popular errors — daí o fallback, para a tela nunca ficar com um
+  # alerta vazio.
+  def erro_de_exclusao
+    @demanda.errors.full_messages.to_sentence.presence || 'Não foi possível excluir a demanda.'
+  end
 
   def set_demanda
     @demanda = Demanda.find(params[:id])

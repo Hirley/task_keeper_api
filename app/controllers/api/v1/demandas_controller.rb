@@ -44,13 +44,31 @@ module Api
 
       # DELETE /api/v1/demandas/:id
       # Apenas o líder pode excluir uma demanda já existente.
+      #
+      # O 422 não é alcançável hoje — nada impede a exclusão de uma
+      # demanda. Existe porque antes o 204 era devolvido sem olhar o
+      # retorno de #destroy: um `dependent: :restrict_with_error` ou um
+      # `before_destroy` que aborte fariam a API responder "excluída" com
+      # o registro ainda no banco. Ver o comentário equivalente em
+      # DemandasController#destroy (tela web).
       def destroy
         authorize! :destroy, @demanda
-        @demanda.destroy
-        head :no_content
+
+        if @demanda.destroy
+          head :no_content
+        else
+          render json: { errors: erros_de_exclusao }, status: :unprocessable_content
+        end
       end
 
       private
+
+      # Mesmo formato de erro de #create/#update (array de strings). Um
+      # `before_destroy` com `throw :abort` devolve false sem popular
+      # errors, daí o fallback — a resposta nunca sai com a lista vazia.
+      def erros_de_exclusao
+        @demanda.errors.full_messages.presence || ['Não foi possível excluir a demanda.']
+      end
 
       def set_demanda
         @demanda = Demanda.find(params[:id])
