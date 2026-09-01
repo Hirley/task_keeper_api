@@ -69,7 +69,17 @@ Pra subir localmente, um único comando, sem nenhum passo manual antes:
 docker compose up --build
 ```
 
-Isso sobe a imagem de produção **e** um serviço `db` (PostgreSQL) localmente, na porta `3000`, com os dados do banco persistidos num volume nomeado (sobrevivem a `docker compose down`, mas não a `docker compose down -v`). Não é um ambiente de desenvolvimento com hot-reload — para isso, continue usando `bundle install && rails server` (apontando pro serviço `db` ou pra um Postgres local), como na seção anterior.
+Isso sobe **três** serviços, com os dados do banco persistidos num volume nomeado (sobrevivem a `docker compose down`, mas não a `docker compose down -v`):
+
+| Serviço | O que é |
+|---|---|
+| `db` | PostgreSQL |
+| `web` | a aplicação (Puma), na porta `3000` |
+| `worker` | o processador de jobs (Solid Queue, `bin/jobs`) |
+
+O `worker` roda a mesma imagem do `web`, e sobe só depois de o `web` ficar **saudável** — é o entrypoint do `web` que aplica as migrations, então o worker precisa esperar as tabelas existirem. Ele também não roda migration nenhuma de propósito: dois processos preparando o mesmo banco ao mesmo tempo é corrida, não redundância.
+
+Não é um ambiente de desenvolvimento com hot-reload — para isso, continue usando `bundle install && rails server` (apontando pro serviço `db` ou pra um Postgres local), como na seção anterior. Lá o adapter de jobs é o `:async`, que roda em thread no próprio processo, então não é preciso subir um segundo processo para desenvolver.
 
 Duas coisas acontecem sozinhas nesse modo local, e **nenhuma das duas deve valer num deploy de verdade**:
 
@@ -259,7 +269,13 @@ Além do Telegram, o **admin** pode cadastrar webhooks genéricos em `/webhooks`
 **Como funciona:**
 
 - `WebhookSubscription` (`app/models/webhook_subscription.rb`) guarda a URL e os eventos escolhidos (array nativo do Postgres). Um webhook pode ser pausado (`active: false`) sem precisar excluir o cadastro.
-- `WebhookDispatcher` (`app/services/webhook_dispatcher.rb`) encontra as assinaturas ativas que escutam o evento e enfileira `WebhookDeliveryJob` pra cada uma — em background (adapter `:async` padrão do Rails; este projeto não tem Sidekiq/Solid Queue configurado), pra não travar a request original no tempo de resposta de um serviço de terceiro.
+- `WebhookDispatcher` (`app/services/webhook_dispatcher.rb`) encontra as assinaturas ativas que escutam o evento e enfileira `WebhookDeliveryJob` pra cada uma — em background, pra não travar a request original no tempo de resposta de um serviço de terceiro.
+
+  Em **produção** a fila é o **Solid Queue**, gravando nas tabelas `solid_queue_*` do próprio PostgreSQL da aplicação (ver `config/environments/production.rb` e `config/queue.yml`). Isso exige um **processo separado** rodando `bin/jobs` — é o serviço `worker` do `docker-compose.yml`. Sem ele os jobs ficam enfileirados no banco esperando, em vez de sumir.
+
+  O default do Rails, `:async`, guarda a fila na **memória do processo web**: todo restart, deploy ou OOM descartava em silêncio o que ainda não tinha rodado — incluindo as retentativas de webhook agendadas com backoff, que por definição ficam pendentes por algum tempo. Em **desenvolvimento** o `:async` continua valendo, pra que `bin/rails server` sozinho siga funcionando sem exigir um segundo processo; em **teste**, o adapter é o `:test`.
+
+  Optamos pelo mesmo banco da aplicação, e não pelo banco separado que o instalador do Solid Queue assume: o projeto tem um PostgreSQL só, e adotar múltiplos bancos obrigaria a reescrever o `config/database.yml` inteiro — incluindo o caminho de `DATABASE_URL`, que é o que o Railway injeta — para resolver um problema de escala que não existe aqui.
 - `WebhookDelivery` (`app/services/webhook_delivery.rb`) faz o `POST` de fato, com timeout curto (5s). O retorno dele é o que decide se o job tenta de novo, e a distinção é deliberada:
 
   | Situação | Resultado | O job… |
@@ -270,7 +286,7 @@ Além do Telegram, o **admin** pode cadastrar webhooks genéricos em `/webhooks`
 
   Esgotadas as tentativas, `WebhookDeliveryJob` registra a desistência no log em nível `error` — a entrega perdida deixa rastro em vez de sumir. Um erro inesperado (bug nosso, não instabilidade do outro lado) também não consome tentativas: é logado como `error` e encerra, porque repetir cinco vezes não conserta e só atrasa o diagnóstico.
 
-  Vale a ressalva: como o adapter ainda é o `:async` em memória, as tentativas reagendadas também se perdem num restart do processo. O retry cobre a instabilidade curta, que é a maioria; durabilidade de verdade depende de trocar o backend da fila.
+  Em produção as tentativas reagendadas ficam gravadas junto com o job, no Solid Queue — sobrevivem a um restart do web e são retomadas quando o worker volta. Em desenvolvimento, com o `:async`, ainda se perdem.
 - **Proteção contra SSRF**: `PublicHttpTarget` (`app/services/public_http_target.rb`) resolve o host e recusa endereços de rede privada/local (`127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16` e as faixas IPv6 equivalentes), pra que um webhook não vire um jeito de fazer a aplicação bater num serviço interno da própria rede. A checagem roda **duas vezes, de propósito**:
   - no **cadastro/edição** (validação de `WebhookSubscription`), só pra dar o erro no formulário enquanto o admin ainda está na tela;
   - de novo na **hora da entrega** (`WebhookDelivery`), imediatamente antes de conectar — e é essa que protege de fato. Sozinha, a validação do cadastro não segura *DNS rebinding*: como a entrega acontece quando um evento dispara (possivelmente dias depois), bastaria cadastrar um host que resolve pra um IP público e trocar o registro DNS com calma. O IP verificado na entrega é passado direto pro `Net::HTTP` (`ipaddr:`), então o endereço checado é exatamente o endereço conectado — sem intervalo entre a checagem e o uso. O host original continua valendo pro cabeçalho `Host`, SNI e validação do certificado TLS.
