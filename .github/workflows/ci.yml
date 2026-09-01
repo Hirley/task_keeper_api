@@ -136,13 +136,16 @@ jobs:
       # usuário não-root, healthcheck, publicação de porta, variável de
       # ambiente faltando.
       #
-      # Os dois bugs de build que este projeto já teve (CRLF em bin/*,
+      # Os dois primeiros bugs de build deste projeto (CRLF em bin/*,
       # plataforma ausente no Gemfile.lock) NÃO são exemplo disso — os
-      # dois quebravam durante o próprio build, porque o Dockerfile
-      # executa ./bin/rails assets:precompile, e o job de build já os
-      # pegava. O vizinho deles é que interessa: bin/docker-entrypoint
-      # depende da mesma normalização de LF e só roda quando o container
-      # SOBE, então um problema ali passaria por um build verde.
+      # dois quebravam o próprio build, porque o Dockerfile executa
+      # ./bin/rails assets:precompile, e o job de build já os pegava.
+      #
+      # O terceiro é: bin/jobs entrou no repositório sem bit de execução
+      # (criado no Windows, onde o sistema de arquivos não tem esse bit),
+      # a imagem buildava perfeitamente e o worker morria com exit 126 ao
+      # subir. Este passo achou isso na primeira vez que rodou, com a
+      # imagem publicada em main já quebrada havia dois merges.
       #
       # --wait só volta quando o banco e o web estão SAUDÁVEIS pelo
       # healthcheck do próprio Dockerfile, e o worker rodando; se algum

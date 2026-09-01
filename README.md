@@ -112,6 +112,9 @@ O build é validado automaticamente a cada push/PR pelo CI, que também **sobe a
 
 1. **`COPY . .` sobrescrevendo o `Gemfile.lock` corrigido**: rodava depois do `bundle lock --add-platform`, apagando silenciosamente o ajuste de plataforma antes do `bootsnap precompile app/ lib/` seguinte (`bundle exec` revalida a plataforma a cada chamada). Corrigido copiando o projeto inteiro antes de mexer no `Gemfile.lock`.
 2. **CRLF em `bin/*`**: quem desenvolve no Windows normalmente tem `core.autocrlf=true` no Git, que converte os scripts de `bin/` (LF no repositório) para CRLF no checkout local; como `docker build` copia o contexto direto do disco (não do objeto Git), o CRLF ia parar no container e o shebang `#!/usr/bin/env ruby` de `bin/rails` virava `ruby\r` — `env: 'ruby\r': No such file or directory`. Corrigido normalizando `bin/*` para LF em tempo de build (`sed -i 's/\r$//' bin/*`, logo após o `COPY . .`), além de um `.gitattributes` (`* text=auto eol=lf`) pra evitar isso em checkouts novos.
+3. **`bin/jobs` sem bit de execução**: quem cria um script em `bin/` no Windows não tem bit de execução no sistema de arquivos, então o Git registra o arquivo como `100644` — foi o que aconteceu com `bin/jobs` quando o Solid Queue entrou. Um `docker build` **no Windows** não percebe (o contexto vem do disco, onde tudo parece executável), mas o checkout num runner Linux respeita o modo do índice, e o container do `worker` morria com `exit 126` assim que subia. A imagem buildava, e a aplicação buildada não tinha worker. Corrigido no índice (`git update-index --chmod=+x bin/jobs`) e com um `chmod +x bin/*` em tempo de build, ao lado do `sed` acima.
+
+   Este é o único dos três que **não** quebrava o `docker build` — os outros dois quebravam, porque o Dockerfile executa `./bin/rails assets:precompile`. Ele só aparecia ao *rodar* a imagem, e foi encontrado pelo smoke test descrito em "Integração contínua", na primeira vez que ele rodou.
 
 ## Integração contínua
 
@@ -123,7 +126,7 @@ O build é validado automaticamente a cada push/PR pelo CI, que também **sobe a
 
   **O smoke test** existe porque validar que a imagem *builda* não diz nada sobre ela *subir*: entrypoint, `db:prepare`, permissões do usuário não-root, healthcheck, publicação de porta e variável de ambiente faltando só falham em runtime.
 
-  (Os dois bugs listados na seção "Docker" **não** são exemplo disso — os dois quebravam durante o `docker build`, porque o Dockerfile executa `./bin/rails assets:precompile`, e o job de build já os pegaria. O caso interessante é o vizinho: `bin/docker-entrypoint` também depende da normalização de LF, e ele só roda quando o container **sobe** — um problema ali passaria por um build verde.)
+  Dos três bugs listados na seção "Docker", os dois primeiros **não** são exemplo disso — quebravam durante o `docker build`, e o job de build já os pegava. O terceiro é: `bin/jobs` sem bit de execução buildava perfeitamente e derrubava o `worker` com `exit 126` ao subir. **Foi encontrado por este smoke test na primeira vez que ele rodou**, num repositório onde a imagem publicada em `main` já estava assim havia dois merges.
 
   O job sobe `db` + `web` + `worker` com `docker compose up --wait` (que só volta quando os healthchecks passam) e checa quatro coisas:
 

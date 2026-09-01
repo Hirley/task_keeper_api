@@ -71,7 +71,17 @@ COPY . .
 # não corrige um checkout já existente sem um passo manual do usuário
 # (`git add --renormalize .` ou re-clonar) — este `sed` cobre esse caso
 # sem depender disso.
-RUN sed -i 's/\r$//' bin/*
+#
+# O chmod +x vai junto pelo mesmo motivo, e a falta dele já custou uma
+# imagem quebrada: quem cria um script em bin/ no Windows não tem bit de
+# execução no sistema de arquivos, então o Git registra o arquivo como
+# 100644 — foi o que aconteceu com bin/jobs. O `docker build` no Windows
+# não percebe (o contexto vem do disco, onde tudo parece executável), mas
+# o checkout num runner Linux respeita o modo do índice, e o container do
+# worker morria com exit 126 ("command not executable"). Corrigido no
+# índice também (`git update-index --chmod=+x`); esta linha é a rede de
+# segurança para o próximo arquivo criado no Windows.
+RUN sed -i 's/\r$//' bin/* && chmod +x bin/*
 
 # O Gemfile.lock deste projeto foi gerado originalmente numa máquina
 # Windows — a seção PLATFORMS só tinha "x64-mingw-ucrt", sem a
